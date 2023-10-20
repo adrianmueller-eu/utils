@@ -1303,6 +1303,45 @@ def pauli_basis(n, kind='np', normalize=False):
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
+# from https://docs.pennylane.ai/en/stable/code/api/pennylane.pauli_decompose.html
+def pauli_decompose(H, include_zero=False):
+    r"""Decomposes a Hermitian matrix into a linear combination of Pauli operators.
+
+    Parameters
+        H (ndarray): a Hermitian matrix of shape ``(2**n, 2**n)``
+        include_zero (bool): if True, include Pauli terms with zero coefficients in the decomposition
+
+    Returns
+        tuple[list[float], list[str]]: the coefficients and the Pauli operator strings
+
+    Example
+    >>> H = np.array([[-2, -2+1j, -2, -2], [-2-1j,  0,  0, -1], [-2,  0, -2, -1], [-2, -1, -1,  0]])
+    >>> pauli_decompose(H)
+    ([-1.0, -1.5, -0.5, -1.0, -1.5, -1.0, -0.5, 1.0, -0.5, -0.5],
+     ['II', 'IX', 'IY', 'IZ', 'XI', 'XX', 'XZ', 'YY', 'ZX', 'ZY'])
+    """
+    n = int(np.log2(len(H)))
+    N = 2**n
+
+    if H.shape != (N, N):
+        raise ValueError(f"The matrix should have shape (2**n, 2**n), for any qubit number n>=1, but is {H.shape}")
+
+    if not np.allclose(H, H.conj().T):
+        raise ValueError("The matrix is not Hermitian")
+
+    obs_lst = []
+    coeffs = []
+
+    for term, basis_matrix in zip(pauli_basis(n, kind='str'), pauli_basis(n, kind='np')):
+        coeff = np.trace(basis_matrix @ H) / N  # project H onto the basis matrix
+        coeff = np.real_if_close(coeff).item()
+
+        if not np.allclose(coeff, 0) or include_zero:
+            coeffs.append(coeff)
+            obs_lst.append(term)
+
+    return coeffs, obs_lst
+
 ###############
 ### Aliases ###
 ###############
@@ -1330,7 +1369,8 @@ def test_quantum_all():
         _test_entropy_entanglement,
         _test_fidelity,
         _test_ising,
-        _test_pauli_basis
+        _test_pauli_basis,
+        _test_pauli_decompose
     ]
 
     for test in tests:
@@ -1736,5 +1776,39 @@ def _test_pauli_basis():
     # check if all generators are the same
     for i, (A,B) in enumerate(zip(pauli_n, pauli_n_sp)):
         assert np.allclose(A, B.todense()), f"Generator {i} is not the same!"
+
+    return True
+
+def _test_pauli_decompose():
+    global f2, H, SWAP
+
+    # H = (X+Z)/sqrt(2)
+    coeff, basis = pauli_decompose(H)
+    assert np.allclose(coeff, [f2]*2), f"coeff = {coeff} ≠ [{f2}]*2"
+    assert basis == ['X', 'Z'], f"basis = {basis} ≠ ['X', 'Z']"
+
+    # SWAP = 0.5*(II + XX + YY + ZZ)
+    coeff, basis = pauli_decompose(SWAP)
+    assert np.allclose(coeff, [0.5]*4), f"coeff = {coeff} ≠ [0.5]*4"
+    assert basis == ['II', 'XX', 'YY', 'ZZ'], f"basis = {basis} ≠ ['II', 'XX', 'YY', 'ZZ']"
+
+    # random 2-qubit hamiltonian
+    H = random_hermitian(4)
+    coeff, basis = pauli_decompose(H)
+    assert len(coeff) == 16, f"len(coeff) = {len(coeff)} ≠ 16"
+    assert len(basis) == 16, f"len(basis) = {len(basis)} ≠ 16"
+
+    # check if the decomposition is correct
+    H_decomposed = np.zeros((4,4), dtype=complex)
+    for c, b in zip(coeff, basis):
+        H_decomposed += c*parse_hamiltonian(b)
+    assert np.allclose(H, H_decomposed), f"H = {H}\nH_decomposed = {H_decomposed}"
+
+    # check if `include_zero` returns the whole basis
+    n = 4
+    coeff, basis = pauli_decompose(np.eye(2**n), include_zero=True)
+    n_expected = 2**(2*n)  # == len(pauli_basis(n))
+    assert len(coeff) == n_expected, f"len(coeff) = {len(coeff)} ≠ {n_expected}"
+    assert len(basis) == n_expected, f"len(basis) = {len(basis)} ≠ {n_expected}"
 
     return True
