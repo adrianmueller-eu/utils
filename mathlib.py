@@ -1,8 +1,9 @@
 import sys
 import numpy as np
-from math import factorial, sqrt
+from math import factorial, sqrt, ceil
 from itertools import combinations, chain
 import scipy.sparse as sp
+from .isprime import is_prime
 
 ### Tests
 
@@ -411,6 +412,62 @@ def int_sqrt(n):
         return n
     return int(np.prod(closest_prime_factors_to(n, sqrt(n))))
 
+def gcd(a, b):
+    """ Greatest common divisor. """
+    while b:
+        a, b = b, a % b
+    return a
+
+def lcm(a, b):
+    """ Least common multiple. """
+    return a * b // gcd(a, b)
+
+def is_coprime(a, b):
+    """ Test if `a` and `b` are coprime. """
+    return gcd(a, b) == 1
+
+def euler_phi(n):
+    """ Euler's totient function. """
+    return round(n * np.prod([1 - 1/p for p in prime_factors(n)]))
+    # return sum([1 for k in range(1, n) if is_coprime(n, k)])  # ~100x slower
+
+def dlog(x,g,n):
+    """ Discrete logarithm, using the baby-step giant-step algorithm.
+
+    Parameters
+        x (int): The number to find the logarithm of.
+        g (int): The base.
+        n (int): The modulus.
+
+    Returns
+        int: The discrete logarithm of `x` to the base `g` modulo `n`.
+    """
+    w = ceil(sqrt(euler_phi(n)))
+    baby = []
+    for j in range(w+1):
+        baby.append(x*(g**j) % n)
+#     print(baby)
+    for i in range(1, w+1):
+        giant = pow(g, i*w, n)
+#         print(i, giant)
+        if giant in baby:
+            return i * w-baby.index(giant) % n
+
+    raise ValueError(f"Couldn't find discrete logarithm of {x} to the base {g} modulo {n}.")
+
+def is_carmichael(n):
+    """ Test if `n` is a Carmichael number. """
+    if is_prime(n): # are neither even nor prime
+        return False
+    for a in range(2,n):
+        if gcd(n,a) == 1 and pow(a,n-1,n) != 1:
+            return False
+    return True
+
+def carmichael_numbers(to):
+    for n in range(3*5*7, to, 2): # have at minimum three prime factors and not even
+        if is_carmichael(n):
+            yield n
 
 ### Binary strings
 
@@ -675,6 +732,9 @@ def test_mathlib_all():
         _test_SU,
         _test_prime_factors,
         _test_closest_prime_factors_to,
+        _test_is_prime,
+        _test_euler_phi,
+        _test_dlog,
         _test_int_sqrt,
         _test_binFrac,
         _test_binstr_from_float,
@@ -938,6 +998,29 @@ def _test_int_sqrt():
     assert int_sqrt(42) == 6
     assert int_sqrt(1) == 1
     assert int_sqrt(0) == 0
+    return True
+
+def _test_is_prime():
+    assert is_prime(2) == True
+    assert is_prime(1) == False
+    assert is_prime(42) == False
+    assert is_prime(43) == True
+    assert is_carmichael(997633) == True
+    assert is_prime(997633) == False
+    # assert is_prime(1000000000000066600000000000001) == True  # out of bounds
+    # assert is_prime(512 * 2**512 - 1) == True  # out of bounds
+    return True
+
+def _test_euler_phi():
+    assert euler_phi(1) == 1
+    assert euler_phi(2) == 1
+    assert euler_phi(10) == 4
+    assert euler_phi(42) == 12
+    return True
+
+def _test_dlog():
+    assert dlog(18, 2, 67) == 13
+    assert dlog(17, 2, 67) == 64
     return True
 
 def _test_binFrac():
