@@ -293,6 +293,11 @@ def partial_trace(rho, retain_qubits):
             n -= 1         # one qubit less
             trace_out -= 1 # rename the axes (only "higher" ones are left)
 
+    # transpose the axes of the remaining qubits to the original order
+    # rows = np.argsort(list(retain_qubits))
+    # cols = rows + len(rows)
+    # rho = rho.transpose(rows.tolist() + cols.tolist())
+
     return rho.reshape(dim_r, dim_r)
 
 def state_trace(state, retain_qubits):
@@ -621,6 +626,23 @@ def fidelity(state1, state2):
         return np.sum(np.sqrt(np.linalg.eigvals(state1 @ state2)))**2 # this is correct and faster
     else:
         raise ValueError(f"Can't calculate fidelity between {state1.shape} and {state2.shape}")
+
+def Schmidt_decomposition(state, subsystem_qubits):
+    """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
+    state = np.array(state)
+    assert len(state.shape) == 1, f"State must be a vector, but has shape: {state.shape}"
+    n = int(np.log2(len(state)))
+    assert len(subsystem_qubits) <= n-1, f"Too many subsystem qubits: {len(subsystem_qubits)} >= {n}"
+
+    # reorder the qubits so that the subsystem qubits are at the beginning
+    subsystem_qubits = list(subsystem_qubits)
+    other_qubits = sorted(set(range(n)) - set(subsystem_qubits))
+    state = state.reshape([2]*n).transpose(subsystem_qubits + other_qubits).flatten()
+
+    # calculate the Schmidt coefficients and basis using SVD
+    a_jk = state.reshape([2**len(subsystem_qubits), 2**len(other_qubits)])
+    U, S, V = np.linalg.svd(a_jk)
+    return S, U.T, V
 
 ####################
 ### Ground state ###
@@ -1369,6 +1391,7 @@ def test_quantum_all():
         _test_entropy_von_Neumann,
         _test_entropy_entanglement,
         _test_fidelity,
+        _test_Schmidt_decomposition,
         _test_ising,
         _test_pauli_basis,
         _test_pauli_decompose
@@ -1662,6 +1685,36 @@ def _test_fidelity():
     assert 0 <= fidelity(rho1, psi2) <= 1, f"fidelity = {fidelity(rho1, psi2)} ∉ [0,1]"
 
     return True
+
+def _test_Schmidt_decomposition():
+    n = 6
+    subsystem = np.random.choice(n, size=np.random.randint(1, n), replace=False)
+    subsystem = sorted(subsystem)  # TODO: figure out how to correctly transpose axes in partial trace with unsorted subsystems
+    psi = random_ket(n)
+    l, A, B = Schmidt_decomposition(psi, subsystem)
+
+    # check non-negativity of Schmidt coefficients
+    assert np.all(l >= 0), f"l = {l} < 0"
+    # check normalization of Schmidt coefficients
+    assert np.allclose(np.sum(l**2), 1), f"sum(l**2) = {np.sum(l**2)} ≠ 1"
+
+    # check RDM for subsystem A
+    rho_expected = partial_trace(np.outer(psi, psi.conj()), subsystem)
+    rho_actual = np.sum([l_i**2 * np.outer(A_i, A_i.conj()) for l_i, A_i in zip(l, A)], axis=0)
+    assert np.allclose(rho_expected, rho_actual), f"rho_expected - rho_actual = {rho_expected - rho_actual}"
+
+    # check RDM for subsystem B
+    rho_expected = partial_trace(np.outer(psi, psi.conj()), [i for i in range(n) if i not in subsystem])
+    rho_actual = np.sum([l_i**2 * np.outer(B_i, B_i.conj()) for l_i, B_i in zip(l, B)], axis=0)
+    assert np.allclose(rho_expected, rho_actual), f"rho_expected - rho_actual = {rho_expected - rho_actual}"
+
+    # check entanglement entropy
+    S_expected = entropy_entanglement(psi, subsystem)
+    S_actual = -np.sum([l_i**2 * np.log2(l_i**2) for l_i in l])
+    assert np.allclose(S_expected, S_actual), f"S_expected = {S_expected} ≠ S_actual = {S_actual}"
+
+    return True
+
 
 def _test_ising():
     # 1d
