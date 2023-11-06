@@ -47,6 +47,7 @@ def R_(gate, theta):
 Rx = lambda theta: R_(X, theta)
 Ry = lambda theta: R_(Y, theta)
 Rz = lambda theta: R_(Z, theta)
+II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ = [np.kron(g1, g2) for g1, g2 in product([I,X,Y,Z], repeat=2)]
 
 def C_(A):
     if not hasattr(A, 'shape'):
@@ -156,12 +157,6 @@ def parse_unitary(unitary):
     assert np.allclose(U @ U.conj().T, np.eye(2**n)), f"Result is not unitary: {U, U @ U.conj().T}"
 
     return U
-
-XX = np.kron(X,X)
-YY = np.kron(Y,Y)
-ZZ = np.kron(Z,Z)
-II = I_(2)
-
 
 try:
     ##############
