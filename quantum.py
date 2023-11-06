@@ -454,7 +454,7 @@ def random_dm(n=1, pure=False):
 def ket(specification):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
-    if type(specification) == np.ndarray:
+    if isinstance(specification, (np.ndarray, list, tuple)):
         n = int(np.log2(len(specification)))
         assert len(specification) == 2**n, f"State vector has wrong length: {len(specification)} is not a power of 2!"
         return normalize(specification)
