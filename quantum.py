@@ -36,10 +36,10 @@ T_gate = np.array([ # avoid overriding T = True
     [1,  0],
     [0,  np.sqrt(1j)]
 ], dtype=complex)
-H = 1/np.sqrt(2) * np.array([
+H = H_gate = 1/np.sqrt(2) * np.array([ # Fourier_matrix(2) = f2*(X + Z) = 1j*f2*(Rx(pi) + Rz(pi))
     [1,  1],
     [1, -1]
-], dtype=complex) # f2*(X + Z) = 1j*f2*(Rx(pi) + Rz(pi))
+], dtype=complex)
 
 def R_(gate, theta):
    return matexp(-1j*gate*theta/2)
@@ -1388,6 +1388,9 @@ def test_quantum_all():
             break
 
 def _test_constants():
+    global I, X, Y, Z, H_gate, S, T_gate, CNOT, SWAP
+    H = H_gate
+
     assert is_involutory(X)
     assert is_involutory(Y)
     assert is_involutory(Z)
@@ -1786,7 +1789,8 @@ def _test_pauli_basis():
     return True
 
 def _test_pauli_decompose():
-    global f2, H, SWAP
+    global f2, H_gate, SWAP
+    H = H_gate
 
     # H = (X+Z)/sqrt(2)
     coeff, basis = pauli_decompose(H)
