@@ -68,6 +68,12 @@ iSWAP = np.array([ # 0.5*(1j*(XX + YY) + ZZ + II), R_(XX+YY, -pi/2)
     [0, 0, 0, 1]
 ], dtype=complex)
 
+def Fourier_matrix(n, n_is_qubits=True):
+    """Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT)."""
+    if n_is_qubits:
+        n = 2**n
+    return 1/np.sqrt(n) * np.array([[np.exp(2j*np.pi*i*j/n) for j in range(n)] for i in range(n)], dtype=complex)
+
 def parse_unitary(unitary):
     """Parse a string representation of a unitary into its matrix representation. The result is guaranteed to be unitary.
 
