@@ -327,6 +327,8 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xla
             a = a[:,None] # vertical
         if is_complex(a):
             img = colorize_complex(a)
+            if show_colorbar:
+                print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, aspect=5/a.shape[0], **pltargs)
         else:
             a = a.real
@@ -336,6 +338,8 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xla
     elif len(a.shape) == 2:
         if is_complex(a):
             img = colorize_complex(a)
+            if show_colorbar:
+                print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, **pltargs)
         else:
             a = a.real
