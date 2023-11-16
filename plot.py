@@ -295,8 +295,24 @@ def colorize_complex(z):
     c = np.array(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
     return c
 
-def imshow(a, figsize=(8,6), title="", cmap="hot", yticks=None, xticks=None, show_colorbar=True, **pltargs):
-    """Uses magic to create pretty images from arrays."""
+def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xlabel=None, ylabel=None, show_colorbar=True, **pltargs):
+    """Uses magic to create pretty images from arrays.
+
+    Parameters
+        a (np.ndarray):       2D array to be plotted
+        figsize (tuple):      Figure size
+        title (str):          Title of the plot
+        cmap (str):           Colormap to use
+        xticks (tuple|list):  List of xticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the x-axis.
+        yticks (tuple|list):  List of yticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the y-axis.
+        xlabel (str):         Label for the x-axis
+        ylabel (str):         Label for the y-axis
+        show_colorbar (bool): Whether to show the colorbar
+        **pltargs:            Additional arguments to pass to plt.imshow
+
+    Returns
+        None
+    """
 
     a = np.array(a)
     if np.prod(a.shape) == np.max(a.shape):
@@ -329,10 +345,34 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", yticks=None, xticks=None, sho
     else:
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
 
+    def generate_ticks_and_labels(ticks, shape, max_ticks=10):
+        if isinstance(ticks, tuple) and len(ticks) == 2:
+            if isinstance(ticks[0], (int, float)):
+                ticklabels = np.linspace(ticks[0], ticks[1], min(max_ticks, shape))
+                ticklabels = np.round(ticklabels, -int(np.log10(ticks[-1]-ticks[0])-3))
+                ticks = np.linspace(0, shape-1, len(ticklabels))
+            else:
+                ticklabels = ticks[1]
+                ticks = ticks[0]
+        else:
+            if len(ticks) > max_ticks:
+                ticklabels = np.linspace(ticks[0], ticks[-1], max_ticks)
+                ticklabels = np.round(ticklabels, -int(np.round(np.log10(ticks[-1]-ticks[0])-3)))
+            else:
+                ticklabels = ticks
+            ticks = np.linspace(0, shape-1, len(ticklabels))
+        return ticks, ticklabels
+
     if xticks is not None:
-        plt.xticks(range(len(a)), xticks)
+        xticks, xticklabels = generate_ticks_and_labels(xticks, a.shape[1])
+        plt.xticks(xticks, xticklabels, rotation=90)
     if yticks is not None:
-        plt.yticks(range(len(a)), yticks)
+        yticks, yticklabels = generate_ticks_and_labels(yticks, a.shape[0])
+        plt.yticks(yticks, yticklabels)
+    if xlabel is not None:
+        plt.xlabel(xlabel)
+    if ylabel is not None:
+        plt.ylabel(ylabel)
 
     plt.title(title)
     plt.show()
