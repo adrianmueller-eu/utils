@@ -687,6 +687,13 @@ matmap_np, matmap_sp = None, None
 
 def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buffer_n=0, dtype=complex):
     """Parse a string representation of a Hamiltonian into a matrix representation. The result is guaranteed to be Hermitian.
+    The string `hamiltonian` must follow the following syntax (see examples below)
+        ```
+        <hamiltonian> = <term> | <term> + <hamiltonian>
+        <term>        = <pauli> | (<hamiltonian>) | <weight>*<pauli> | <weight>*(<hamiltonian>) | <weight>
+        <pauli>       = [IXYZ]+
+        ```
+    where `<weight>` is a string representing a finite number that can be parsed by `float()`. If `<weight>` is not followed by `*`, it is assumed to be the respective multiple of the identity.
 
     Parameters:
         hamiltonian (str): The Hamiltonian to parse.
@@ -704,6 +711,9 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
            [ 0.+0.j  0.+0.j  1.+0.j  0.+0.j]
            [ 0.+0.j  1.+0.j  0.+0.j  0.+0.j]
            [ 0.+0.j  0.+0.j  0.+0.j  1.+0.j]])
+    >>> parse_hamiltonian('X - 2*Y + 1')
+    array([[1.+0.j, 1.+2.j],
+           [1.-2.j, 1.+0.j]])
     >>> parse_hamiltonian('-(XX + YY + .5*ZZ) + 1.5')
     array([[ 1.+0.j  0.+0.j  0.+0.j  0.+0.j]
            [ 0.+0.j  2.+0.j -2.+0.j  0.+0.j]
