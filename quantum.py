@@ -649,12 +649,9 @@ def Schmidt_decomposition(state, subsystem_qubits):
 ####################
 
 def ground_state_exact(hamiltonian):
-    """ Calculate the ground state using the Lanczos algorithm (exact diagonalization). """
+    """ Calculate the ground state using exact diagonalization. """
     if isinstance(hamiltonian, str):
-        try:
-            H = parse_hamiltonian(hamiltonian)
-        except MemoryError:
-            H = parse_hamiltonian(hamiltonian, sparse=True)
+        H = parse_hamiltonian(hamiltonian, sparse=True)
     # elif isinstance(hamiltonian, nk.operator.DiscreteOperator):
     #     H = hamiltonian.to_sparse()
     else:
