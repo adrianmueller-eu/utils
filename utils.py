@@ -44,7 +44,7 @@ def mapp(func, *iterables, **kwargs):
 def nbytes(n):
     """ Returns the number of bytes of some common objects. """
     # numpy array
-    if isinstance(n, np.ndarray):
+    if hasattr(n, 'nbytes'):
         return n.nbytes
     # scipy sparse matrix
     elif hasattr(n, 'data') and isinstance(n.data, np.ndarray):
