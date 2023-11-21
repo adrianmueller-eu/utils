@@ -295,7 +295,7 @@ def colorize_complex(z):
     c = np.array(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
     return c
 
-def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xlabel=None, ylabel=None, show_colorbar=True, **pltargs):
+def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, show_colorbar='auto', **pltargs):
     """Uses magic to create pretty images from arrays.
 
     Parameters
@@ -305,9 +305,10 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xla
         cmap (str):           Colormap to use
         xticks (tuple|list):  List of xticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the x-axis.
         yticks (tuple|list):  List of yticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the y-axis.
+        xtick_rot (float):    Rotation of the xticks
         xlabel (str):         Label for the x-axis
         ylabel (str):         Label for the y-axis
-        show_colorbar (bool): Whether to show the colorbar
+        show_colorbar (bool|str): Whether to show the colorbar. If 'auto', show if the array is not complex.
         **pltargs:            Additional arguments to pass to plt.imshow
 
     Returns
@@ -327,24 +328,24 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xla
             a = a[:,None] # vertical
         if is_complex(a):
             img = colorize_complex(a)
-            if show_colorbar:
+            if show_colorbar == True:
                 print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, aspect=5/a.shape[0], **pltargs)
         else:
             a = a.real
             img = plt.imshow(a, cmap=cmap, **pltargs)
-            if show_colorbar:
+            if show_colorbar:  # True or 'auto'
                 fig.colorbar(img, fraction=0.1, pad=0.05)
     elif len(a.shape) == 2:
         if is_complex(a):
             img = colorize_complex(a)
-            if show_colorbar:
+            if show_colorbar == True:
                 print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, **pltargs)
         else:
             a = a.real
             img = plt.imshow(a, cmap=cmap, **pltargs)
-            if show_colorbar:
+            if show_colorbar:  # True or 'auto'
                 fig.colorbar(img, fraction=0.1, pad=0.05, shrink=0.87)
     else:
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
@@ -369,7 +370,7 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xla
 
     if xticks is not None:
         xticks, xticklabels = generate_ticks_and_labels(xticks, a.shape[1])
-        plt.xticks(xticks, xticklabels, rotation=90)
+        plt.xticks(xticks, xticklabels, rotation=xtick_rot, ha='center')
     if yticks is not None:
         yticks, yticklabels = generate_ticks_and_labels(yticks, a.shape[0])
         plt.yticks(yticks, yticklabels)
