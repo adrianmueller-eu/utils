@@ -1,4 +1,4 @@
-import os
+import os, time
 import numpy as np
 from warnings import warn
 from collections.abc import Iterable
@@ -116,3 +116,6 @@ def tqt(iterable, **kwargs):
     token = os.environ['TELEGRAM_BOT_TOKEN']
     chat_id = os.environ['TELEGRAM_CHAT_ID']
     return telegram.tqdm(iterable, token=token, chat_id=chat_id, **kwargs)
+
+def now():
+    return time.time()
