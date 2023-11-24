@@ -1,4 +1,4 @@
-import os, time
+import os, time, sys
 import numpy as np
 from warnings import warn
 from collections.abc import Iterable
@@ -119,3 +119,137 @@ def tqt(iterable, **kwargs):
 
 def now():
     return time.time()
+
+
+class ConvergenceCondition:
+    """ Convergence condition for iterative algorithms.
+
+    Additional properties
+        x_prev (list): List of previous x's for error calculation. At most `converged_sequence_length` x's are stored.
+        error (float): Error of the last iteration.
+        start_time (float): Time of the first iteration.
+        cnt (int): Number of already performed iterations.
+        skipped (int): Number of iterations the error was below eps.
+        pbar (tqdm.tqdm): Progress bar object.
+    """
+
+    def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_time=None, converged_sequence_length=2, skip_initial=0, skip_converged=0, use_tqdm=False):
+        """ Convergence condition for iterative algorithms.
+
+        Parameters
+            max_iter (int): Maximum number of iterations. If `None`, no maximum is set.
+            eps (float): Maximum error. If `None`, no error is calculated.
+            max_time (float): Maximum time in seconds. If `None`, no maximum is set.
+            converged_sequence_length (int): Number of previous iterations to check for convergence (useful for oscillating sequences)
+            skip_initial (int): Number of iterations to let pass in the beggining before checking for convergence
+            skip_converged (int): Number of iterations the error must be below eps
+            use_tqdm (bool | tqdm.tqdm): Set `True` to show a `tqdm` progress bar. Give a `tqdm.tqdm` object to use a custom `tqdm` progress bar.
+
+        Example:
+
+            >>> def expm(A):
+            >>>     i = 0
+            >>>     res = A_i = np.eye(A.shape[0], dtype=A.dtype)
+            >>>     has_converged = ConvergenceCondition()
+            >>>     while not has_converged(res):
+            >>>         i += 1
+            >>>         A_i = A_i @ A / i
+            >>>         res += A_i
+            >>>     return res
+            >>> expm(np.eye(2))
+            array([[2.71828183, 0.        ],
+                   [0.        , 2.71828183]])
+        """
+        self.max_iter = max_iter
+        self.eps = eps
+        self.max_time = max_time
+        self.converged_sequence_length = converged_sequence_length
+        self.skip_initial = skip_initial
+        self.skip_converged = skip_converged
+
+        self.x_prev = None
+        self.error = None
+        self.start_time = None
+        self.cnt = 0
+        self.skipped = 0
+
+        try:
+            import tqdm
+            import tqdm.auto
+
+            if isinstance(use_tqdm, tqdm.tqdm):
+                self.pbar = use_tqdm
+            elif use_tqdm:
+                self.pbar = tqdm.auto.tqdm(total=self.max_iter)
+            else:
+                self.pbar = None
+        except ImportError:
+            self.pbar = None
+            if use_tqdm:
+                warn("tqdm is not installed. Install it with `pip install tqdm` to use the progress bar.")
+
+        if max_iter is None and eps is None and max_time is None:
+            raise ValueError("You must specify at least one of max_iter, eps, and max_time.")
+
+    def __call__(self, x, iteration=None):
+        if iteration is not None:
+            self.cnt = iteration
+        else:
+            self.cnt += 1
+        if self.pbar is not None:
+            if iteration is not None:
+                self.pbar.update(iteration - self.pbar.n)
+            else:
+                self.pbar.update(1)
+        if self.cnt <= self.skip_initial:
+            return False
+
+        if self.eps is not None and self.x_prev is not None:
+            # calculate error with respect to all previous x's and take the min
+            self.error = min([np.linalg.norm(x - x_prev) for x_prev in self.x_prev])
+            if self.error < self.eps:
+                if self.skipped < self.skip_converged:
+                    self.skipped += 1
+                    return False
+                else:
+                    self.close()
+                    return True
+        if self.max_iter is not None:
+            if self.cnt >= self.max_iter:
+                self.close()
+                return True
+        if self.max_time is not None:
+            if self.start_time is None:
+                self.start_time = time.time()
+            if time.time() - self.start_time > self.max_time:
+                self.close()
+                return True
+
+        # store x
+        if self.x_prev is None:
+            self.x_prev = [x.copy()]
+        else:
+            if len(self.x_prev) >= self.converged_sequence_length:
+                self.x_prev = self.x_prev[1:]
+            self.x_prev.append(x.copy())
+        return False
+
+    def close(self):
+        if self.pbar is not None:
+            self.pbar.close()
+
+    def reset(self):
+        self.x_prev = None
+        self.error = None
+        self.start_time = None
+        self.cnt = 0
+        self.skipped = 0
+        if self.pbar is not None:
+            self.pbar.reset()
+
+    def __str__(self):
+        end_time_fmt = time.strftime("%H:%M:%S", time.localtime(self.start_time + self.max_time)) if self.start_time is not None else None
+        return f"ConvergenceCondition(max_iter={self.max_iter}, eps={self.eps}, max_time={self.max_time}) at iteration {self.cnt} with error {self.error} and end time {end_time_fmt}"
+
+    def __repr__(self):
+        return str(self)
