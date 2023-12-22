@@ -173,7 +173,7 @@ try:
     from qiskit.visualization import plot_histogram
     #from qiskit.circuit.library import *
 
-    def run(circuit, shots=2**0, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4)):
+    def run(circuit, shots=0, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4)):
         if shots > 10:
             tc = time_complexity(circuit)
             print("TC: %d, expected running time: %.3fs" % (tc, tc * 0.01))
