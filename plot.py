@@ -315,7 +315,7 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
         cmap (str):           Colormap to use
         xticks (tuple|list):  List of xticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the x-axis.
         yticks (tuple|list):  List of yticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the y-axis.
-        xtick_rot (float):    Rotation of the xticks
+        xticks_rot (float):   Rotation of the xticks
         xlabel (str):         Label for the x-axis
         ylabel (str):         Label for the y-axis
         show_colorbar (bool|str): Whether to show the colorbar. If 'auto', show if the array is not complex.
@@ -382,7 +382,7 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
 
     if xticks is not None:
         xticks, xticklabels = generate_ticks_and_labels(xticks, a.shape[1])
-        plt.xticks(xticks, xticklabels, rotation=xtick_rot, ha='center')
+        plt.xticks(xticks, xticklabels, rotation=xticks_rot, ha='center')
     if yticks is not None:
         yticks, yticklabels = generate_ticks_and_labels(yticks, a.shape[0])
         plt.yticks(yticks, yticklabels)
