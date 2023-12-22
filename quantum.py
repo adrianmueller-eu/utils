@@ -613,7 +613,7 @@ def entropy_entanglement(state, subsystem_qubits):
 def is_dm(rho):
     """Check if matrix `rho` is a density matrix."""
     rho = np.array(rho)
-    return is_psd(rho) and np.allclose(np.trace(rho), 1)
+    return np.allclose(np.trace(rho), 1) and is_psd(rho)
 
 def fidelity(state1, state2):
     """Calculate the fidelity between two quantum states."""
