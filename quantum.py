@@ -7,6 +7,7 @@ import scipy.sparse as sp
 from .mathlib import *
 from .plot import colorize_complex
 from .utils import duh
+from .prob import entropy
 
 #################
 ### Unitaries ###
@@ -595,10 +596,15 @@ def probs(state):
 
 def entropy_von_Neumann(state):
     """Calculate the von Neumann entropy of a given density matrix."""
-    state = op(state)
-    S = -np.trace(state @ matlog(state)/np.log(2))
-    assert np.allclose(S.imag, 0), f"WTF: Entropy is not real: {S}"
-    return np.max(S.real, 0)  # fix rounding errors
+    if not(isinstance(state, np.ndarray) and len(state.shape) == 2 and state.shape[0] == state.shape[1]):
+        state = op(state)
+    # S = -np.trace(state @ matlog(state)/np.log(2))
+    # assert np.allclose(S.imag, 0), f"WTF: Entropy is not real: {S}"
+    # return np.max(S.real, 0)  # fix rounding errors
+    eigs = np.linalg.eigvalsh(state)
+    assert np.allclose(np.sum(eigs), 1), "Density matrix is not normalized!"
+    assert np.all(eigs >= -sys.float_info.epsilon), "Density matrix is not positive semidefinite!"
+    return entropy(eigs)
 
 def entropy_entanglement(state, subsystem_qubits):
     """Calculate the entanglement entropy of a quantum state (density matrix or vector) with respect to the given subsystem."""
