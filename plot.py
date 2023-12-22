@@ -4,7 +4,7 @@ import re
 from .mathlib import is_complex, is_symmetric, normalize, int_sqrt
 from .utils import *
 
-def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog=False, ylog=False, **pltargs):
+def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog=False, ylog=False, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
 
     # make it a bit intelligent
@@ -96,6 +96,12 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog
     plt.gca().spines["top"].set_visible(False)
     plt.gca().spines["right"].set_visible(False)
 
+    if save_file:
+        plt.savefig(save_file)
+
+    if show:
+        plt.show()
+
 # # basics, no log
 # def hist(data, bins=None, xlabel="", title="", density=False):
 #     def bins_sqrt(data):
@@ -126,7 +132,7 @@ def histogram(data, bins=None, xlog=False, density=False):
         bins = bins_sqrt(data)
     return np.histogram(data, bins=bins, density=density)
 
-def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None):
+def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True):
     """Uses magic to create pretty histograms."""
 
     if type(bins) == str:
@@ -252,14 +258,15 @@ def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=F
     else:
         ax0.set_xlabel(xlabel)
 
-    plt.show()
+    if show:
+        plt.show()
 
     if save_file:
         plt.savefig(save_file)
 
     return n, bins
 
-def scatter1d(data, xticks=None, alpha=.5, s=500, marker="|", xlim=None, title="", **pltargs):
+def scatter1d(data, xticks=None, alpha=.5, s=500, marker="|", xlim=None, title="", show=True, save_file=None, **pltargs):
     """Create only one axis on which to plot the data."""
 
     fig = plt.figure(figsize=(10,1))
@@ -277,7 +284,10 @@ def scatter1d(data, xticks=None, alpha=.5, s=500, marker="|", xlim=None, title="
     if xlim is not None:
         ax.set_xlim(xlim)
     fig.tight_layout()
-    plt.show()
+    if save_file:
+        plt.savefig(save_file)
+    if show:
+        plt.show()
 
 def colorize_complex(z):
     """Colorize complex numbers by their angle and magnitude."""
@@ -295,7 +305,7 @@ def colorize_complex(z):
     c = np.array(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
     return c
 
-def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, show_colorbar='auto', **pltargs):
+def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, show_colorbar='auto', show=True, save_file=None, **pltargs):
     """Uses magic to create pretty images from arrays.
 
     Parameters
@@ -309,6 +319,8 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
         xlabel (str):         Label for the x-axis
         ylabel (str):         Label for the y-axis
         show_colorbar (bool|str): Whether to show the colorbar. If 'auto', show if the array is not complex.
+        show (bool):          Whether to show the plot
+        save_file (str):      If given, save the plot to this file
         **pltargs:            Additional arguments to pass to plt.imshow
 
     Returns
@@ -380,7 +392,10 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
         plt.ylabel(ylabel)
 
     plt.title(title)
-    plt.show()
+    if save_file:
+        plt.savefig(save_file)
+    if show:
+        plt.show()
 
 def complex_colorbar(figsize=(2,2)):
     """Show the color reference plot for complex numbers."""
@@ -396,7 +411,7 @@ def complex_colorbar(figsize=(2,2)):
     plt.xlabel("real")
     plt.ylabel("imag")
 
-def bar(heights, log=False):
+def bar(heights, log=False, show=True, save_file=None):
     """Uses magic to create pretty bar plots."""
     N = len(heights)
     plt.figure(figsize=(int(np.ceil(N/2)),6))
@@ -405,7 +420,10 @@ def bar(heights, log=False):
     if log:
         plt.yscale("log")
     plt.tight_layout()
-    plt.show()
+    if save_file:
+        plt.savefig(save_file)
+    if show:
+        plt.show()
 
 def rgb(r,g=1.0,b=1.0,a=1.0, as255=False):
     """Converts (r,g,b,a) to a hex string."""
