@@ -51,6 +51,11 @@ def is_psd(a, rtol=1e-05, atol=1e-08):
     eigv = np.linalg.eigvalsh(a)
     return np.all(np.abs(eigv.imag) < atol) and np.all(eigv.real >= -atol)
 
+def is_normal(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a @ a.conj().T, a.conj().T @ a
+    ), rtol=rtol, atol=atol)
+
 ### Conversion
 
 def deg(rad):
