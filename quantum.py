@@ -650,6 +650,15 @@ def Schmidt_decomposition(state, subsystem_qubits):
     U, S, V = np.linalg.svd(a_jk)
     return S, U.T, V
 
+def gibbs(H, beta=1):
+    """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
+    H = np.array(H)
+    assert is_hermitian(H), "Hamiltonian must be Hermitian!"
+    assert beta >= 0, "Inverse temperature must be positive!"
+    E, U = np.linalg.eigh(H)
+    E = softmax(E, -beta)
+    return U @ np.diag(E) @ U.conj().T
+
 ####################
 ### Ground state ###
 ####################
