@@ -203,13 +203,13 @@ try:
     def matlog(A, base=np.e):
         return _matlog(A) / np.log(base)
 except:
-    def matexp(A0, base=np.e):
+    def matexp(A, base=np.e):
         # there is a faster method for hermitian matrices
-        if is_hermitian(A0):
-            eigval, eigvec = np.linalg.eigh(A0)
+        if is_hermitian(A):
+            eigval, eigvec = np.linalg.eigh(A)
             return eigvec @ np.diag(np.power(base, eigval)) @ eigvec.conj().T
         # use series expansion
-        return np.eye(A0.shape[0]) + series(lambda n, A: A @ A0 / n, start_value=A0, start_index=1)
+        return np.eye(A.shape[0]) + series(lambda n, A_pow: A_pow @ A / n, start_value=A, start_index=1)
 
     def matlog(A, base=np.e):
         evals, evecs = np.linalg.eig(A)
@@ -237,7 +237,6 @@ def softmax(a, beta=1):
     a = np.exp(beta*a)
     Z = np.sum(a)
     return a / Z
-
 
 ### Sets
 
