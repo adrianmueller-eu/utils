@@ -97,7 +97,7 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog
     plt.gca().spines["right"].set_visible(False)
 
     if save_file:
-        plt.savefig(save_file)
+        plt.savefig(save_file, bbox_inches='tight')
 
     if show:
         plt.show()
@@ -258,11 +258,13 @@ def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=F
     else:
         ax0.set_xlabel(xlabel)
 
+    plt.tight_layout()
+
     if show:
         plt.show()
 
     if save_file:
-        plt.savefig(save_file)
+        plt.savefig(save_file, bbox_inches='tight')
 
     return n, bins
 
@@ -285,7 +287,7 @@ def scatter1d(data, xticks=None, alpha=.5, s=500, marker="|", xlim=None, title="
         ax.set_xlim(xlim)
     fig.tight_layout()
     if save_file:
-        plt.savefig(save_file)
+        plt.savefig(save_file, bbox_inches='tight')
     if show:
         plt.show()
 
@@ -392,8 +394,9 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
         plt.ylabel(ylabel)
 
     plt.title(title)
+    plt.tight_layout()
     if save_file:
-        plt.savefig(save_file)
+        plt.savefig(save_file, bbox_inches='tight')
     if show:
         plt.show()
 
@@ -421,7 +424,7 @@ def bar(heights, log=False, show=True, save_file=None):
         plt.yscale("log")
     plt.tight_layout()
     if save_file:
-        plt.savefig(save_file)
+        plt.savefig(save_file, bbox_inches='tight')
     if show:
         plt.show()
 
