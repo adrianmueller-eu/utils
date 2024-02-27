@@ -104,7 +104,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
     `x_label` (str):            The label of the x axis
     `fp_resolution` (int):      The resolution of the grid in which to look for fixed points and plot the slope field
     `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
-    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same. If None, it will be set to `4*fp_filter_eps`
+    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
     `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
     """
 
@@ -142,8 +142,6 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
 
     # print(fps)
     # round and set
-    if fp_distance_eps is None:
-        fp_distance_eps = 4*fp_filter_eps
     fps = find_fixed_points(x_dot, x, filter_eps=fp_filter_eps, distance_eps=fp_distance_eps)
     # print(fps)
     for fp in fps:
@@ -195,7 +193,7 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=1000, 
     `y_label` (str):            The label of the y axis
     `fp_resolution` (int):      The resolution of the grid (`fp_resolution*x_arrows x fp_resolution*y_arrows`) in which to look for fixed points and nullclines. Higher values will make the execution much slower.
     `fp_filter_eps` (float):    The maximum `|f(x^*, y^*)|` for which `(x^*, y^*)` is considered a fixed point
-    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same. If None, it will be set to `4*fp_filter_eps`
+    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
     `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
     `nullclines` (bool):        Whether to plot the nullclines. If True, the nullclines will be plotted in red (x) and black (y)
     `nullclines_eps` (float):   The maximum allowed absolute value. Higher values will make the nullclines clearer visible, but might smear out on plateaus
@@ -279,8 +277,6 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=1000, 
             plt.scatter(*x0, marker="x")
 
     # fixed points
-    if fp_distance_eps is None:
-        fp_distance_eps = 4*fp_filter_eps
     fps = find_fixed_points(x_dot, y_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy)
     for fp in fps:
         if is_stable(f, fp, T, dt, fp_stability_eps, verbose=True):
