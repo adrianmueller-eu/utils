@@ -85,8 +85,8 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
         print(f"Fixed point {fp}: {stable} (stability eps: {error} {s} {eps})") # init: {fp + noise}, res: {res},
     return stable
 
-def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10,
-                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=None, fp_stability_eps=1e-2):
+def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10, title="Phase portrait", x_label="x",
+                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2):
     """
     Phase portrait of a first-order 1D ODE
 
@@ -100,6 +100,8 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
     `n_arrows` (int):           The number of arrows in the x axis
+    `title` (str):              The title of the plot
+    `x_label` (str):            The label of the x axis
     `fp_resolution` (int):      The resolution of the grid in which to look for fixed points and plot the slope field
     `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same. If None, it will be set to `4*fp_filter_eps`
@@ -162,14 +164,14 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
     ax.set_xlim(*ax.get_xlim())
     ax.set_ylim(*ax.get_ylim())
 
-    ax.set_title('Phase portrait')
-    ax.set_xlabel('x')
-    ax.set_ylabel('$\dot{x}$')
+    ax.set_title(title)
+    ax.set_xlabel('$' + x_label + '$')
+    ax.set_ylabel('$\dot{'+x_label+'}$')
     ax.grid()
     plt.show()
 
-def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6,
-              fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=None, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4):
+def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=1000, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6, title="Phase portrait", x_label="x", y_label="y",
+              fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4):
     """
     Phase portrait of a first-order 2D ODE system
 
@@ -188,6 +190,9 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, a
     `x_arrows` (int):           The number of arrows on the vector field in the x direction
     `y_arrows` (int):           The number of arrows on the vector field in the y direction
     `x_fig_size` (float):       The size of the figure in the x axis. The size in the y axis will be adjusted to keep the aspect ratio of `xlim` and `ylim`
+    `title` (str):              The title of the plot
+    `x_label` (str):            The label of the x axis
+    `y_label` (str):            The label of the y axis
     `fp_resolution` (int):      The resolution of the grid (`fp_resolution*x_arrows x fp_resolution*y_arrows`) in which to look for fixed points and nullclines. Higher values will make the execution much slower.
     `fp_filter_eps` (float):    The maximum `|f(x^*, y^*)|` for which `(x^*, y^*)` is considered a fixed point
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same. If None, it will be set to `4*fp_filter_eps`
@@ -283,9 +288,9 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, a
         else:
             plt.scatter(*fp, facecolors='none', edgecolors='k')
 
-    ax.set_title('Phase portrait')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
+    ax.set_title(title)
+    ax.set_xlabel('$' + x_label + '$')
+    ax.set_ylabel('$' + y_label + '$')
     plt.show()
 
 def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
