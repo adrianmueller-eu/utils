@@ -81,8 +81,8 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
         print(f"Fixed point {fp}: {stable} (stability eps: {error})") # init: {fp + noise}, res: {res},
     return stable
 
-def ODE_phase_1d(f, x_limits=(-2,2), T=10, n_timesteps=100, ax=None, n_arrows=20,
-                 fp_resolution=100, fp_eps=2.5e-3, fp_stability_eps=1e-2):
+def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10,
+                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=None, fp_stability_eps=1e-2):
     x_min, x_max = x_limits
     dt = T/n_timesteps
     dx = (x_max - x_min)/(fp_resolution*n_arrows)
@@ -95,10 +95,32 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=10, n_timesteps=100, ax=None, n_arrows=20
     ax.plot(x, x_dot)
 
     # fixed points
-    eps = fp_eps
-    fps = np.where(np.abs(x_dot) < eps)
-    print(fps, x_dot.shape, x.shape)
-    fps = x[fps]
+    def find_fixed_points(x_dot, x, filter_eps, distance_eps):
+        fps = np.where(np.abs(x_dot) < filter_eps)
+        # first, sort fps by closeness into lists
+        fps_lists = []
+        for i in fps[0]:
+            found = False
+            for j, fps_list in enumerate(fps_lists):
+                # if np.abs(fps_list[0] - x[i]) < eps:
+                if np.mean(np.abs(fps_list - x[i])) < distance_eps:
+                    fps_list.append(x[i])
+                    found = True
+                    break
+            if not found:
+                fps_lists.append([x[i]])
+        # then, calculate the mean of each list
+        fps = []
+        for fps_list in fps_lists:
+            fps.append(np.mean(fps_list))
+        return fps
+
+    # print(fps)
+    # round and set
+    if fp_distance_eps is None:
+        fp_distance_eps = 4*fp_filter_eps
+    fps = find_fixed_points(x_dot, x, filter_eps=fp_filter_eps, distance_eps=fp_distance_eps)
+    # print(fps)
     for fp in fps:
         if is_stable(f, [fp], T, dt, fp_stability_eps, verbose=True):
             plt.scatter(fp, 0, facecolors='k', edgecolors='k')
@@ -122,8 +144,8 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=10, n_timesteps=100, ax=None, n_arrows=20
     ax.grid()
     plt.show()
 
-def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, ax=None, x_arrows=20, y_arrows=20,
-              nullclines=False, nullclines_eps=5e-4, fp_resolution=100, fp_eps=2.5e-3, fp_stability_eps=1e-2):
+def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6,
+              fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=None, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4):
 
     def get_nullclines(x_dot, y_dot, eps, xmin, dx, ymin, dy):
         rows, cols = np.where(np.logical_or(
@@ -136,16 +158,28 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, a
 
         return np.array(ps)
 
-    def find_fixed_points(x_dot, y_dot, eps, xmin, dx, ymin, dy):
+    def find_fixed_points(x_dot, y_dot, filter_eps, distance_eps, xmin, dx, ymin, dy):
         row, col = np.where(np.logical_and(
-            np.abs(x_dot) < eps, np.abs(y_dot) < eps
+            np.abs(x_dot) < filter_eps, np.abs(y_dot) < filter_eps
         ))
-        #print(row.shape)
-        fps = set()
+
+        # first, sort fps by closeness into lists
+        fps_lists = []
         for r,c in zip(row, col):
             fp = [xmin + c*dx, ymin + r*dy]
-            fp = np.round(fp, int(-np.log10(eps))-1)
-            fps.add(tuple(fp))
+            found = False
+            for i, fps_list in enumerate(fps_lists):
+                # if np.linalg.norm(np.array(fps_list[0]) - np.array(fp)) < eps:
+                if np.mean(np.linalg.norm(np.array(fps_list) - np.array(fp), axis=1)) < distance_eps:
+                    fps_list.append(fp)
+                    found = True
+                    break
+            if not found:
+                fps_lists.append([fp])
+        # then, calculate the mean of each list
+        fps = []
+        for fps_list in fps_lists:
+            fps.append(np.mean(fps_list, axis=0))
 
         return fps
 
@@ -189,8 +223,9 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, a
             plt.scatter(*x0, marker="x")
 
     # fixed points
-    eps = fp_eps
-    fps = find_fixed_points(x_dot, y_dot, eps, x_min, dx, y_min, dy)
+    if fp_distance_eps is None:
+        fp_distance_eps = 4*fp_filter_eps
+    fps = find_fixed_points(x_dot, y_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy)
     for fp in fps:
         if is_stable(f, fp, T, dt, fp_stability_eps, verbose=True):
             plt.scatter(*fp, facecolors='k', edgecolors='k')
