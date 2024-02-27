@@ -70,15 +70,15 @@ def ODE_flow_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, ax
 def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
     fp = np.array(fp)
     dims = len(fp)
-    noise = (np.random.random(dims) - 0.5)*2*eps
-    #noise /= np.sum(noise**2) # normalize to length one = move to random direction
+    noise = np.random.normal(0, 1, dims)  # normal = move to random direction
+    noise *= eps/np.linalg.norm(noise)    # length eps -> uniform point on the eps-sphere
     x = simulate(f, fp+noise, T, dt)
     # get the last value of the simulation
     res = [x[i][-1] for i in range(dims)]
-    error = np.sum((res - fp)**2)
-    stable = error < eps # stable if it remains inside eps
+    error = np.linalg.norm(res - fp)
+    stable = error <= eps  # stable if it remains inside eps
     if verbose:
-        print(f"Fixed point {fp}: {stable} (eps: {error})") # init: {fp + noise}, res: {res},
+        print(f"Fixed point {fp}: {stable} (stability eps: {error})") # init: {fp + noise}, res: {res},
     return stable
 
 def ODE_phase_1d(f, x_limits=(-2,2), T=10, n_timesteps=100, ax=None, n_arrows=20,
