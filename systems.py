@@ -81,7 +81,8 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
     error = np.linalg.norm(res - fp)
     stable = error <= eps  # stable if it remains inside eps
     if verbose:
-        print(f"Fixed point {fp}: {stable} (stability eps: {error})") # init: {fp + noise}, res: {res},
+        s = '<=' if stable else '>'
+        print(f"Fixed point {fp}: {stable} (stability eps: {error} {s} {eps})") # init: {fp + noise}, res: {res},
     return stable
 
 def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10,
