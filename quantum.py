@@ -1302,11 +1302,16 @@ def ising_graph(graph, J=(-1,1), h=(-1,1), g=(-1,1), offset=0):
 
     return H_str
 
-def get_H_energies(H, expi=True):
+def get_H_energies(H, expi=True, k=None):
     """Returns the energies of the given hamiltonian `H`. For `expi=True` (default) it gives the same result as `get_pe_energies(exp_i(H))` (up to sorting) and for `expi=False` it returns the eigenvalues of `H`."""
     if type(H) == str:
-        H = parse_hamiltonian(H)
-    energies = np.linalg.eigvalsh(H)
+        H = parse_hamiltonian(H, sparse=k is not None)
+    if isinstance(H, np.ndarray):
+        energies = np.linalg.eigvalsh(H)
+        if k is not None:
+            energies = energies[:k]
+    else:
+        energies = sp.linalg.eigsh(H, k=k, which='SA', return_eigenvectors=False)[::-1]  # smallest eigenvalues first
     if expi:
         energies = (energies % (2*np.pi))/(2*np.pi)
         energies[energies > 0.5] -= 1
