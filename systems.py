@@ -192,7 +192,8 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, a
 
     # the slope field
     if ax is None:
-        fig, ax = plt.subplots()
+        # figsize reflects the aspect ratio of xlim and ylim
+        fig, ax = plt.subplots(figsize=(x_fig_size, x_fig_size*(y_max-y_min)/(x_max-x_min)))
     skip = fp_resolution
     x_dot_ = x_dot[::skip, ::skip]
     y_dot_ = y_dot[::skip, ::skip]
