@@ -29,6 +29,9 @@ def ODE_flow_1d(f, x0s=None, x_limits=(-2,2), T=10, n_timesteps=100):
     # trajectories
     if x0s is not None:
         for x0 in x0s:
+            # convert x0 to a list if it is a scalar
+            if isinstance(x0, (int, float)):
+                x0 = [x0]
             s = reversed(simulate(f, x0, T, dt))
             plt.plot(*s)
 
