@@ -238,6 +238,23 @@ def softmax(a, beta=1):
     Z = np.sum(a)
     return a / Z
 
+def arctan2(y, x):  # same as np.arctan2
+    if x == 0:
+        return np.sign(y) * np.pi/2
+    if y == 0:
+        return (1 - np.sign(x)) * np.pi/2
+    if x < 0:
+        return np.arctan(y/x) + np.sign(y)* np.pi
+    return np.arctan(y/x)
+    # if x == 0:
+    #     return np.sign(y) * np.pi/2
+    # if x < 0:
+    #     if y < 0:
+    #         return np.arctan(y/x) - np.pi
+    #     else:
+    #         return np.arctan(y/x) + np.pi
+    # return np.arctan(y/x)
+
 ### Sets
 
 # https://docs.python.org/3/library/itertools.html
