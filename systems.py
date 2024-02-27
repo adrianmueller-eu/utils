@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp  # used for numerical integration
 from scipy.optimize import fsolve
 
+## This script contains functions to visualize and analyze dynamical systems
+## Though, so far this only covers 1D and 2D first-order ODEs
+
 ############
 ### Flow ###
 ############
@@ -83,6 +86,25 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
 
 def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10,
                  fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=None, fp_stability_eps=1e-2):
+    """
+    Phase portrait of a first-order 1D ODE
+
+    Hints:
+    - If there are multiple fixed points stacked on top of each other, try increasing `fp_distance_eps`
+
+    Args:
+    `f` (function):             The ODE. Must take one argument, `x`, and return the first derivative `x_dot`
+    `x_limits` (tuple):         The limits of the x-axis
+    `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
+    `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
+    `ax` (matplotlib axis):     Optional axis to plot the phase portrait
+    `n_arrows` (int):           The number of arrows in the x axis
+    `fp_resolution` (int):      The resolution of the grid in which to look for fixed points and plot the slope field
+    `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
+    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same. If None, it will be set to `4*fp_filter_eps`
+    `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
+    """
+
     x_min, x_max = x_limits
     dt = T/n_timesteps
     dx = (x_max - x_min)/(fp_resolution*n_arrows)
@@ -147,6 +169,31 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
 
 def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6,
               fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=None, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4):
+    """
+    Phase portrait of a first-order 2D ODE system
+
+    Hints:
+    - If there are multiple fixed points stacked on top of each other, try increasing fp_distance_eps
+    - If the nullclines seem incomplete, try increasing nullclines_eps and/or fp_resolution
+
+    Args:
+    `f` (function):             The system of ODEs. Must take two arguments, `x` and `y`, and return the derivatives `x_dot` and `y_dot`
+    `x0s` (list of tuples):     Initial conditions for the trajectories
+    `xlim` (tuple):             The limits of the x axis
+    `ylim` (tuple):             The limits of the y axis
+    `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
+    `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
+    `ax` (matplotlib axis):     Optional axis to plot the phase portrait
+    `x_arrows` (int):           The number of arrows on the vector field in the x direction
+    `y_arrows` (int):           The number of arrows on the vector field in the y direction
+    `x_fig_size` (float):       The size of the figure in the x axis. The size in the y axis will be adjusted to keep the aspect ratio of `xlim` and `ylim`
+    `fp_resolution` (int):      The resolution of the grid (`fp_resolution*x_arrows x fp_resolution*y_arrows`) in which to look for fixed points and nullclines. Higher values will make the execution much slower.
+    `fp_filter_eps` (float):    The maximum `|f(x^*, y^*)|` for which `(x^*, y^*)` is considered a fixed point
+    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same. If None, it will be set to `4*fp_filter_eps`
+    `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
+    `nullclines` (bool):        Whether to plot the nullclines. If True, the nullclines will be plotted in red (x) and black (y)
+    `nullclines_eps` (float):   The maximum allowed absolute value. Higher values will make the nullclines clearer visible, but might smear out on plateaus
+    """
 
     def get_nullclines(dot, eps, xmin, dx, ymin, dy):
         rows, cols = np.where(np.abs(dot) < eps)
