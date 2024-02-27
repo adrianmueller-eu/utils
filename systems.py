@@ -148,10 +148,8 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
 def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6,
               fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=None, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4):
 
-    def get_nullclines(x_dot, y_dot, eps, xmin, dx, ymin, dy):
-        rows, cols = np.where(np.logical_or(
-            np.abs(x_dot) < eps, np.abs(y_dot) < eps
-        ))
+    def get_nullclines(dot, eps, xmin, dx, ymin, dy):
+        rows, cols = np.where(np.abs(dot) < eps)
         ps = []
         for r,c in zip(rows, cols):
             p = xmin + c*dx, ymin + r*dy
@@ -211,9 +209,12 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, a
     ax.set_ylim(y_min + .5*y_arrow, y_max + .5*y_arrow)
 
     # nullclines
-    eps = nullclines_eps
     if nullclines:
-        p = get_nullclines(x_dot, y_dot, eps, x_min, dx, y_min, dy)
+        # x nullcline is black
+        p = get_nullclines(x_dot, nullclines_eps, x_min, dx, y_min, dy)
+        plt.scatter(*p.T, linewidths=0, s=.5, color="r")
+        # y nullcline is gray
+        p = get_nullclines(y_dot, nullclines_eps, x_min, dx, y_min, dy)
         plt.scatter(*p.T, linewidths=0, s=.5, color="k")
 
     # trajectories
