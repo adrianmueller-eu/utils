@@ -329,14 +329,14 @@ def get_roots(f, x0s, prec=1e-5):
             roots.add(tuple(cand))
     return list(roots)
 
-def bifurcation_diagram_1d(f, x0, r_range, dr=None, prec=1e-5, plot=True, stability=True):
+def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stability=True, title='Bifurcation diagram'):
     # get roots for each r
     if dr is None:
         dr = (r_range[1]-r_range[0])/200
     rs = np.arange(*r_range, dr)
     all_roots = []
     for r in rs:
-        roots = get_roots(lambda x: f(x, r), x0, prec)
+        roots = get_roots(lambda x: f(x, r), x0s, prec)
         # print(r, roots)
         all_roots.append(roots)
 
@@ -353,7 +353,7 @@ def bifurcation_diagram_1d(f, x0, r_range, dr=None, prec=1e-5, plot=True, stabil
             for root in roots:
                 color = 'k' if stable[roots.index(root)] else 'r'
                 plt.scatter(r, root, c=color, s=2)
-        plt.title('Bifurcation diagram')
+        plt.title(title)
         plt.xlabel('r')
         plt.ylabel('x')
         plt.xlim(r_range)
