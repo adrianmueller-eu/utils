@@ -129,11 +129,12 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
 
     # the slope field
     skip = fp_resolution
-    x_dot_ = x_dot[::skip]
-    x_ = x[::skip]
-    print(x.shape, x_.shape, x_dot.shape, x_dot_.shape)
+    x_dot_ = x_dot[skip//2::skip]
+    x_dot_ = np.sign(x_dot_)*np.sqrt(np.abs(x_dot_))
+    x_ = x[skip//2::skip]
+    # print(x.shape, x_.shape, x_dot.shape, x_dot_.shape)
     q = ax.quiver(x_, np.zeros_like(x_), x_dot_, np.zeros_like(x_dot_), np.abs(x_dot_),
-                  cmap='jet', pivot='mid', angles='xy', headwidth=3, headlength=1, headaxislength=1)
+                  cmap='cool', pivot='mid', angles='xy', headwidth=3, headlength=1, headaxislength=1)
     ax.quiverkey(q, X=0.8, Y=1.03, U=2, label='dx/dt', labelpos='E')
     ax.set_xlim(*ax.get_xlim())
     ax.set_ylim(*ax.get_ylim())
