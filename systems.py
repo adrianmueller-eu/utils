@@ -82,8 +82,60 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
     stable = error <= eps  # stable if it remains inside eps
     if verbose:
         s = '<=' if stable else '>'
-        print(f"Fixed point {fp}: {stable} (stability eps: {error} {s} {eps})") # init: {fp + noise}, res: {res},
+        if dims == 2:
+            stable2, cls = classify_fixed_point(f, fp, eps)
+            print(f"Fixed point ({cls}) {fp}: {stable} (stability eps: {error} {s} {eps})")
+        else:
+            print(f"Fixed point {fp}: {stable} (stability eps: {error} {s} {eps})")
     return stable
+
+def classify_fixed_point(f, fp, eps):
+    """
+    Classify a fixed point of a 2D ODE system using the Jacobian matrix at the fixed point (linearization)
+    By Hartman-Grobman theorem, this generally works well for hyperbolic fixed points (saddle, nodes, spirals),
+    but not for centers or non-isolated fixed points (imaginary eigenvalues)
+    """
+    x,y = fp
+    # Estimate Jacobian matrix at the fixed point via finite differences
+    J = np.zeros((2,2))
+    ffp = f(x,y)
+    for i in range(2):
+        for j in range(2):
+            J[i,j] = (f(x + eps*(i==0), y + eps*(i==1))[j] - ffp[j])/eps
+    # classify the fixed point
+    tr = np.trace(J)
+    det = np.linalg.det(J)
+    dis = tr**2 - 4*det
+    is_stable = det >= 0 and tr <= 0
+
+    err = 1e-10
+    if det < -err:  # leave space for the non-isolated fixed point
+        cls = "Saddle"
+    elif dis < -err:  # leave space for degenerate nodes
+        if tr > err:
+            cls = "Unstable spiral"
+        elif tr < -err:
+            cls = "Stable spiral"
+        else:  # dis < 0 and tr = 0 -> imaginary eigenvalues
+            cls = "Center"
+    elif det > err:  # leave space for the non-isolated fixed points
+        if dis > err:
+            if tr > err:
+                cls = "Unstable node"
+            elif tr < -err:
+                cls = "Stable node"
+            else:
+                cls = "WTF?"  # if determinant and discriminant are both positive, the trace must be non-zero
+        else:  # np.abs(dis) < err:
+            if np.abs(J[0,1]) < err and np.abs(J[1,0]) < err:  # J = lambda*I
+                cls = "Star node"
+            else:
+                cls = "Degenerate node"
+    elif np.abs(tr) > err:  # one eigenvalue is zero
+        cls = "Non-isolated fixed points (line)"
+    else:  # tr = det = 0 -> J = 0
+        cls = "Non-isolated fixed points (plane)"
+    return is_stable, cls
 
 def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, title="Phase portrait", x_label="x",
                  fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2):
