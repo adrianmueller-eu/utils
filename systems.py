@@ -16,7 +16,7 @@ def simulate(f, x0, T, dt):
     t = np.arange(0, T, dt)
     return *sol.sol(t), t
 
-def ODE_flow_1d(f, x0s=None, x_limits=(-2,2), T=10, n_timesteps=100):
+def ODE_flow_1d(f, x0s=None, x_limits=(-2,2), T=10, n_timesteps=10000):
     x_min, x_max = x_limits
     dt = T/n_timesteps
     t, x = np.meshgrid(np.arange(0, T, T/20), np.arange(x_min, x_max, (x_max - x_min)/20))
@@ -44,7 +44,7 @@ def ODE_flow_1d(f, x0s=None, x_limits=(-2,2), T=10, n_timesteps=100):
     ax.set_ylabel('x')
     plt.show()
 
-def ODE_flow_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=100, ax=None):
+def ODE_flow_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=10000, ax=None):
     dt = T/n_timesteps
 
     if ax is None:
@@ -85,7 +85,7 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
         print(f"Fixed point {fp}: {stable} (stability eps: {error} {s} {eps})") # init: {fp + noise}, res: {res},
     return stable
 
-def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10, title="Phase portrait", x_label="x",
+def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, title="Phase portrait", x_label="x",
                  fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2):
     """
     Phase portrait of a first-order 1D ODE
@@ -168,7 +168,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=200, ax=None, n_arrows=10
     ax.grid()
     plt.show()
 
-def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=1000, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6, title="Phase portrait", x_label="x", y_label="y",
+def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6, title="Phase portrait", x_label="x", y_label="y",
               fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4):
     """
     Phase portrait of a first-order 2D ODE system
