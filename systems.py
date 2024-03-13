@@ -364,10 +364,12 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     if nullclines:
         # x nullcline is black
         p = get_nullclines(x_dot, nullclines_eps, x_min, dx, y_min, dy)
-        plt.scatter(*p.T, linewidths=0, s=.5, color="r")
+        if len(p) > 0:
+            plt.scatter(*p.T, linewidths=0, s=.5, color="r")
         # y nullcline is gray
         p = get_nullclines(y_dot, nullclines_eps, x_min, dx, y_min, dy)
-        plt.scatter(*p.T, linewidths=0, s=.5, color="k")
+        if len(p) > 0:
+            plt.scatter(*p.T, linewidths=0, s=.5, color="k")
 
     # trajectories
     if x0s is not None:
