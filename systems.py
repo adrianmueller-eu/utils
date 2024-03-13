@@ -83,7 +83,7 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
     if verbose:
         s = '<=' if stable else '>'
         if dims == 2:
-            stable2, cls = classify_fixed_point(f, fp, eps)
+            cls, info = classify_fixed_point(f, fp, eps)
             print(f"Fixed point ({cls}) {fp}: {stable} (stability eps: {error} {s} {eps})")
         else:
             print(f"Fixed point {fp}: {stable} (stability eps: {error} {s} {eps})")
@@ -91,10 +91,29 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
 
 def classify_fixed_point(f, fp, eps):
     """
-    Classify a fixed point of a 2D ODE system using the Jacobian matrix at the fixed point (linearization)
+    Classify a fixed point of a 1D or 2D ODE system using the local derivatives at the fixed point (linearization).
+    - For 1D, it returns 'Stable', 'Unstable', 'Left half-stable' or 'Right half-stable'.
+    - For 2D ODEs (using the Jacobian matrix), it returns the classification of the fixed point and whether it is stable. 
     By Hartman-Grobman theorem, this generally works well for hyperbolic fixed points (saddle, nodes, spirals),
-    but not for centers or non-isolated fixed points (imaginary eigenvalues)
+    but not for centers or non-isolated fixed points (imaginary eigenvalues).
     """
+    if isinstance(fp, (int, float)) or len(fp) == 1:
+        x = np.array(fp)
+        # Estimate the derivative at the fixed point via finite differences
+        ffp = f(x)
+        df_l = (f(x - eps) - ffp)/eps
+        df_r = (f(x + eps) - ffp)/eps
+        if df_l > 0 and 0 > df_r:
+            cls = "Stable"
+        elif df_l < 0 and 0 < df_r:
+            cls = "Unstable"
+        elif df_l < 0 and 0 > df_r:
+            cls = "Right half-stable"
+        elif df_l > 0 and 0 < df_r:
+            cls = "Left half-stable"
+        else:
+            cls = f"WTF? df_r={df_r}, df_l={df_l}"
+        return cls
     x,y = fp
     # Estimate Jacobian matrix at the fixed point via finite differences
     J = np.zeros((2,2))
@@ -106,7 +125,7 @@ def classify_fixed_point(f, fp, eps):
     tr = np.trace(J)
     det = np.linalg.det(J)
     dis = tr**2 - 4*det
-    is_stable = det >= 0 and tr <= 0
+    is_stable = det >= 0 and tr <= 0  # both eigenvalues have negative real part
 
     err = 1e-10
     if det < -err:  # leave space for the non-isolated fixed point
@@ -118,27 +137,32 @@ def classify_fixed_point(f, fp, eps):
             cls = "Stable spiral"
         else:  # dis < 0 and tr = 0 -> imaginary eigenvalues
             cls = "Center"
-    elif det > err:  # leave space for the non-isolated fixed points
+    elif det > err and np.abs(tr) > err:  # leave space for the non-isolated fixed points
         if dis > err:
             if tr > err:
                 cls = "Unstable node"
             elif tr < -err:
                 cls = "Stable node"
             else:
-                cls = "WTF?"  # if determinant and discriminant are both positive, the trace must be non-zero
+                cls = f"WTF? abs({tr}) <= err"  # if determinant and discriminant are both positive, the trace must be non-zero
         else:  # np.abs(dis) < err:
             if np.abs(J[0,1]) < err and np.abs(J[1,0]) < err:  # J = lambda*I
-                cls = "Star node"
+                if tr > err:
+                    cls = "Unstable star node"
+                elif tr < -err:
+                    cls = "Stable star node"
+                else:
+                    cls = f"WTF?2 abs(tr) = abs({tr}) <= err"
             else:
                 cls = "Degenerate node"
-    elif np.abs(tr) > err:  # one eigenvalue is zero
+    elif np.abs(tr) > err:  # and np.abs(det) < err => one eigenvalue is zero
         cls = "Non-isolated fixed points (line)"
     else:  # tr = det = 0 -> J = 0
         cls = "Non-isolated fixed points (plane)"
-    return is_stable, cls
+    return cls, { 'tr': tr, 'det': det, 'dis': dis, 'J': J, 'stable': is_stable }
 
 def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, title="Phase portrait", x_label="x",
-                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2):
+                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2, stability_method='jacobian'):
     """
     Phase portrait of a first-order 1D ODE
 
@@ -158,6 +182,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
     `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
+    `stability_method` (str):   The method to check for stability: 'lyapunov' or 'jacobian'. `fp_stability_eps` controls in `lyapunov` the distance of the test particle, and in `jacobian` the precision of the finite differences.
     """
 
     x_min, x_max = x_limits
@@ -197,10 +222,26 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     fps = find_fixed_points(x_dot, x, filter_eps=fp_filter_eps, distance_eps=fp_distance_eps)
     # print(fps)
     for fp in fps:
-        if is_stable(f, [fp], T, dt, fp_stability_eps, verbose=True):
-            plt.scatter(fp, 0, facecolors='k', edgecolors='k')
+        if stability_method == 'lyapunov':
+            stable = is_stable(f, [fp], T, dt, fp_stability_eps, verbose=True)
+            cls = 'Stable' if stable else 'Unstable'
+        elif stability_method == 'jacobian':
+            cls = classify_fixed_point(f, fp, fp_stability_eps)
+            print(f"Fixed point {fp}: {cls}")
         else:
-            plt.scatter(fp, 0, facecolors='none', edgecolors='r')
+            raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
+        
+        if cls == 'Stable':
+            fillstyle = 'full'
+        elif cls == 'Unstable':
+            fillstyle = 'none'
+        elif cls == 'Left half-stable':
+            fillstyle = 'left'
+        elif cls == 'Right half-stable':
+            fillstyle = 'right'
+        else:
+            fillstyle = 'full'
+        plt.plot(fp, 0, marker='o', fillstyle=fillstyle, markersize=8, color='k')
 
     # the slope field
     skip = fp_resolution
@@ -211,17 +252,17 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     q = ax.quiver(x_, np.zeros_like(x_), x_dot_, np.zeros_like(x_dot_), np.abs(x_dot_),
                   cmap='cool', pivot='mid', angles='xy', headwidth=3, headlength=1, headaxislength=1)
     ax.quiverkey(q, X=0.8, Y=1.03, U=2, label='dx/dt', labelpos='E')
-    ax.set_xlim(*ax.get_xlim())
+    ax.set_xlim(x_limits)
     ax.set_ylim(*ax.get_ylim())
 
     ax.set_title(title)
     ax.set_xlabel('$' + x_label + '$')
-    ax.set_ylabel('$\dot{'+x_label+'}$')
+    ax.set_ylabel('$\\dot{'+x_label+'}$')
     ax.grid()
     plt.show()
 
-def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, x_fig_size=6, title="Phase portrait", x_label="x", y_label="y",
-              fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4):
+def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, title="Phase portrait", x_label="x", y_label="y",
+              fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4, stability_method='jacobian'):
     """
     Phase portrait of a first-order 2D ODE system
 
@@ -249,6 +290,7 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
     `nullclines` (bool):        Whether to plot the nullclines. If True, the nullclines will be plotted in red (x) and black (y)
     `nullclines_eps` (float):   The maximum allowed absolute value. Higher values will make the nullclines clearer visible, but might smear out on plateaus
+    `stability_method` (str):   The method to check for stability: 'lyapunov' or 'jacobian'. `fp_stability_eps` controls in `lyapunov` the distance of the test particle, and in `jacobian` the precision of the finite differences.
     """
 
     def get_nullclines(dot, eps, xmin, dx, ymin, dy):
@@ -331,7 +373,16 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     # fixed points
     fps = find_fixed_points(x_dot, y_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy)
     for fp in fps:
-        if is_stable(f, fp, T, dt, fp_stability_eps, verbose=True):
+        if stability_method == 'lyapunov':
+            stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
+        elif stability_method == 'jacobian':
+            cls, info = classify_fixed_point(f, fp, fp_stability_eps)
+            stable = info['stable']
+            print(f"Fixed point ({cls}) {fp}: tr={info['tr']}, det={info['det']}, dis={info['dis']}")
+        else:
+            raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
+
+        if stable:
             plt.scatter(*fp, facecolors='k', edgecolors='k')
         else:
             plt.scatter(*fp, facecolors='none', edgecolors='k')
