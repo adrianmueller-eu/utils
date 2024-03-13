@@ -280,7 +280,7 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
     `x_arrows` (int):           The number of arrows on the vector field in the x direction
     `y_arrows` (int):           The number of arrows on the vector field in the y direction
-    `x_fig_size` (float):       The size of the figure in the x axis. The size in the y axis will be adjusted to keep the aspect ratio of `xlim` and `ylim`
+    `figsize` (tuple):          A tuple of two floats. If `None`, the size will be adjusted to keep the aspect ratio of `xlim` and `ylim`.
     `title` (str):              The title of the plot
     `x_label` (str):            The label of the x axis
     `y_label` (str):            The label of the y axis
@@ -337,8 +337,14 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
 
     # the slope field
     if ax is None:
-        # figsize reflects the aspect ratio of xlim and ylim
-        fig, ax = plt.subplots(figsize=(x_fig_size, x_fig_size*(y_max-y_min)/(x_max-x_min)))
+        if figsize is None:
+            # figsize reflects the aspect ratio of xlim and ylim, anker the smaller axis
+            anker = 5
+            if (x_max - x_min) < (y_max - y_min):
+                figsize = (anker, anker*(y_max-y_min)/(x_max-x_min))
+            else:
+                figsize = (anker*(x_max-x_min)/(y_max-y_min), anker)
+        fig, ax = plt.subplots(figsize=figsize)
     skip = fp_resolution
     x_dot_ = x_dot[::skip, ::skip]
     y_dot_ = y_dot[::skip, ::skip]
