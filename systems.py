@@ -434,15 +434,30 @@ def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
 ###########################
 
 def get_roots(f, x0s, prec=1e-5):
-    roots = set()
+    roots_ = []
     for x0 in x0s:
         cand = fsolve(f, x0)
         if np.linalg.norm(f(cand)) < prec:
-            cand = np.round(cand, -int(np.log10(prec)))
-            roots.add(tuple(cand))
-    return list(roots)
+            roots_.append(cand)
 
-def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stability=True, title='Bifurcation diagram'):
+    # mean out roots that are too close to each other
+    roots_lists = []
+    for root in roots_:
+        found = False
+        for roots_list in roots_lists:
+            if np.mean(np.linalg.norm(np.array(roots_list) - np.array(root), axis=1)) < prec:
+                roots_list.append(root)
+                found = True
+                break
+        if not found:
+            roots_lists.append([root])
+    roots = []
+    for roots_list in roots_lists:
+        roots.append(np.mean(roots_list, axis=0))
+    
+    return roots
+
+def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stability_eps=0.001, title='Bifurcation diagram'):
     # get roots for each r
     if dr is None:
         dr = (r_range[1]-r_range[0])/200
@@ -454,13 +469,13 @@ def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stabi
         all_roots.append(roots)
 
     # stability analysis
-    if stability:
-        stabilities = []
+    stabilities = []
+    if stability_eps is not None:
         for r, roots in zip(rs, all_roots):
-            stabilities.append([is_stable(lambda x: f(x, r), root) for root in roots])
+            stabilities.append([is_stable(lambda x: f(x, r), root, eps=stability_eps) for root in roots])
 
     if plot:
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(8, 5))
         # scatter stable roots as black dots and unstable roots as red dots
         for r, roots, stable in zip(rs, all_roots, stabilities):
             for root in roots:
