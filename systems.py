@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp  # used for numerical integration
 from scipy.optimize import fsolve
+from itertools import product
+from tqdm.auto import tqdm as tq
 
 ## This script contains functions to visualize and analyze dynamical systems
 ## Though, so far this only covers 1D and 2D first-order ODEs
@@ -492,4 +494,109 @@ def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stabi
         plt.ylabel('x')
         plt.xlim(r_range)
         plt.grid()
-    return rs, all_roots
+
+    return rs, all_roots, stabilities
+
+########################
+## Stability diagram ###
+########################
+
+def stability_diagram(f, x0s, a_range, b_range, res=100, prec=1e-5, kind='log', x_label='a', y_label='b', title='Stability diagram'):
+    # get roots for each combination of a and b
+    da = (a_range[1]-a_range[0])/res
+    db = (b_range[1]-b_range[0])/res
+    a_s = np.arange(*a_range, da)
+    b_s = np.arange(*b_range, db)
+    all_roots = []
+    for a, b in tq(product(a_s, b_s), desc='Calculating roots', total=len(a_s)*len(b_s)):
+        roots = get_roots(f(a, b), x0s, prec)
+        all_roots.append(roots)
+
+    if isinstance(kind, str):
+        kind = [kind]
+    if 'all' in kind:
+        kind.extend(['roots', 'real', 'log', '+log'])
+        while 'all' in kind:
+            kind.remove('all')
+
+    for k in kind:
+        if not k in ['log', 'roots', 'real', '+log', 'dis']:
+            raise ValueError(f"kind must be 'log', 'roots', 'real', '+log', 'dis', or 'all', not {kind}")
+
+    # find whether any root is close to a bifurcation point (i.e. f(x)/dx is close to 0)
+    if 'log' in kind or 'real' in kind or '+log' in kind or 'dis' in kind:
+        bifurcations = np.zeros((len(b_s), len(a_s)))
+        discriminants = np.zeros((len(b_s), len(a_s)))
+        for (i, j), roots in tq(zip(product(range(len(a_s)), range(len(b_s))), all_roots), desc='Finding bifurcations', total=len(all_roots)):
+            a = a_s[i]
+            b = b_s[j]
+            dfs = []
+            diss = []
+            fab = f(a, b)
+            for root in roots:
+                # find df/dx at the root using finite differences
+                eps = 1e-5
+                assert np.abs(np.sum(fab(root))) < prec, f'f(x) is not close to 0 at {root}'
+                if len(root) == 1:
+                    # derivative of the function
+                    df = (fab(root + eps) - fab(root - eps))/(2*eps)
+                    dfs.append(float(df))
+                else:
+                    # smallest absolute eigenvalue of the Jacobian matrix
+                    dims = len(root)
+                    J = np.zeros((dims, dims))
+                    for k in range(dims):
+                        # partial derivative of f with respect to x_k at the root
+                        dfabu = np.array(fab(root + eps*np.eye(dims)[:,k]))
+                        dfabl = np.array(fab(root - eps*np.eye(dims)[:,k]))
+                        J[:,k] = (dfabu - dfabl)/(2*eps)
+                    if 'dis' in kind:
+                        tr = np.trace(J)
+                        det = np.linalg.det(J)
+                        dis = tr**2 - 4*det
+                        diss.append(dis)
+                        # print(i, j, a, b, tr, det, dis)
+                    evs = np.linalg.eigvals(J).real
+                    dfs.append(evs[np.argmin(np.abs(evs))])
+                    # print(i, j, a, b, evs)
+            # print(i, j, a, b, dfs)
+            v = dfs[np.argmin(np.abs(dfs))] if len(dfs) > 0 else None
+            bifurcations[len(b_s)-1-j, i] = v #if np.abs(v) < 3e-1 else 0
+            if 'dis' in kind:
+                v = diss[np.argmin(np.abs(diss))] if len(diss) > 0 else None
+                discriminants[len(b_s)-1-j, i] = v
+
+    # plot
+    for k in kind:
+        plt.figure(figsize=(10, 6))
+        if k == 'log':
+            logbiabs = -np.log(np.abs(bifurcations))
+            # replace nan with 0 -> show as black (no bifurcation)
+            logbiabs[np.isnan(logbiabs)] = 0
+            vmax = np.nanmax(logbiabs[logbiabs != np.inf])
+            plt.imshow(logbiabs, extent=(*a_range, *b_range), aspect='auto', cmap='hot', vmin=0, vmax=vmax)
+            plt.colorbar(label='-log(abs(df/dx))')
+        if k == '+log':
+            logbiabs = np.log(np.abs(bifurcations))
+            vmin = np.nanmin(logbiabs[logbiabs != -np.inf])
+            logbiabs[logbiabs == -np.inf] = vmin  # imshow doesn't do this automatically
+            plt.imshow(logbiabs, extent=(*a_range, *b_range), aspect='auto', cmap='hot', vmin=vmin, vmax=0)
+            plt.colorbar(label='log(abs(df/dx))')
+        if k == 'roots':
+            n_roots = np.zeros((len(b_s), len(a_s)))
+            for (i, j), roots in zip(product(range(len(a_s)), range(len(b_s))), all_roots):
+                n_roots[len(b_s)-1-j, i] = len(roots)
+            plt.imshow(n_roots, extent=(*a_range, *b_range), aspect='auto', cmap='hot', vmin=0)
+            plt.colorbar(label='Number of roots')
+        if k == 'real':
+            plt.imshow(bifurcations, extent=(*a_range, *b_range), aspect='auto', cmap='seismic', vmin=-np.max(np.abs(bifurcations)), vmax=np.max(np.abs(bifurcations)))
+            plt.colorbar(label='df/dx')
+        if k == 'dis':
+            plt.imshow(discriminants, extent=(*a_range, *b_range), aspect='auto', cmap='seismic', vmin=-np.max(np.abs(discriminants)), vmax=np.max(np.abs(discriminants)))
+            plt.colorbar(label='Discriminant')
+
+        plt.title(title)
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.xlim(a_range)
+        plt.ylim(b_range)
