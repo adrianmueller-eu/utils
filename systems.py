@@ -103,6 +103,7 @@ def classify_fixed_point(f, fp, eps):
         ffp = f(x)
         df_l = (f(x - eps) - ffp)/eps
         df_r = (f(x + eps) - ffp)/eps
+        stable = (df_r - df_l)/2 < 0 # (f(x + eps) - f(x - eps))/(2*eps) < 0
         if df_l > 0 and 0 > df_r:
             cls = "Stable"
         elif df_l < 0 and 0 < df_r:
@@ -113,7 +114,7 @@ def classify_fixed_point(f, fp, eps):
             cls = "Left half-stable"
         else:
             cls = f"WTF? df_r={df_r}, df_l={df_l}"
-        return cls
+        return cls, stable
     x,y = fp
     # Estimate Jacobian matrix at the fixed point via finite differences
     J = np.zeros((2,2))
@@ -226,7 +227,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
             stable = is_stable(f, [fp], T, dt, fp_stability_eps, verbose=True)
             cls = 'Stable' if stable else 'Unstable'
         elif stability_method == 'jacobian':
-            cls = classify_fixed_point(f, fp, fp_stability_eps)
+            cls, stable = classify_fixed_point(f, fp, fp_stability_eps)
             print(f"Fixed point {fp}: {cls}")
         else:
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
@@ -457,7 +458,7 @@ def get_roots(f, x0s, prec=1e-5):
     
     return roots
 
-def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stability_eps=0.001, title='Bifurcation diagram'):
+def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stability_eps=0.001, title='Bifurcation diagram', method='jacobian'):
     # get roots for each r
     if dr is None:
         dr = (r_range[1]-r_range[0])/200
@@ -472,7 +473,12 @@ def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stabi
     stabilities = []
     if stability_eps is not None:
         for r, roots in zip(rs, all_roots):
-            stabilities.append([is_stable(lambda x: f(x, r), root, eps=stability_eps) for root in roots])
+            if method == 'jacobian':
+                stabilities.append([classify_fixed_point(lambda x: f(x, r), root, eps=stability_eps)[1] for root in roots])
+            elif method == 'lyapunov':
+                stabilities.append([is_stable(lambda x: f(x, r), root, eps=stability_eps) for root in roots])
+            else:
+                raise ValueError(f"method must be 'jacobian' or 'lyapunov', not {method}")
 
     if plot:
         plt.figure(figsize=(8, 5))
