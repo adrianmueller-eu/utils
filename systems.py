@@ -98,6 +98,11 @@ def classify_fixed_point(f, fp, eps):
     - For 2D ODEs (using the Jacobian matrix), it returns the classification of the fixed point and whether it is stable. 
     By Hartman-Grobman theorem, this generally works well for hyperbolic fixed points (saddle, nodes, spirals),
     but not for centers or non-isolated fixed points (imaginary eigenvalues).
+
+    Args:
+    `f` (function): The 1D or 2D first-order ODE. Must take one argument, `x`, and return the first derivative `x_dot`
+    `fp` (float or tuple): The fixed point to classify
+    `eps` (float): The precision of the finite differences
     """
     if isinstance(fp, (int, float)) or len(fp) == 1:
         x = np.array(fp)
@@ -164,8 +169,8 @@ def classify_fixed_point(f, fp, eps):
         cls = "Non-isolated fixed points (plane)"
     return cls, { 'tr': tr, 'det': det, 'dis': dis, 'J': J, 'stable': is_stable }
 
-def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, title="Phase portrait", x_label="x",
-                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2, stability_method='jacobian'):
+def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x_label="x", title="Phase portrait",
+                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-2):
     """
     Phase portrait of a first-order 1D ODE
 
@@ -179,13 +184,13 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
     `n_arrows` (int):           The number of arrows in the x axis
-    `title` (str):              The title of the plot
     `x_label` (str):            The label of the x axis
+    `title` (str):              The title of the plot
     `fp_resolution` (int):      The resolution of the grid in which to look for fixed points and plot the slope field
     `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
-    `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
-    `stability_method` (str):   The method to check for stability: 'lyapunov' or 'jacobian'. `fp_stability_eps` controls in `lyapunov` the distance of the test particle, and in `jacobian` the precision of the finite differences.
+    `stability_method` (str):   The method to check for stability: 'jacobian' or 'lyapunov'.
+    `fp_stability_eps` (float): The precision when checking for stability. If method is `jacobian`, it controls the precision of the finite differences and for method `lyapunov` the distance of the test particle.
     """
 
     x_min, x_max = x_limits
@@ -264,14 +269,15 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     ax.grid()
     plt.show()
 
-def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, title="Phase portrait", x_label="x", y_label="y",
-              fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, fp_stability_eps=1e-2, nullclines=False, nullclines_eps=5e-4, stability_method='jacobian'):
+def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, x_label="x", y_label="y", title="Phase portrait",
+              fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4):
     """
     Phase portrait of a first-order 2D ODE system
 
     Hints:
     - If there are multiple fixed points stacked on top of each other, try increasing fp_distance_eps
-    - If the nullclines seem incomplete, try increasing nullclines_eps and/or fp_resolution
+    - If the nullclines seem incomplete, try increasing `nullclines_eps` and/or `fp_resolution`
+    - `stability_method = 'lyapunov'` is significantly slower and often needs a larger `fp_stability_eps` to work well, but is more reliable for non-hyperbolic fixed points
 
     Args:
     `f` (function):             The system of ODEs. Must take two arguments, `x` and `y`, and return the derivatives `x_dot` and `y_dot`
@@ -284,16 +290,16 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     `x_arrows` (int):           The number of arrows on the vector field in the x direction
     `y_arrows` (int):           The number of arrows on the vector field in the y direction
     `figsize` (tuple):          A tuple of two floats. If `None`, the size will be adjusted to keep the aspect ratio of `xlim` and `ylim`.
-    `title` (str):              The title of the plot
     `x_label` (str):            The label of the x axis
     `y_label` (str):            The label of the y axis
+    `title` (str):              The title of the plot
     `fp_resolution` (int):      The resolution of the grid (`fp_resolution*x_arrows x fp_resolution*y_arrows`) in which to look for fixed points and nullclines. Higher values will make the execution much slower.
     `fp_filter_eps` (float):    The maximum `|f(x^*, y^*)|` for which `(x^*, y^*)` is considered a fixed point
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
-    `fp_stability_eps` (float): The distance of the test particle to check for Lyapunov stability
+    `stability_method` (str):   The method to check for stability: 'jacobian' or 'lyapunov'.
+    `fp_stability_eps` (float): The precision when checking for stability. If method is `jacobian`, it controls the precision of the finite differences and for method `lyapunov` the distance of the test particle.
     `nullclines` (bool):        Whether to plot the nullclines. If True, the nullclines will be plotted in red (x) and black (y)
     `nullclines_eps` (float):   The maximum allowed absolute value. Higher values will make the nullclines clearer visible, but might smear out on plateaus
-    `stability_method` (str):   The method to check for stability: 'lyapunov' or 'jacobian'. `fp_stability_eps` controls in `lyapunov` the distance of the test particle, and in `jacobian` the precision of the finite differences.
     """
 
     def get_nullclines(dot, eps, xmin, dx, ymin, dy):
@@ -404,6 +410,16 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     plt.show()
 
 def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
+    """
+    Phase portrait of a first-order 2D ODE system in polar coordinates.
+
+    Args:
+    `f` (function):             The system of ODEs. Must take the two polar coordinates, `r` and `theta`, and return the derivatives `r_dot` and `theta_dot`
+    `polar0s` (list of tuples): Initial conditions for the trajectories in polar coordinates
+    `x0s` (list of tuples):     Initial conditions for the trajectories in cartesian coordinates
+    `rlim` (float):             The maximum radius of the phase portrait
+    `**args`:                   See arguments for `ODE_phase_2d`
+    """
     def to_polar(x,y):
         r = np.sqrt(x**2 + y**2)
         theta = np.arctan2(y,x)
@@ -436,11 +452,15 @@ def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
 ### Bifurcation diagram ###
 ###########################
 
-def get_roots(f, x0s, prec=1e-5):
+def get_roots(f, x0s, filter_eps=1e-5, distance_eps=1e-5):
+    """
+    Find the roots of a function (i.e. the fixed points of an ODE system) using `fsolve`, starting from multiple initial conditions `x0s` 
+    and filtering them by `filter_eps` (actually being roots) and `distance_eps` (mean out roots that are too close to each other).
+    """
     roots_ = []
     for x0 in x0s:
         cand = fsolve(f, x0)
-        if np.linalg.norm(f(cand)) < prec:
+        if np.linalg.norm(f(cand)) < filter_eps:
             roots_.append(cand)
 
     # mean out roots that are too close to each other
@@ -448,7 +468,7 @@ def get_roots(f, x0s, prec=1e-5):
     for root in roots_:
         found = False
         for roots_list in roots_lists:
-            if np.mean(np.linalg.norm(np.array(roots_list) - np.array(root), axis=1)) < prec:
+            if np.mean(np.linalg.norm(np.array(roots_list) - np.array(root), axis=1)) < distance_eps:
                 roots_list.append(root)
                 found = True
                 break
@@ -460,40 +480,54 @@ def get_roots(f, x0s, prec=1e-5):
     
     return roots
 
-def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stability_eps=0.001, title='Bifurcation diagram', method='jacobian'):
+def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_distance_eps=1e-2, stability_method='jacobian', fp_stability_eps=1e-5, x_label='r', y_label='x', title='Bifurcation diagram'):
+    """
+    Bifurcation diagram of a 1D ODE system
+
+    Args:
+    `f` (function):             The ODE. Must take two arguments, `x` and `r`, and return the first derivative `x_dot`
+    `x0s` (list of floats):     Initial conditions for the trajectories, used to find the fixed points
+    `r_range` (tuple):          The range of the parameter `r`
+    `r_res` (float):            The step size of the parameter `r`
+    `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
+    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
+    `stability_method` (str):   The method to check for stability: 'jacobian' or 'lyapunov'.
+    `fp_stability_eps` (float): The precision when checking for stability. If method is `jacobian`, it controls the precision of the finite differences and for method `lyapunov` the distance of the test particle.
+    `x_label` (str):            The label of the x axis
+    `y_label` (str):            The label of the y axis
+    `title` (str):              The title of the plot
+    """
     # get roots for each r
-    if dr is None:
-        dr = (r_range[1]-r_range[0])/200
+    dr = (r_range[1]-r_range[0])/r_res
     rs = np.arange(*r_range, dr)
     all_roots = []
     for r in rs:
-        roots = get_roots(lambda x: f(x, r), x0s, prec)
+        roots = get_roots(lambda x: f(x, r), x0s, fp_filter_eps, fp_distance_eps)
         # print(r, roots)
         all_roots.append(roots)
 
     # stability analysis
     stabilities = []
-    if stability_eps is not None:
+    if fp_stability_eps is not None:
         for r, roots in zip(rs, all_roots):
-            if method == 'jacobian':
-                stabilities.append([classify_fixed_point(lambda x: f(x, r), root, eps=stability_eps)[1] for root in roots])
-            elif method == 'lyapunov':
-                stabilities.append([is_stable(lambda x: f(x, r), root, eps=stability_eps) for root in roots])
+            if stability_method == 'jacobian':
+                stabilities.append([classify_fixed_point(lambda x: f(x, r), root, eps=fp_stability_eps)[1] for root in roots])
+            elif stability_method == 'lyapunov':
+                stabilities.append([is_stable(lambda x: f(x, r), root, eps=fp_stability_eps) for root in roots])
             else:
-                raise ValueError(f"method must be 'jacobian' or 'lyapunov', not {method}")
+                raise ValueError(f"method must be 'jacobian' or 'lyapunov', not {stability_method}")
 
-    if plot:
-        plt.figure(figsize=(8, 5))
-        # scatter stable roots as black dots and unstable roots as red dots
-        for r, roots, stable in zip(rs, all_roots, stabilities):
-            for root in roots:
-                color = 'k' if stable[roots.index(root)] else 'r'
-                plt.scatter(r, root, c=color, s=2)
-        plt.title(title)
-        plt.xlabel('r')
-        plt.ylabel('x')
-        plt.xlim(r_range)
-        plt.grid()
+    plt.figure(figsize=(8, 5))
+    # scatter stable roots as black dots and unstable roots as red dots
+    for r, roots, stable in zip(rs, all_roots, stabilities):
+        for root in roots:
+            color = 'k' if stable[roots.index(root)] else 'r'
+            plt.scatter(r, root, c=color, s=2)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.xlim(r_range)
+    plt.grid()
 
     return rs, all_roots, stabilities
 
@@ -501,7 +535,24 @@ def bifurcation_diagram_1d(f, x0s, r_range, dr=None, prec=1e-5, plot=True, stabi
 ## Stability diagram ###
 ########################
 
-def stability_diagram(f, x0s, a_range, b_range, res=100, prec=1e-5, kind='log', x_label='a', y_label='b', title='Stability diagram'):
+def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_distance_eps=1e-5, fp_stability_eps=1e-5, kind='log', x_label='a', y_label='b', title='Stability diagram'):
+    """
+    Stability diagram for two parameters of an n-dimensional first-order ODE system, using linear stability analysis.
+
+    Args:
+    `f` (function):             A function that takes two arguments, `a` and `b`, and returns a first-order ODE system, a function that takes one argument, `x`, and returns the first derivative `x_dot`
+    `x0s` (list of floats):     Initial conditions for the trajectories, used to find the fixed points
+    `a_range` (tuple):          The range of the parameter `a`
+    `b_range` (tuple):          The range of the parameter `b`
+    `res` (float):              The resolution in the parameters `a` and `b`
+    `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
+    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
+    `fp_stability_eps` (float): The precision of the finite differences.
+    `kind` (str or list):       The kind of plot to show. Can be 'log', 'roots', 'real', '+log', 'dis', or 'all'
+    `x_label` (str):            The label of the x axis
+    `y_label` (str):            The label of the y axis
+    `title` (str):              The title of the plot
+    """
     # get roots for each combination of a and b
     da = (a_range[1]-a_range[0])/res
     db = (b_range[1]-b_range[0])/res
@@ -509,19 +560,20 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, prec=1e-5, kind='log', 
     b_s = np.arange(*b_range, db)
     all_roots = []
     for a, b in tq(product(a_s, b_s), desc='Calculating roots', total=len(a_s)*len(b_s)):
-        roots = get_roots(f(a, b), x0s, prec)
+        roots = get_roots(f(a, b), x0s, fp_filter_eps, fp_distance_eps)
         all_roots.append(roots)
 
     if isinstance(kind, str):
         kind = [kind]
+    all = ['roots', 'real', 'log', '+log', 'dis']
     if 'all' in kind:
-        kind.extend(['roots', 'real', 'log', '+log'])
         while 'all' in kind:
             kind.remove('all')
+        kind.extend(all)
 
     for k in kind:
-        if not k in ['log', 'roots', 'real', '+log', 'dis']:
-            raise ValueError(f"kind must be 'log', 'roots', 'real', '+log', 'dis', or 'all', not {kind}")
+        if not k in all:
+            raise ValueError(f"kind must be '" + "', '".join(all) + "', or 'all', not {kind}")
 
     # find whether any root is close to a bifurcation point (i.e. f(x)/dx is close to 0)
     if 'log' in kind or 'real' in kind or '+log' in kind or 'dis' in kind:
@@ -535,8 +587,7 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, prec=1e-5, kind='log', 
             fab = f(a, b)
             for root in roots:
                 # find df/dx at the root using finite differences
-                eps = 1e-5
-                assert np.abs(np.sum(fab(root))) < prec, f'f(x) is not close to 0 at {root}'
+                eps = fp_stability_eps
                 if len(root) == 1:
                     # derivative of the function
                     df = (fab(root + eps) - fab(root - eps))/(2*eps)
