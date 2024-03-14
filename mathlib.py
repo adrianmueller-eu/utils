@@ -123,7 +123,7 @@ def roots(coeffs):
 
 # e.g. series(lambda n, _: 1/factorial(2*n)) + series(lambda n, _: 1/factorial(2*n + 1))
 def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter=100000, verbose=False):
-    """ Calculate the series $start_value + \sum_{n=start_index+1}^{\infty} f(n, f(n-1, ...))$. Throws an error if the series doesn't converge.
+    """ Calculate the series $start_value + \\sum_{n=start_index+1}^{\\infty} f(n, f(n-1, ...))$. Throws an error if the series doesn't converge.
 
     Parameters
         f (function): A function that takes two arguments, the current iteration `i` and the last term `term`, and returns the next term in the series.
@@ -428,7 +428,7 @@ def closest_prime_factors_to(n, m):
     return min_combo
 
 def int_sqrt(n):
-    """For integer $n$, find the integer $a$ closest to $\sqrt{n}$, such that $n/a$ is also an integer."""
+    """For integer $n$, find the integer $a$ closest to $\\sqrt{n}$, such that $n/a$ is also an integer."""
     if n == 1 or n == 0:
         return n
     return int(np.prod(closest_prime_factors_to(n, sqrt(n))))
