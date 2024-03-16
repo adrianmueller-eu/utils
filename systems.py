@@ -397,33 +397,35 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
         if figsize is None:
             # figsize reflects the aspect ratio of xlim and ylim, anker the smaller axis
             anker = 5
-            if (x_max - x_min) < (y_max - y_min):
-                figsize = (anker, anker*(y_max-y_min)/(x_max-x_min))
+            aspect = (x_max - x_min)/(y_max - y_min)
+            if aspect < 1:
+                figsize = (anker, anker/aspect)
             else:
-                figsize = (anker*(x_max-x_min)/(y_max-y_min), anker)
+                figsize = (anker*aspect, anker)
         fig, ax = plt.subplots(figsize=figsize)
-    skip = fp_resolution
-    x_dot_ = x_dot[::skip, ::skip]
-    y_dot_ = y_dot[::skip, ::skip]
-    x_ = x[::skip, ::skip]
-    y_ = y[::skip, ::skip]
-    q = ax.quiver(x_, y_, x_dot_, y_dot_, np.sqrt(np.square(x_dot_) + np.square(y_dot_)),
-                  cmap='jet', pivot='mid', angles='xy')
-    ax.quiverkey(q, X=0.8, Y=1.03, U=4, label='dy/dx', labelpos='E')
-    #ax.set_xlim(*ax.get_xlim())
-    #ax.set_ylim(*ax.get_ylim())
-    x_arrow = (x_min - x_max)/x_arrows
-    y_arrow = (y_min - y_max)/y_arrows
-    ax.set_xlim(x_min + .5*x_arrow, x_max + .5*x_arrow)
-    ax.set_ylim(y_min + .5*y_arrow, y_max + .5*y_arrow)
+    if x_arrows > 0 and y_arrows > 0:
+        skip = fp_resolution
+        x_dot_ = x_dot[::skip, ::skip]
+        y_dot_ = y_dot[::skip, ::skip]
+        x_ = x[::skip, ::skip]
+        y_ = y[::skip, ::skip]
+        q = ax.quiver(x_, y_, x_dot_, y_dot_, np.sqrt(np.square(x_dot_) + np.square(y_dot_)),
+                    cmap='jet', pivot='mid', angles='xy')
+        ax.quiverkey(q, X=0.8, Y=1.03, U=4, label='dy/dx', labelpos='E')
+        #ax.set_xlim(*ax.get_xlim())
+        #ax.set_ylim(*ax.get_ylim())
+        x_arrow = (x_min - x_max)/x_arrows
+        y_arrow = (y_min - y_max)/y_arrows
+        ax.set_xlim(x_min + .5*x_arrow, x_max + .5*x_arrow)
+        ax.set_ylim(y_min + .5*y_arrow, y_max + .5*y_arrow)
 
     # nullclines
     if nullclines:
-        # x nullcline is black
+        # x nullclines are red
         p = get_nullclines(x_dot, nullclines_eps, x_min, dx, y_min, dy)
         if len(p) > 0:
             plt.scatter(*p.T, linewidths=0, s=.5, color="r")
-        # y nullcline is gray
+        # y nullclines are black
         p = get_nullclines(y_dot, nullclines_eps, x_min, dx, y_min, dy)
         if len(p) > 0:
             plt.scatter(*p.T, linewidths=0, s=.5, color="k")
