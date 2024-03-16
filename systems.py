@@ -506,6 +506,124 @@ def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
 
     return ODE_phase_2d(f_cartesian, x0s, xlim=(-rlim, rlim), ylim=(-rlim, rlim), **args)
 
+def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_timesteps=6000, x_label="x", y_label="y", z_label="z", title="Phase portrait",
+                fp_resolution=10, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4):
+    """
+    Phase portrait of a first-order 3D ODE system
+
+    Hints:
+    - If there are multiple fixed points stacked on top of each other, try increasing `fp_distance_eps`
+
+    Args:
+    `f` (function):             The system of ODEs. Must take at least three arguments, `x`, `y`, and `z`, and return the derivatives `x_dot`, `y_dot`, and `z_dot` as the first three return values
+    `x0s` (list of iterables):  Initial conditions for the trajectories (number of dimensions must match the number of input to `f`)
+    `xlim` (tuple):             The limits of the x axis
+    `ylim` (tuple):             The limits of the y axis
+    `zlim` (tuple):             The limits of the z axis
+    `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
+    `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
+    `x_label` (str):            The label of the x axis
+    `y_label` (str):            The label of the y axis
+    `z_label` (str):            The label of the z axis
+    `title` (str):              The title of the plot
+    `fp_resolution` (int):      The resolution of the grid in which to look for fixed points and plot the slope field
+    `fp_filter_eps` (float):    The maximum `|f(x^*, y^*, z^*)|` for which `(x^*, y^*, z^*)` is considered a fixed point
+    `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
+    `stability_method` (str):   The method to check for stability: 'jacobian' or 'lyapunov'.
+    `fp_stability_eps` (float): The precision when checking for stability. If method is `jacobian`, it controls the precision of the finite differences and for method `lyapunov` the distance of the test particle.
+    `nullclines` (bool):        Whether to plot the nullclines. If True, the nullclines will be plotted in red (x), black (y), and green (z)
+    `nullclines_eps` (float):   The maximum allowed absolute value. Higher values will make the nullclines clearer visible, but might smear out on plateaus
+    """
+    def get_nullclines(dot, eps, xmin, dx, ymin, dy, zmin, dz):
+        rows, cols, depths = np.where(np.abs(dot) < eps)
+        ps = []
+        for r,c,d in zip(rows, cols, depths):
+            p = xmin + c*dx, ymin + r*dy, zmin + d*dz
+            ps.append(p)
+
+        return np.array(ps)
+
+    def find_fixed_points(x_dot, y_dot, z_dot, filter_eps, distance_eps, xmin, dx, ymin, dy, zmin, dz):
+        row, col, depth = np.where(np.logical_and(
+            np.abs(x_dot) < filter_eps, np.abs(y_dot) < filter_eps, np.abs(z_dot) < filter_eps
+        ))
+
+        # first, sort fps by closeness into lists
+        fps_lists = []
+        for r,c,d in zip(row, col, depth):
+            fp = [xmin + c*dx, ymin + r*dy, zmin + d*dz]
+            found = False
+            for i, fps_list in enumerate(fps_lists):
+                # if np.linalg.norm(np.array(fps_list[0]) - np.array(fp)) < eps:
+                if np.mean(np.linalg.norm(np.array(fps_list) - np.array(fp), axis=1)) < distance_eps:
+                    fps_list.append(fp)
+                    found = True
+                    break
+            if not found:
+                fps_lists.append([fp])
+        # then, calculate the mean of each list
+        fps = []
+        for fps_list in fps_lists:
+            fps.append(np.mean(fps_list, axis=0))
+
+        return fps
+
+    dt = T/n_timesteps
+    x_min, x_max = xlim
+    y_min, y_max = ylim
+    z_min, z_max = zlim
+
+    if fp_resolution >= 1:
+        dx = (x_max - x_min)/(fp_resolution)
+        dy = (y_max - y_min)/(fp_resolution)
+        dz = (z_max - z_min)/(fp_resolution)
+        x, y, z = np.meshgrid(np.arange(x_min, x_max, dx), np.arange(y_min, y_max, dy), np.arange(z_min, z_max, dz))
+
+        x_dot, y_dot, z_dot = f(x,y,z)
+
+    # no slope field for 3D
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # nullclines
+    if nullclines:
+        if fp_resolution is None or fp_resolution < 1:
+            raise ValueError("fp_resolution must be >= 1 to plot nullclines")
+        for dot, c in zip([x_dot, y_dot, z_dot], ['r', 'k', 'g']):
+            p = get_nullclines(dot, nullclines_eps, x_min, dx, y_min, dy, z_min, dz)
+            if len(p) > 0:
+                ax.scatter(*p.T, color=c)
+
+    # trajectories
+    if x0s is not None:
+        for x0 in x0s:
+            x, y, z = simulate(f, x0, T, dt)[0:3]
+            ax.plot(x, y, z, linewidth=.2)
+            ax.scatter(*x0, marker="x")
+
+    # fixed points
+    if fp_resolution >= 1:
+        fps = find_fixed_points(x_dot, y_dot, z_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy, z_min, dz)
+        for fp in fps:
+            if stability_method == 'jacobian':
+                clss, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+            elif stability_method == 'lyapunov':
+                stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
+            else:
+                raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
+
+            if stable:
+                ax.scatter(*fp, color='k')
+            else:
+                ax.scatter(*fp, color='r')
+
+    ax.set_title(title)
+    ax.set_xlabel('$' + x_label + '$')
+    ax.set_ylabel('$' + y_label + '$')
+    ax.set_zlabel('$' + z_label + '$')
+    plt.show()
+
+
 ###########################
 ### Bifurcation diagram ###
 ###########################
