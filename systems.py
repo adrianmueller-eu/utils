@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp  # used for numerical integration
 from scipy.optimize import fsolve
-from itertools import product
+from itertools import product, combinations
 from tqdm.auto import tqdm as tq
 
 from .plot import colorize_complex
@@ -87,53 +87,15 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
     if verbose:
         s = '<=' if stable else '>'
         if dims == 2:
-            cls, info = classify_fixed_point(f, fp, eps)
+            cls, info = classify_fixed_point(f, fp, eps, verbose=False)
             print(f"Fixed point ({cls}) {fp}: {stable} (stability eps: {error} {s} {eps})")
         else:
             print(f"Fixed point {fp}: {stable} (stability eps: {error} {s} {eps})")
     return stable
 
-def classify_fixed_point(f, fp, eps):
-    """
-    Classify a fixed point of a 1D or 2D ODE system using the local derivatives at the fixed point (linearization).
-    - For 1D, it returns 'Stable', 'Unstable', 'Left half-stable' or 'Right half-stable'.
-    - For 2D ODEs (using the Jacobian matrix), it returns the classification of the fixed point and whether it is stable. 
-    By Hartman-Grobman theorem, this generally works well for hyperbolic fixed points (saddle, nodes, spirals),
-    but not for centers or non-isolated fixed points (imaginary eigenvalues).
-
-    Args:
-    `f` (function): The 1D or 2D first-order ODE. Must take one argument, `x`, and return the first derivative `x_dot`
-    `fp` (float or tuple): The fixed point to classify
-    `eps` (float): The precision of the finite differences
-    """
-    if isinstance(fp, (int, float)) or len(fp) == 1:
-        x = np.array(fp)
-        # Estimate the derivative at the fixed point via finite differences
-        ffp = f(x)
-        df_l = (f(x - eps) - ffp)/eps
-        df_r = (f(x + eps) - ffp)/eps
-        stable = (df_r - df_l)/2 < 0 # (f(x + eps) - f(x - eps))/(2*eps) < 0
-        if df_l > 0 and 0 > df_r:
-            cls = "Stable"
-        elif df_l < 0 and 0 < df_r:
-            cls = "Unstable"
-        elif df_l < 0 and 0 > df_r:
-            cls = "Right half-stable"
-        elif df_l > 0 and 0 < df_r:
-            cls = "Left half-stable"
-        else:
-            cls = f"WTF? df_r={df_r}, df_l={df_l}"
-        return cls, stable
-    x,y = fp
-    # Estimate Jacobian matrix at the fixed point via finite differences
-    J = np.zeros((2,2))
-    ffp = f(x,y)
-    for i in range(2):
-        for j in range(2):
-            J[i,j] = (f(x + eps*(i==0), y + eps*(i==1))[j] - ffp[j])/eps
-    # classify the fixed point
-    tr = np.trace(J)
-    det = np.linalg.det(J)
+def classify_fixed_point_2D(l1, l2, J=None):
+    tr = l1 + l2
+    det = l1*l2
     dis = tr**2 - 4*det
     is_stable = det >= 0 and tr <= 0  # both eigenvalues have negative real part
 
@@ -153,23 +115,94 @@ def classify_fixed_point(f, fp, eps):
                 cls = "Unstable node"
             elif tr < -err:
                 cls = "Stable node"
-            else:
-                cls = f"WTF? abs({tr}) <= err"  # if determinant and discriminant are both positive, the trace must be non-zero
-        else:  # np.abs(dis) < err:
-            if np.abs(J[0,1]) < err and np.abs(J[1,0]) < err:  # J = lambda*I
-                if tr > err:
-                    cls = "Unstable star node"
-                elif tr < -err:
-                    cls = "Stable star node"
+        else:  # np.abs(dis) < err:  # l1 == l2
+            if J is not None:
+                if np.abs(J[0,1]) < err and np.abs(J[1,0]) < err:  # J = lambda*I
+                    if tr > err:
+                        cls = "Unstable star node"
+                    elif tr < -err:
+                        cls = "Stable star node"
                 else:
-                    cls = f"WTF?2 abs(tr) = abs({tr}) <= err"
+                    if tr > err:
+                        cls = "Unstable degenerate node"
+                    elif tr < -err:
+                        cls = "Stable degenerate node"
             else:
-                cls = "Degenerate node"
+                if tr > err:
+                    cls = "Unstable degenerate/star node"
+                elif tr < -err:
+                    cls = "Stable degenerate/star node"
     elif np.abs(tr) > err:  # and np.abs(det) < err => one eigenvalue is zero
         cls = "Non-isolated fixed points (line)"
     else:  # tr = det = 0 -> J = 0
         cls = "Non-isolated fixed points (plane)"
-    return cls, { 'tr': tr, 'det': det, 'dis': dis, 'J': J, 'stable': is_stable }
+    return cls, {'tr': tr, 'det': det, 'dis': dis, 'stable': is_stable}
+
+def classify_fixed_point(f, fp, eps, verbose=True):
+    """
+    Classify a fixed point of a nD ODE system using the local derivatives at the fixed point (linearization).
+    - For 1D, it returns 'Stable', 'Unstable', 'Left half-stable' or 'Right half-stable'.
+    - For 2D ODEs (using the Jacobian matrix), it returns the classification of the fixed point and whether it is stable. 
+    By Hartman-Grobman theorem, this generally works well for hyperbolic fixed points (saddle, nodes, spirals),
+    but not for centers or non-isolated fixed points (imaginary eigenvalues).
+    - For nD ODEs, n>2, it returns the classification of the fixed point in all 2-combinations of the eigenvalues.
+
+    Args:
+    `f` (function):         The system of ODEs. Takes n arguments and returns n derivatives.
+    `fp` (float or tuple):  The fixed point to classify
+    `eps` (float):          The precision of the finite differences
+    `verbose` (bool):       Whether to print the classification
+    """
+    if isinstance(fp, (int, float)) or len(fp) == 1:
+        x = np.array(fp)
+        # Estimate the derivative at the fixed point via finite differences
+        ffp = f(x)
+        df_l = (f(x - eps) - ffp)/eps
+        df_r = (f(x + eps) - ffp)/eps
+        stable = (df_r - df_l)/2 < 0 # (f(x + eps) - f(x - eps))/(2*eps) < 0
+        if df_l > 0 and 0 > df_r:
+            cls = "Stable"
+        elif df_l < 0 and 0 < df_r:
+            cls = "Unstable"
+        elif df_l < 0 and 0 > df_r:
+            cls = "Right half-stable"
+        elif df_l > 0 and 0 < df_r:
+            cls = "Left half-stable"
+        else:
+            cls = f"WTF? df_r={df_r}, df_l={df_l}"
+        if verbose:
+            print(f"Fixed point {fp}: {cls}")
+        return cls, stable
+
+    # Estimate Jacobian matrix at the fixed point via finite differences
+    dims = len(fp)
+    J = np.zeros((dims,dims))
+    for k in range(dims):
+        # partial derivative of f with respect to x_k at the root
+        dfabu = np.array(f(*(fp + eps*np.eye(dims)[:,k])))
+        dfabl = np.array(f(*(fp - eps*np.eye(dims)[:,k])))
+        J[:,k] = (dfabu - dfabl)/(2*eps)
+    # all 2-combinations of the eigenvalues (use itertools.combinations)
+    if dims == 2:
+        cls, info = classify_fixed_point_2D(*np.linalg.eigvals(J), J)
+        if verbose:
+            print(f"Fixed point {fp}: {cls}, tr={info['tr']}, det={info['det']}, dis={info['dis']}")
+        return cls, info['stable']
+
+    # dims > 2
+    classes = []
+    stable = True
+    if verbose:
+        print(f"Fixed point {fp}:")
+    for dims, (l1, l2) in zip(combinations(range(len(fp)), 2), combinations(np.linalg.eigvals(J), 2)):
+        cls, info = classify_fixed_point_2D(l1, l2)
+        if verbose:
+            print(f"  {dims}: {cls}, tr={info['tr']}, det={info['det']}, dis={info['dis']}")
+        if not info['stable']:
+            stable = False
+        classes.append((dims, (cls, info)))
+
+    return classes, stable
 
 def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x_label="x", title="Phase portrait",
                  fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-2):
@@ -232,12 +265,11 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     fps = find_fixed_points(x_dot, x, filter_eps=fp_filter_eps, distance_eps=fp_distance_eps)
     # print(fps)
     for fp in fps:
-        if stability_method == 'lyapunov':
+        if stability_method == 'jacobian':
+            cls, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+        elif stability_method == 'lyapunov':
             stable = is_stable(f, [fp], T, dt, fp_stability_eps, verbose=True)
             cls = 'Stable' if stable else 'Unstable'
-        elif stability_method == 'jacobian':
-            cls, stable = classify_fixed_point(f, fp, fp_stability_eps)
-            print(f"Fixed point {fp}: {cls}")
         else:
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
         
@@ -391,19 +423,22 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), extra_dims=(), T=30, n_t
     # trajectories
     if x0s is not None:
         for x0 in x0s:
-            x, y = simulate(f, x0, T, dt)[0:2]
-            plt.plot(x,y)
-            plt.scatter(*x0, marker="x")
+            res = simulate(f, x0, T, dt)
+            x = res[x_dim]
+            y = res[y_dim]
+            x0x = x0[x_dim]
+            x0y = x0[y_dim]
+            plt.plot(x,y, linewidth=trajectory_width)
+            plt.scatter(x0x, x0y, marker="x")
 
     # fixed points
     fps = find_fixed_points(x_dot, y_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy)
     for fp in fps:
-        if stability_method == 'lyapunov':
+
+        if stability_method == 'jacobian':
+            clss, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+        elif stability_method == 'lyapunov':
             stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
-        elif stability_method == 'jacobian':
-            cls, info = classify_fixed_point(f_2d, fp, fp_stability_eps)
-            stable = info['stable']
-            print(f"Fixed point ({cls}) {fp}: tr={info['tr']}, det={info['det']}, dis={info['dis']}")
         else:
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
 
