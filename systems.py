@@ -271,7 +271,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     ax.grid()
     plt.show()
 
-def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, x_label="x", y_label="y", title="Phase portrait",
+def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), extra_dims=(), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, x_label="x", y_label="y", title="Phase portrait",
               fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4):
     """
     Phase portrait of a first-order 2D ODE system
@@ -282,10 +282,11 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     - `stability_method = 'lyapunov'` is significantly slower and often needs a larger `fp_stability_eps` to work well, but is more reliable for non-hyperbolic fixed points
 
     Args:
-    `f` (function):             The system of ODEs. Must take two arguments, `x` and `y`, and return the derivatives `x_dot` and `y_dot`
-    `x0s` (list of tuples):     Initial conditions for the trajectories
+    `f` (function):             The system of ODEs. Must take at least two arguments (see `extra_dims`), `x` and `y`, and return the derivatives `x_dot` and `y_dot` as the first two return values
+    `x0s` (list of iterables):  Initial conditions for the trajectories (number of dimensions must match the number of input to `f`)
     `xlim` (tuple):             The limits of the x axis
     `ylim` (tuple):             The limits of the y axis
+    `extra_dims` (tuple):       If the system has more than two dimensions, the values of the extra dimensions at which to project
     `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
@@ -344,7 +345,12 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
     dx = (x_max - x_min)/(fp_resolution*x_arrows)
     dy = (y_max - y_min)/(fp_resolution*y_arrows)
     x, y = np.meshgrid(np.arange(x_min, x_max, dx), np.arange(y_min, y_max, dy))
-    x_dot, y_dot = f(x,y)
+
+    if len(extra_dims) > 0:
+        f_2d = lambda x, y: f(x, y, *extra_dims)[0:2]
+    else:
+        f_2d = f
+    x_dot, y_dot = f_2d(x,y)
 
     # the slope field
     if ax is None:
@@ -395,7 +401,7 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=30, n_timesteps=6000, 
         if stability_method == 'lyapunov':
             stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
         elif stability_method == 'jacobian':
-            cls, info = classify_fixed_point(f, fp, fp_stability_eps)
+            cls, info = classify_fixed_point(f_2d, fp, fp_stability_eps)
             stable = info['stable']
             print(f"Fixed point ({cls}) {fp}: tr={info['tr']}, det={info['det']}, dis={info['dis']}")
         else:
