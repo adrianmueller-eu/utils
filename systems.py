@@ -303,7 +303,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     ax.grid()
     plt.show()
 
-def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), extra_dims=(), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, x_label="x", y_label="y", title="Phase portrait",
+def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, x_label="x", y_label="y", title="Phase portrait",
               fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4):
     """
     Phase portrait of a first-order 2D ODE system
@@ -314,11 +314,11 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), extra_dims=(), T=30, n_t
     - `stability_method = 'lyapunov'` is significantly slower and often needs a larger `fp_stability_eps` to work well, but is more reliable for non-hyperbolic fixed points
 
     Args:
-    `f` (function):             The system of ODEs. Must take at least two arguments (see `extra_dims`), `x` and `y`, and return the derivatives `x_dot` and `y_dot` as the first two return values
+    `f` (function):             The system of ODEs. Must take at least two arguments (see `dims`), `x` and `y`, and return the respective first derivatives
     `x0s` (list of iterables):  Initial conditions for the trajectories (number of dimensions must match the number of input to `f`)
     `xlim` (tuple):             The limits of the x axis
     `ylim` (tuple):             The limits of the y axis
-    `extra_dims` (tuple):       If the system has more than two dimensions, the values of the extra dimensions at which to project
+    `dims` (tuple):             If the system has more than two dimensions, place the values of the extra dimensions at which to project and `None` for exactly two dimensions to plot the phase portrait
     `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
@@ -378,8 +378,16 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), extra_dims=(), T=30, n_t
     dy = (y_max - y_min)/(fp_resolution*y_arrows)
     x, y = np.meshgrid(np.arange(x_min, x_max, dx), np.arange(y_min, y_max, dy))
 
-    if len(extra_dims) > 0:
-        f_2d = lambda x, y: f(x, y, *extra_dims)[0:2]
+    x_dim = dims.index(None)
+    y_dim = dims.index(None, x_dim+1)
+    if len(dims) > 2:
+        # place x,y, where dims is None and pick the output of f accordingly
+        def f_2d(x,y):
+            args = list(dims)
+            args[x_dim] = x
+            args[y_dim] = y
+            dots = f(*args)
+            return dots[x_dim], dots[y_dim]
     else:
         f_2d = f
     x_dot, y_dot = f_2d(x,y)
@@ -434,7 +442,11 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), extra_dims=(), T=30, n_t
     # fixed points
     fps = find_fixed_points(x_dot, y_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy)
     for fp in fps:
-
+        if len(dims) > 2:
+                fp_ = list(dims)
+                fp_[x_dim] = fp[0]
+                fp_[y_dim] = fp[1]
+                fp = fp_
         if stability_method == 'jacobian':
             clss, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
         elif stability_method == 'lyapunov':
@@ -443,9 +455,9 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), extra_dims=(), T=30, n_t
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
 
         if stable:
-            plt.scatter(*fp, facecolors='k', edgecolors='k')
+            plt.scatter(fp[x_dim], fp[y_dim], facecolors='k', edgecolors='k')
         else:
-            plt.scatter(*fp, facecolors='none', edgecolors='k')
+            plt.scatter(fp[x_dim], fp[y_dim], facecolors='none', edgecolors='k')
 
     ax.set_title(title)
     ax.set_xlabel('$' + x_label + '$')
