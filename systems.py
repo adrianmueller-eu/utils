@@ -741,18 +741,21 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
 
     if isinstance(kind, str):
         kind = [kind]
-    all = ['roots', 'real', 'log', '+log', 'dis']
+    all = ['roots', 'real', 'log', 'dis', 'logdis']
     if 'all' in kind:
+        for k in all:
+            if k not in kind:
+                kind.insert(kind.index('all'), k)
         while 'all' in kind:
             kind.remove('all')
-        kind.extend(all)
 
     for k in kind:
-        if not k in all:
-            raise ValueError(f"kind must be '" + "', '".join(all) + "', or 'all', not {kind}")
+        allowed = all + ['+log']
+        if not k in allowed:
+            raise ValueError(f"kind must be '" + "', '".join(allowed) + "', or 'all', not {kind}")
 
     # find whether any root is close to a bifurcation point (i.e. f(x)/dx is close to 0)
-    if 'log' in kind or 'real' in kind or '+log' in kind or 'dis' in kind:
+    if any(k != 'roots' for k in kind):
         bifurcations = np.zeros((len(b_s), len(a_s)))
         discriminants = np.zeros((len(b_s), len(a_s)))
         for (i, j), roots in tq(zip(product(range(len(a_s)), range(len(b_s))), all_roots), desc='Finding bifurcations', total=len(all_roots)):
@@ -777,7 +780,7 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
                         dfabu = np.array(fab(root + eps*np.eye(dims)[:,k]))
                         dfabl = np.array(fab(root - eps*np.eye(dims)[:,k]))
                         J[:,k] = (dfabu - dfabl)/(2*eps)
-                    if 'dis' in kind:
+                    if 'dis' in kind or 'logdis' in kind:
                         tr = np.trace(J)
                         det = np.linalg.det(J)
                         dis = tr**2 - 4*det
@@ -789,7 +792,7 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
             # print(i, j, a, b, dfs)
             v = dfs[np.argmin(np.abs(dfs))] if len(dfs) > 0 else None
             bifurcations[len(b_s)-1-j, i] = v #if np.abs(v) < 3e-1 else 0
-            if 'dis' in kind:
+            if 'dis' in kind or 'logdis' in kind:
                 v = diss[np.argmin(np.abs(diss))] if len(diss) > 0 else None
                 discriminants[len(b_s)-1-j, i] = v
 
@@ -800,33 +803,43 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
             logbiabs = -np.log(np.abs(bifurcations))
             # replace nan with 0 -> show as black (no bifurcation)
             logbiabs[np.isnan(logbiabs)] = 0
-            vmax = np.nanmax(logbiabs[logbiabs != np.inf])
-            plt.imshow(logbiabs, extent=(*a_range, *b_range), aspect='auto', cmap='hot', vmin=0, vmax=vmax)
+            # vmax = np.nanmax(logbiabs[logbiabs != np.inf])
+            plt.imshow(logbiabs, extent=(*a_range, *b_range), aspect='auto', cmap='hot')
             plt.colorbar(label='-log(abs(df/dx))')
-        if k == '+log':
+        elif k == '+log':
             logbiabs = np.log(np.abs(bifurcations))
             vmin = np.nanmin(logbiabs[logbiabs != -np.inf])
-            logbiabs[logbiabs == -np.inf] = vmin  # imshow doesn't do this automatically
-            plt.imshow(logbiabs, extent=(*a_range, *b_range), aspect='auto', cmap='hot', vmin=vmin, vmax=0)
+            logbiabs[logbiabs == -np.inf] = vmin
+            plt.imshow(logbiabs, extent=(*a_range, *b_range), aspect='auto', cmap='hot')
             plt.colorbar(label='log(abs(df/dx))')
-        if k == 'roots':
+        elif k == 'roots':
             n_roots = np.zeros((len(b_s), len(a_s)))
             for (i, j), roots in zip(product(range(len(a_s)), range(len(b_s))), all_roots):
                 n_roots[len(b_s)-1-j, i] = len(roots)
             plt.imshow(n_roots, extent=(*a_range, *b_range), aspect='auto', cmap='hot', vmin=0)
             plt.colorbar(label='Number of roots')
-        if k == 'real':
+        elif k == 'real':
             plt.imshow(bifurcations, extent=(*a_range, *b_range), aspect='auto', cmap='seismic', vmin=-np.max(np.abs(bifurcations)), vmax=np.max(np.abs(bifurcations)))
             plt.colorbar(label='df/dx')
-        if k == 'dis':
+        elif k == 'dis':
             plt.imshow(discriminants, extent=(*a_range, *b_range), aspect='auto', cmap='seismic', vmin=-np.max(np.abs(discriminants)), vmax=np.max(np.abs(discriminants)))
             plt.colorbar(label='Discriminant')
+        elif k == 'logdis':
+            # normalize discriminants
+            logbiabs = -np.log(np.abs(discriminants))
+            # replace nan with 0 -> show as black (no transition)
+            logbiabs[np.isnan(logbiabs)] = 0
+            # vmax = np.nanmax(logbiabs[logbiabs != np.inf])
+            plt.imshow(logbiabs, extent=(*a_range, *b_range), aspect='auto', cmap='hot')
+            plt.colorbar(label='-log(abs(discriminant))')
 
+        plt.gca().spines[['top', 'right', 'bottom', 'left']].set_visible(False)
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.xlim(a_range)
         plt.ylim(b_range)
+        plt.show()
 
 
 ######################
