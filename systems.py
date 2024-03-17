@@ -94,8 +94,8 @@ def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
     return stable
 
 def classify_fixed_point_2D(l1, l2, J=None):
-    tr = l1 + l2
-    det = l1*l2
+    tr = (l1 + l2).real
+    det = (l1*l2).real
     dis = tr**2 - 4*det
     is_stable = det >= 0 and tr <= 0  # both eigenvalues have negative real part
 
@@ -687,17 +687,17 @@ def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_di
     if fp_stability_eps is not None:
         for r, roots in zip(rs, all_roots):
             if stability_method == 'jacobian':
-                stabilities.append([classify_fixed_point(lambda x: f(x, r), root, eps=fp_stability_eps)[1] for root in roots])
+                stabilities.append([classify_fixed_point(lambda x: f(x, r), root, eps=fp_stability_eps, verbose=False)[1] for root in roots])
             elif stability_method == 'lyapunov':
-                stabilities.append([is_stable(lambda x: f(x, r), root, eps=fp_stability_eps) for root in roots])
+                stabilities.append([is_stable(lambda x: f(x, r), root, eps=fp_stability_eps, verbose=False) for root in roots])
             else:
                 raise ValueError(f"method must be 'jacobian' or 'lyapunov', not {stability_method}")
 
     plt.figure(figsize=(8, 5))
     # scatter stable roots as black dots and unstable roots as red dots
-    for r, roots, stable in zip(rs, all_roots, stabilities):
-        for root in roots:
-            color = 'k' if stable[roots.index(root)] else 'r'
+    for r, roots, stables in zip(rs, all_roots, stabilities):
+        for root, stable in zip(roots, stables):
+            color = 'k' if stable else 'r'
             plt.scatter(r, root, c=color, s=2)
     plt.title(title)
     plt.xlabel(x_label)
