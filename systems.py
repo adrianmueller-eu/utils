@@ -657,12 +657,12 @@ def get_roots(f, x0s, filter_eps=1e-5, distance_eps=1e-5):
     
     return roots
 
-def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_distance_eps=1e-2, stability_method='jacobian', fp_stability_eps=1e-5, x_label='r', y_label='x', title='Bifurcation diagram'):
+def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_distance_eps=1e-2, stability_method='jacobian', fp_stability_eps=1e-5, dim=0, x_label='r', y_label='x', title='Bifurcation diagram'):
     """
     Bifurcation diagram of a 1D ODE system
 
     Args:
-    `f` (function):             The ODE. Must take two arguments, `x` and `r`, and return the first derivative `x_dot`
+    `f` (function):             A function that take a parameter `r` and returns an ODE, i.e., a function taking `x` and return the first derivative `x_dot`
     `x0s` (list of floats):     Initial conditions for the trajectories, used to find the fixed points
     `r_range` (tuple):          The range of the parameter `r`
     `r_res` (float):            The step size of the parameter `r`
@@ -670,6 +670,7 @@ def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_di
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
     `stability_method` (str):   The method to check for stability: 'jacobian' or 'lyapunov'.
     `fp_stability_eps` (float): The precision when checking for stability. If method is `jacobian`, it controls the precision of the finite differences and for method `lyapunov` the distance of the test particle.
+    `dim` (int):                The dimension of the ODE system to plot against the parameter
     `x_label` (str):            The label of the x axis
     `y_label` (str):            The label of the y axis
     `title` (str):              The title of the plot
@@ -679,7 +680,7 @@ def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_di
     rs = np.arange(*r_range, dr)
     all_roots = []
     for r in rs:
-        roots = get_roots(lambda x: f(x, r), x0s, fp_filter_eps, fp_distance_eps)
+        roots = get_roots(f(r), x0s, fp_filter_eps, fp_distance_eps)
         # print(r, roots)
         all_roots.append(roots)
 
@@ -688,9 +689,9 @@ def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_di
     if fp_stability_eps is not None:
         for r, roots in zip(rs, all_roots):
             if stability_method == 'jacobian':
-                stabilities.append([classify_fixed_point(lambda x: f(x, r), root, eps=fp_stability_eps, verbose=False)[1] for root in roots])
+                stabilities.append([classify_fixed_point(f(r), root, eps=fp_stability_eps, verbose=False)[1] for root in roots])
             elif stability_method == 'lyapunov':
-                stabilities.append([is_stable(lambda x: f(x, r), root, eps=fp_stability_eps, verbose=False) for root in roots])
+                stabilities.append([is_stable(f(r), root, eps=fp_stability_eps, verbose=False) for root in roots])
             else:
                 raise ValueError(f"method must be 'jacobian' or 'lyapunov', not {stability_method}")
 
@@ -699,12 +700,15 @@ def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_di
     for r, roots, stables in zip(rs, all_roots, stabilities):
         for root, stable in zip(roots, stables):
             color = 'k' if stable else 'r'
-            plt.scatter(r, root, c=color, s=2)
+            if not isinstance(root, (int, float)):
+                root = root[dim]
+            plt.scatter(r, root, color=color, s=2)
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.xlim(r_range)
     plt.grid()
+    plt.show()
 
     return rs, all_roots, stabilities
 
