@@ -333,13 +333,13 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
     if np.prod(a.shape) == np.max(a.shape):
         a = a.flatten()
     fig = plt.figure(figsize=figsize)
+    # magic reshape
+    if len(a.shape) == 1 and a.shape[0] >= 100:
+        best_divisor = int_sqrt(a.shape[0])
+        a = a.reshape(best_divisor, -1)
+
     if len(a.shape) == 1:
-        if a.shape[0] >= 100:
-            # magic reshape
-            best_divisor = int_sqrt(a.shape[0])
-            a = a.reshape(best_divisor, -1)
-        else:
-            a = a[:,None] # vertical
+        a = a[:,None] # vertical
         if is_complex(a):
             img = colorize_complex(a)
             if show_colorbar == True:
