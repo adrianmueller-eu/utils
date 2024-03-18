@@ -507,7 +507,7 @@ def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
     return ODE_phase_2d(f_cartesian, x0s, xlim=(-rlim, rlim), ylim=(-rlim, rlim), **args)
 
 def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_timesteps=6000, x_label="x", y_label="y", z_label="z", title="Phase portrait",
-                fp_resolution=10, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4):
+                fp_resolution=10, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4, linewidth=.2):
     """
     Phase portrait of a first-order 3D ODE system
 
@@ -533,6 +533,7 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
     `fp_stability_eps` (float): The precision when checking for stability. If method is `jacobian`, it controls the precision of the finite differences and for method `lyapunov` the distance of the test particle.
     `nullclines` (bool):        Whether to plot the nullclines. If True, the nullclines will be plotted in red (x), black (y), and green (z)
     `nullclines_eps` (float):   The maximum allowed absolute value. Higher values will make the nullclines clearer visible, but might smear out on plateaus
+    `linewidth` (float):        The width of the trajectories
     """
     def get_nullclines(dot, eps, xmin, dx, ymin, dy, zmin, dz):
         rows, cols, depths = np.where(np.abs(dot) < eps)
@@ -598,7 +599,7 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
     if x0s is not None:
         for x0 in x0s:
             x, y, z = simulate(f, x0, T, dt)[0:3]
-            ax.plot(x, y, z, linewidth=.2)
+            ax.plot(x, y, z, linewidth=linewidth)
             ax.scatter(*x0, marker="x")
 
     # fixed points
