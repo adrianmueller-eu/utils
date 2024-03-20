@@ -272,7 +272,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
             cls = 'Stable' if stable else 'Unstable'
         else:
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
-        
+
         if cls == 'Stable':
             fillstyle = 'full'
         elif cls == 'Unstable':
@@ -631,7 +631,7 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
 
 def get_roots(f, x0s, filter_eps=1e-5, distance_eps=1e-5):
     """
-    Find the roots of a function (i.e. the fixed points of an ODE system) using `fsolve`, starting from multiple initial conditions `x0s` 
+    Find the roots of a function (i.e. the fixed points of an ODE system) using `fsolve`, starting from multiple initial conditions `x0s`
     and filtering them by `filter_eps` (actually being roots) and `distance_eps` (mean out roots that are too close to each other).
     """
     roots_ = []
@@ -654,7 +654,7 @@ def get_roots(f, x0s, filter_eps=1e-5, distance_eps=1e-5):
     roots = []
     for roots_list in roots_lists:
         roots.append(np.mean(roots_list, axis=0))
-    
+
     return roots
 
 def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_distance_eps=1e-2, stability_method='jacobian', fp_stability_eps=1e-5, dim=0, x_label='r', y_label='x', title='Bifurcation diagram'):
@@ -850,6 +850,50 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
 ######################
 ### Iterative maps ###
 ######################
+
+def is_stable_discrete(f, x, eps=1e-6):
+    if isinstance(x, (int, float)):
+        x = [x]
+    x = np.array(x)
+    # Calculate the Jacobian matrix
+    dims = len(x)
+    J = np.zeros((dims, dims))
+    for i in range(dims):
+        eta = eps*np.eye(dims)[:,i]
+        J[:, i] = (f(x + eta) - f(x - eta))/(2*eps)
+    # Calculate the eigenvalues
+    eigvals = np.linalg.eigvals(J)
+    # Check the stability
+    return np.all(np.abs(eigvals) < 1)
+
+def bifurcation_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(20, 10)):
+    plt.figure(figsize=figsize)
+    for r in rs:
+        x = x0s
+        fr = f(r)
+        for i in range(n_iter):
+            x = fr(x)
+        plt.plot([r]*len(x), x, 'k.', markersize=.1)
+    plt.xlabel('r')
+    plt.ylabel('x')
+    plt.xlim(min(rs), max(rs))
+    plt.grid()
+
+def flow_discrete(f, x0s, lim=None, c='k', n_iter=1000, linewidth=.2):
+    xs = np.zeros((n_iter+1, len(x0s)))
+    xs[0] = x0s
+    for i in range(n_iter):
+        xs[i+1] = f(xs[i])
+    for i in range(len(x0s)):
+        plt.plot(xs[:, i], color=c, linewidth=linewidth)
+    plt.xlabel('n')
+    plt.ylabel('x')
+    plt.xlim(0, n_iter)
+    if lim is None:
+        plt.ylim(np.min(x0s), np.max(x0s))
+    else:
+        plt.ylim(*lim)
+    plt.grid()
 
 def fractal(f, max_iters, x_lim, y_lim, res, eps=1e-7, show='it', cmap='hot', save_fig=None, **plt_kwargs):
     """ Plot a discrete differential equation on the complex plane. The equation
