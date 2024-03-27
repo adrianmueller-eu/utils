@@ -4,7 +4,7 @@ import re
 from .mathlib import is_complex, is_symmetric, normalize, int_sqrt
 from .utils import *
 
-def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog=False, ylog=False, show=True, save_file=None, **pltargs):
+def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog=False, ylog=False, grid=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
 
     # make it a bit intelligent
@@ -36,6 +36,8 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog
         figsize= y
         fmt=None
         y=None
+    if callable(y):
+        y = [y(i) for i in x]
     if type(fmt) == tuple: # skip fmt
         title  = ylabel
         ylabel = xlabel
@@ -63,6 +65,8 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog
         plt.xscale('log')
     if ylog:
         plt.yscale('log')
+    if grid:
+        plt.grid()
     if fmt == ".":
         if y is None:
             y = x
