@@ -2,6 +2,7 @@ import os, time, sys
 import numpy as np
 from warnings import warn
 from collections.abc import Iterable
+from copy import deepcopy
 
 T = True
 F = False
@@ -128,7 +129,7 @@ class ConvergenceCondition:
         x_prev (list): List of previous x's for error calculation. At most `converged_sequence_length` x's are stored.
         error (float): Error of the last iteration.
         start_time (float): Time of the first iteration.
-        cnt (int): Number of already performed iterations.
+        iter (int): Number of already performed iterations.
         skipped (int): Number of iterations the error was below eps.
         pbar (tqdm.tqdm): Progress bar object.
     """
@@ -160,7 +161,7 @@ class ConvergenceCondition:
             array([[2.71828183, 0.        ],
                    [0.        , 2.71828183]])
         """
-        self.max_iter = max_iter
+        self.max_iter = int(max_iter) if max_iter is not None else None
         self.eps = eps
         self.max_time = max_time
         self.converged_sequence_length = converged_sequence_length
@@ -170,8 +171,10 @@ class ConvergenceCondition:
         self.x_prev = None
         self.error = None
         self.start_time = None
-        self.cnt = 0
+        self.iter = 0
         self.skipped = 0
+
+        self.has_converged = False
 
         try:
             import tqdm
@@ -192,16 +195,27 @@ class ConvergenceCondition:
             raise ValueError("You must specify at least one of max_iter, eps, and max_time.")
 
     def __call__(self, x, iteration=None):
+        if self.has_converged:
+            return True
+
+        self.has_converged = self.check_convergence(x, iteration)
+        return self.has_converged
+
+    @property
+    def has_converged(self):
+        return self.has_converged
+
+    def check_convergence(self, x, iteration=None):
         if iteration is not None:
-            self.cnt = iteration
+            self.iter = iteration
         else:
-            self.cnt += 1
+            self.iter += 1
         if self.pbar is not None:
             if iteration is not None:
                 self.pbar.update(iteration - self.pbar.n)
             else:
                 self.pbar.update(1)
-        if self.cnt <= self.skip_initial:
+        if self.iter <= self.skip_initial:
             return False
 
         if self.eps is not None and self.x_prev is not None:
@@ -214,8 +228,10 @@ class ConvergenceCondition:
                 else:
                     self.close()
                     return True
+            else:
+                self.skipped = 0
         if self.max_iter is not None:
-            if self.cnt >= self.max_iter:
+            if self.iter >= self.max_iter:
                 self.close()
                 return True
         if self.max_time is not None:
@@ -227,11 +243,11 @@ class ConvergenceCondition:
 
         # store x
         if self.x_prev is None:
-            self.x_prev = [x.copy()]
+            self.x_prev = [deepcopy(x)]
         else:
             if len(self.x_prev) >= self.converged_sequence_length:
                 self.x_prev = self.x_prev[1:]
-            self.x_prev.append(x.copy())
+            self.x_prev.append(deepcopy(x))
         return False
 
     def close(self):
@@ -242,14 +258,14 @@ class ConvergenceCondition:
         self.x_prev = None
         self.error = None
         self.start_time = None
-        self.cnt = 0
+        self.iter = 0
         self.skipped = 0
         if self.pbar is not None:
             self.pbar.reset()
 
     def __str__(self):
         end_time_fmt = time.strftime("%H:%M:%S", time.localtime(self.start_time + self.max_time)) if self.start_time is not None else None
-        return f"ConvergenceCondition(max_iter={self.max_iter}, eps={self.eps}, max_time={self.max_time}) at iteration {self.cnt} with error {self.error} and end time {end_time_fmt}"
+        return f"ConvergenceCondition(max_iter={self.max_iter}, eps={self.eps}, max_time={self.max_time}) at iteration {self.iter} with error {self.error} and end time {end_time_fmt}"
 
     def __repr__(self):
         return str(self)
