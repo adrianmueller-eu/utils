@@ -375,8 +375,16 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
     x_min, x_max = xlim
     y_min, y_max = ylim
     dt = T/n_timesteps
-    dx = (x_max - x_min)/(fp_resolution*x_arrows)
-    dy = (y_max - y_min)/(fp_resolution*y_arrows)
+    if x_arrows is None or x_arrows < 1:
+        x_arrows = 0
+        dx = (x_max - x_min)/fp_resolution
+    else:
+        dx = (x_max - x_min)/(fp_resolution*x_arrows)
+    if y_arrows is None or y_arrows < 1:
+        y_arrows = 0
+        dy = (y_max - y_min)/fp_resolution
+    else:
+        dy = (y_max - y_min)/(fp_resolution*y_arrows)
     x, y = np.meshgrid(np.arange(x_min, x_max, dx), np.arange(y_min, y_max, dy))
 
     x_dim = dims.index(None)
