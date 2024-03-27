@@ -6,6 +6,8 @@ from itertools import product, combinations
 from tqdm.auto import tqdm as tq
 
 from .plot import colorize_complex
+from .utils import ConvergenceCondition
+from .mathlib import powerset, prime_factors
 
 ## This script contains functions to visualize and analyze dynamical systems
 ## So far this only covers 1D and 2D first-order ODEs, as well as iterative maps (fractals!)
@@ -860,54 +862,285 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
         plt.ylim(b_range)
         plt.show()
 
+############
+### Misc ###
+############
+
+def plt_diagonal(ax=None, fmt='k-', linewidth=.5):
+    if ax is None:
+        ax = plt.gca()
+    extent = ax.axis()
+    start = extent[0] if np.abs(extent[0]) > np.abs(extent[2]) else extent[2]
+    end = extent[1] if np.abs(extent[1]) < np.abs(extent[3]) else extent[3]
+    ax.plot([start, end], [start, end], fmt, linewidth=linewidth)
+    return ax
+
+def lorenz_map(f, x0, dim=0, T=1000, n_timesteps=100000, figsize=(6,7), cmap='plasma', s=5, kind='scatter'):
+    from scipy.signal import find_peaks
+
+    res = simulate(f, x0, T, T/n_timesteps)
+    x, t = res[:-1][dim], res[-1]
+    peaks, _ = find_peaks(x)
+    if len(peaks) == 0:
+        raise ValueError('No peaks found. Does the system have periodic behavior?')
+    if len(peaks) < 2:
+        raise ValueError('Not enough peaks found. Consider increasing `T` or `n_timesteps`.')
+    fixed_point = peaks[:-1][np.argmin(np.abs(x[peaks][:-1] - x[peaks][1:]))]
+    var = f'xyz'[dim] if dim < 3 else 'x'
+    print(f"Fixed point at {var}_n ≈ {x[fixed_point]} {var}_{{n+1}} ≈ {x[fixed_point+1]}")
+
+    plt.figure(figsize=figsize)
+    if kind not in ['scatter', 'coweb', 'both']:
+        raise ValueError('kind must be one of "scatter", "coweb", "both"')
+    if kind == 'scatter' or kind == 'both':
+        plt.scatter(x[peaks][:-1], x[peaks][1:], c=t[peaks][1:], cmap=cmap, s=s)
+    if kind == 'coweb' or kind == 'both':
+        xs = [x[peaks][0]]
+        ys = [0]
+        for i in range(len(peaks)-1):
+            xs.extend([x[peaks][i], x[peaks][i+1]])
+            ys.extend([x[peaks][i+1], x[peaks][i+1]])
+        plt.plot(xs, ys, c='b', linewidth=.5)
+    plt_diagonal()
+    plt.xlabel(f'${var}_n$')
+    plt.ylabel('$'+var+'_{n+1}$')
+    if kind == 'scatter' or kind == 'both':
+        plt.colorbar(label='t', orientation='horizontal', aspect=50, pad=0.1)
+    return x[peaks], t[peaks]
+
+def to_lorenz_map(f, dim=0, T=2, n_timesteps=200):
+    """
+    Returns a iterative map for the ODE `f`, returnings the next peak in the `dim`-th dimension after a given `x0`.
+    """
+    from scipy.signal import find_peaks
+    def lorenz_map(x):
+        res = simulate(f, x, T, T/n_timesteps)
+        x, t = res[:-1][dim], res[-1]
+        peaks, _ = find_peaks(x)
+        if len(peaks) > 10:
+            print(f"Warning: {len(peaks)} peaks found. Consider decreasing `T` or increasing `n_timesteps`.")
+        # return the next peak
+        return x[peaks[0]]
+    return lorenz_map
 
 ######################
 ### Iterative maps ###
 ######################
 
-def is_stable_discrete(f, x, eps=1e-6):
-    if isinstance(x, (int, float)):
-        x = [x]
-    x = np.array(x)
-    # Calculate the Jacobian matrix
-    dims = len(x)
-    J = np.zeros((dims, dims))
-    for i in range(dims):
-        eta = eps*np.eye(dims)[:,i]
-        J[:, i] = (f(x + eta) - f(x - eta))/(2*eps)
-    # Calculate the eigenvalues
-    eigvals = np.linalg.eigvals(J)
-    # Check the stability
-    return np.all(np.abs(eigvals) < 1)
-
-def bifurcation_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(20, 10)):
-    plt.figure(figsize=figsize)
-    for r in rs:
-        x = x0s
-        fr = f(r)
-        for i in range(n_iter):
-            x = fr(x)
-        plt.plot([r]*len(x), x, 'k.', markersize=.1)
-    plt.xlabel('r')
-    plt.ylabel('x')
-    plt.xlim(min(rs), max(rs))
-    plt.grid()
-
-def flow_discrete(f, x0s, lim=None, c='k', n_iter=1000, linewidth=.2):
+def flow_discrete(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(10, 4), title=None):
+    if isinstance(x0s, tuple) and len(x0s) == 2:
+        x0s = np.linspace(x0s[0], x0s[1], 100)
+    elif isinstance(x0s, tuple) and len(x0s) == 3:
+        x0s = np.linspace(*x0s)
     xs = np.zeros((n_iter+1, len(x0s)))
     xs[0] = x0s
     for i in range(n_iter):
         xs[i+1] = f(xs[i])
+
+    plt.figure(figsize=figsize)
     for i in range(len(x0s)):
         plt.plot(xs[:, i], color=c, linewidth=linewidth)
-    plt.xlabel('n')
-    plt.ylabel('x')
+    plt.xlabel('$n$')
+    plt.ylabel('$x_n$')
+    plt.title(title)
     plt.xlim(0, n_iter)
-    if lim is None:
-        plt.ylim(np.min(x0s), np.max(x0s))
-    else:
+    if lim is not None:
         plt.ylim(*lim)
+    elif len(x0s) > 1:
+        plt.ylim(np.min(x0s), np.max(x0s))
     plt.grid()
+    plt.show()
+
+    return xs
+
+def orbit_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(10, 10), ylim=None, title=None, markersize=.1):
+    plt.figure(figsize=figsize)
+    if isinstance(rs, tuple) and len(rs) == 2:
+        rs = np.linspace(rs[0], rs[1], 200)
+    elif isinstance(rs, tuple) and len(rs) == 3:
+        rs = np.linspace(*rs)
+    if isinstance(x0s, tuple) and len(x0s) == 2:
+        x0s = np.linspace(x0s[0], x0s[1], 100)
+    elif isinstance(x0s, tuple) and len(x0s) == 3:
+        x0s = np.linspace(*x0s)
+    for r in rs:
+        x = x0s
+        fr = f(r)
+        for _ in range(n_iter):
+            x = fr(x)
+        plt.plot([r]*len(x), x, 'k.', markersize=markersize)
+    plt.xlabel('r')
+    plt.ylabel('x')
+    plt.xlim(min(rs), max(rs))
+    if ylim is not None:
+        plt.ylim(*ylim)
+    plt.title(title)
+    plt.grid()
+    plt.show()
+
+def find_fixed_points_discrete(f, x0s, filter_eps=1e-6, distance_eps=1e-2):
+    fpf = lambda x: f(x) - x
+    return get_roots(fpf, x0s, filter_eps=filter_eps, distance_eps=distance_eps)
+
+def classify_fixed_point_discrete(f, fp, eps=1e-6):
+    if isinstance(fp, (int, float)):
+        fp = [fp]
+    fp = np.array(fp)
+    # Calculate the Jacobian matrix
+    dims = len(fp)
+    J = np.zeros((dims, dims))
+    for i in range(dims):
+        eta = eps*np.eye(dims)[:,i]
+        J[:, i] = (f(fp + eta) - f(fp - eta))/(2*eps)
+    # Calculate the eigenvalues
+    eigvals = np.linalg.eigvals(J)
+    # Check the stability
+    stable = np.all(np.abs(eigvals) < 1)
+    classes = []
+    for e in eigvals:
+        if np.abs(e) < 1e-6:
+            classes.append('superstable')
+        elif np.abs(e - 1) < 1e-6 or np.abs(e + 1) < 1e-6:
+            classes.append('nonlinear')
+        elif np.abs(e) < 1:
+            classes.append('stable')
+        else:
+            classes.append('unstable')
+    return {'multipliers': eigvals, 'cls': classes, 'is_stable': stable}, stable
+
+def coweb(f, x0s, max_iter=1000, eps=1e-6, xlim=None, ylim=None, title=None, figsize=(8,5), linewidth=.5,
+          fp_res=100, fp_filter_eps=1e-6, fp_stability_eps=1e-6, fp_distance_eps=1e-3, verbose=True):
+    # plot the cobweb diagram
+    plt.figure(figsize=figsize)
+    for i, x in enumerate(x0s):
+        conv = ConvergenceCondition(max_iter=max_iter, eps=eps, skip_converged=2)
+        xs = [x]
+        ys = [0]
+        while not conv(xs[-1]):
+            try:
+                x, x1 = xs[-1], f(x)
+            except:
+                break
+            xs.extend([x, x1])
+            ys.extend([x1, x1])
+        # print(conv)
+        plt.plot(xs, ys, linewidth=linewidth)
+
+    if xlim is not None:
+        plt.xlim(*xlim)
+    if ylim is not None:
+        plt.ylim(*ylim)
+
+    extent = plt.axis()
+
+    # find fixed points -> use fsolve to find roots of f - x
+    xs = np.linspace(extent[0], extent[1], fp_res)
+    fps = find_fixed_points_discrete(f, xs, filter_eps=fp_filter_eps, distance_eps=fp_distance_eps)
+    for fp in fps:
+        info, stable = classify_fixed_point_discrete(f, fp, eps=fp_stability_eps)
+        if verbose:
+            print(f"Fixed point {fp} ({','.join(info['cls'])}) {info['multipliers']}")
+        if stable:
+            # filled circle
+            plt.plot(fp, fp, 'ro', markersize=5)
+        else:
+            # empty circle (unstable fixed point)
+            plt.plot(fp, fp, 'wo', markersize=5, markeredgecolor='r')
+
+    # draw f
+    xs = np.linspace(extent[0], extent[1], 10*fp_res)
+    plt.plot(xs, f(xs), 'b-', linewidth=1)
+
+    plt_diagonal()
+    plt.title(title)
+    plt.xlabel('$x_n$')
+    plt.ylabel('$x_{n+1}$')
+    plt.grid()
+    plt.show()
+
+    return fps
+
+def p_iterate(f, p=2):
+    if p == 1:
+        return f
+    def _p_iterate(x):
+        for _ in range(p):
+            x = f(x)
+        return x
+    return _p_iterate
+
+def bifurcation_diagram_discrete(f, x0s, rs, p=1, dim=0, x_label='r', y_label='x', title='Bifurcation diagram',
+        fp_filter_eps=1e-5, fp_distance_eps=1e-2, fp_stability_eps=1e-5):
+    plt.figure(figsize=(8, 5))
+
+    if isinstance(rs, tuple) and len(rs) == 2:
+        rs = np.linspace(rs[0], rs[1], 200)
+    elif isinstance(rs, tuple) and len(rs) == 3:
+        rs = np.linspace(*rs)
+
+    # for each p-period
+    if isinstance(p, int):
+        ps = list(range(1,p+1))
+    else:
+        ps = list(p)
+    ps_filtered_periods = set()
+    for p in sorted(set(ps), reverse=True):
+        additionals = set([int(np.prod(p)) for p in powerset(prime_factors(p))])
+        if len(additionals - ps_filtered_periods) != 0:
+            ps_filtered_periods.update(additionals)
+        else:
+            ps.remove(p)
+            print(f"Skipping {p}-period, already covered by some in {ps}")
+    for p in tq(ps, desc='Periods', disable=len(ps) == 1):
+        # get roots for each r
+        all_roots = []
+        for r in tq(rs, desc=f'Find roots {p}-period' if len(ps) > 1 else 'Find roots'):
+            fr = p_iterate(f(r), p)
+            roots = find_fixed_points_discrete(fr, x0s, filter_eps=fp_filter_eps, distance_eps=fp_distance_eps)
+            # print(r, roots)
+            all_roots.append(roots)
+
+        # stability analysis
+        stabilities = []
+        if fp_stability_eps is not None:
+            for r, roots in zip(rs, all_roots):
+                fr = p_iterate(f(r), p)
+                stabilities.append([classify_fixed_point_discrete(fr, root, eps=fp_stability_eps)[1] for root in roots])
+
+        # scatter stable roots as black dots and unstable roots as red dots
+        for r, roots, stables in zip(rs, all_roots, stabilities):
+            for root, stable in zip(roots, stables):
+                color = 'k' if stable else 'r'
+                if not isinstance(root, (int, float)):
+                    root = root[dim]
+                plt.scatter(r, root, color=color, s=1)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.xlim(min(rs), max(rs))
+    plt.grid()
+    plt.show()
+
+    return rs, all_roots, stabilities
+
+def Lyapunov_exponent_discrete(f, x0, f_derivative=None, max_iter=10000, finite_difference_eps=1e-6, approximation_eps=1e-6, skip_initial=300):
+    conv = ConvergenceCondition(max_iter=max_iter, eps=approximation_eps, skip_converged=2, skip_initial=skip_initial)
+    x = f(x0)
+    sum_log = 0
+    for i in range(max_iter):
+        if f_derivative is not None:
+            x_dev = f_derivative(x)
+        else:
+            # calculate the finite difference approximation of the derivative
+            eps = finite_difference_eps
+            x_dev = (f(x + eps) - f(x - eps))/(2*eps)
+        term = np.log(np.abs(x_dev))
+        if conv(term):
+            break
+        if i >= skip_initial and np.isfinite(term):
+            sum_log += term
+        x = f(x)
+    return sum_log/(conv.iter-skip_initial)
 
 def fractal(f, max_iters, x_lim, y_lim, res, eps=1e-7, show='it', cmap='hot', save_fig=None, **plt_kwargs):
     """ Plot a discrete differential equation on the complex plane. The equation
