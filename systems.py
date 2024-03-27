@@ -402,6 +402,7 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
     x_dot, y_dot = f_2d(x,y)
 
     # the slope field
+    ax_orig = ax
     if ax is None:
         if figsize is None:
             # figsize reflects the aspect ratio of xlim and ylim, anker the smaller axis
@@ -433,11 +434,11 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
         # x nullclines are red
         p = get_nullclines(x_dot, nullclines_eps, x_min, dx, y_min, dy)
         if len(p) > 0:
-            plt.scatter(*p.T, linewidths=0, s=.5, color="r")
+            ax.scatter(*p.T, linewidths=0, s=.5, color="r")
         # y nullclines are black
         p = get_nullclines(y_dot, nullclines_eps, x_min, dx, y_min, dy)
         if len(p) > 0:
-            plt.scatter(*p.T, linewidths=0, s=.5, color="k")
+            ax.scatter(*p.T, linewidths=0, s=.5, color="k")
 
     # trajectories
     if x0s is not None:
@@ -447,8 +448,8 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
             y = res[y_dim]
             x0x = x0[x_dim]
             x0y = x0[y_dim]
-            plt.plot(x,y, linewidth=trajectory_width)
-            plt.scatter(x0x, x0y, marker="x")
+            ax.plot(x,y, linewidth=trajectory_width)
+            ax.scatter(x0x, x0y, marker="x")
 
     # fixed points
     fps = find_fixed_points(x_dot, y_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy)
@@ -466,14 +467,19 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
 
         if stable:
-            plt.scatter(fp[x_dim], fp[y_dim], facecolors='k', edgecolors='k')
+            ax.scatter(fp[x_dim], fp[y_dim], facecolors='k', edgecolors='k')
         else:
-            plt.scatter(fp[x_dim], fp[y_dim], facecolors='none', edgecolors='k')
+            ax.scatter(fp[x_dim], fp[y_dim], facecolors='none', edgecolors='k')
 
     ax.set_title(title)
     ax.set_xlabel('$' + x_label + '$')
     ax.set_ylabel('$' + y_label + '$')
-    plt.show()
+    if xlim is not None:
+        ax.set_xlim(*xlim)
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    if ax_orig is None:
+        plt.show()
 
 def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
     """
