@@ -396,6 +396,8 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
         plt.xlabel(xlabel)
     if ylabel is not None:
         plt.ylabel(ylabel)
+    if xticks is not None and len(xticks) == 0 and yticks is not None and len(yticks) == 0:
+        plt.axis('off')
 
     plt.title(title)
     plt.tight_layout()
