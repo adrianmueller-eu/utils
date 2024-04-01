@@ -957,11 +957,11 @@ def flow_discrete(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(
 def orbit_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(10, 10), ylim=None, title=None, markersize=.1, show=True):
     plt.figure(figsize=figsize)
     if isinstance(rs, tuple) and len(rs) == 2:
-        rs = np.linspace(rs[0], rs[1], 200)
+        rs = np.linspace(rs[0], rs[1], 1000)
     elif isinstance(rs, tuple) and len(rs) == 3:
         rs = np.linspace(*rs)
     if isinstance(x0s, tuple) and len(x0s) == 2:
-        x0s = np.linspace(x0s[0], x0s[1], 100)
+        x0s = np.linspace(x0s[0], x0s[1], 500)
     elif isinstance(x0s, tuple) and len(x0s) == 3:
         x0s = np.linspace(*x0s)
     for r in rs:
