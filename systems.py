@@ -927,7 +927,7 @@ def to_lorenz_map(f, dim=0, T=2, n_timesteps=200):
 ### Iterative maps ###
 ######################
 
-def flow_discrete(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(10, 4), title=None):
+def flow_discrete(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(10, 4), title=None, show=True):
     if isinstance(x0s, tuple) and len(x0s) == 2:
         x0s = np.linspace(x0s[0], x0s[1], 100)
     elif isinstance(x0s, tuple) and len(x0s) == 3:
@@ -949,11 +949,12 @@ def flow_discrete(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(
     elif len(x0s) > 1:
         plt.ylim(np.min(x0s), np.max(x0s))
     plt.grid()
-    plt.show()
+    if show:
+        plt.show()
 
     return xs
 
-def orbit_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(10, 10), ylim=None, title=None, markersize=.1):
+def orbit_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(10, 10), ylim=None, title=None, markersize=.1, show=True):
     plt.figure(figsize=figsize)
     if isinstance(rs, tuple) and len(rs) == 2:
         rs = np.linspace(rs[0], rs[1], 200)
@@ -976,7 +977,8 @@ def orbit_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(10, 10), ylim=None,
         plt.ylim(*ylim)
     plt.title(title)
     plt.grid()
-    plt.show()
+    if show:
+        plt.show()
 
 def find_fixed_points_discrete(f, x0s, filter_eps=1e-6, distance_eps=1e-2):
     fpf = lambda x: f(x) - x
@@ -1009,7 +1011,7 @@ def classify_fixed_point_discrete(f, fp, eps=1e-6):
     return {'multipliers': eigvals, 'cls': classes, 'is_stable': stable}, stable
 
 def coweb(f, x0s, max_iter=1000, eps=1e-6, xlim=None, ylim=None, title=None, figsize=(8,5), linewidth=.5,
-          fp_res=100, fp_filter_eps=1e-6, fp_stability_eps=1e-6, fp_distance_eps=1e-3, verbose=True):
+          fp_res=100, fp_filter_eps=1e-6, fp_stability_eps=1e-6, fp_distance_eps=1e-3, verbose=True, show=True):
     # plot the cobweb diagram
     plt.figure(figsize=figsize)
     for i, x in enumerate(x0s):
@@ -1056,7 +1058,8 @@ def coweb(f, x0s, max_iter=1000, eps=1e-6, xlim=None, ylim=None, title=None, fig
     plt.xlabel('$x_n$')
     plt.ylabel('$x_{n+1}$')
     plt.grid()
-    plt.show()
+    if show:
+        plt.show()
 
     return fps
 
@@ -1070,8 +1073,8 @@ def p_iterate(f, p=2):
     return _p_iterate
 
 def bifurcation_diagram_discrete(f, x0s, rs, p=1, dim=0, x_label='r', y_label='x', title='Bifurcation diagram',
-        fp_filter_eps=1e-5, fp_distance_eps=1e-2, fp_stability_eps=1e-5):
-    plt.figure(figsize=(8, 5))
+        fp_filter_eps=1e-5, fp_distance_eps=1e-2, fp_stability_eps=1e-5, figsize=(8, 5), show=True):
+    plt.figure(figsize=figsize)
 
     if isinstance(rs, tuple) and len(rs) == 2:
         rs = np.linspace(rs[0], rs[1], 200)
@@ -1119,7 +1122,8 @@ def bifurcation_diagram_discrete(f, x0s, rs, p=1, dim=0, x_label='r', y_label='x
     plt.ylabel(y_label)
     plt.xlim(min(rs), max(rs))
     plt.grid()
-    plt.show()
+    if show:
+        plt.show()
 
     return rs, all_roots, stabilities
 
