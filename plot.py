@@ -136,7 +136,7 @@ def histogram(data, bins=None, xlog=False, density=False):
         bins = bins_sqrt(data)
     return np.histogram(data, bins=bins, density=density)
 
-def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True):
+def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
     """Uses magic to create pretty histograms."""
 
     if type(bins) == str:
@@ -151,10 +151,10 @@ def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=F
 
     # create figure
     if colored:
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10,5), sharex=True, gridspec_kw={"height_ratios": [10, 1]})
+        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=figsize, sharex=True, gridspec_kw={"height_ratios": [10, 1]})
         ax0 = ax[0]
     else:
-        fig, ax0 = plt.subplots(figsize=(10,5))
+        fig, ax0 = plt.subplots(figsize=figsize)
 
     # filter nan, -inf, and inf from data
     data = np.array(data)
