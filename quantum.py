@@ -977,12 +977,14 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
 
     return H
 
-def random_ham(n_qubits, n_terms, offset=0, scaling=True):
-    """ Draw `n_terms` basis elements out of the basis. If `scaling=True`, the weights are normalized to 1."""
+def random_ham(n_qubits, n_terms, offset=0, coeffs=True, scaling=True):
+    """ Draw `n_terms` basis elements out of the basis. If `scaling=True`, the coefficients are normalized to 1. If `coeffs=False`, the coefficients (and scaling) are omitted."""
     # generate a list of random terms
     basis = pauli_basis(n_qubits, kind='str')[1:]  # exclude the identity
     assert n_terms <= len(basis), f"Can't draw {n_terms} terms from a basis of size {len(basis)}!"
     terms = np.random.choice(basis, size=n_terms, replace=False)
+    if not coeffs:
+        return ' + '.join(terms)
     # generate a random coefficient for each term
     coeffs = np.random.random(n_terms)
     if scaling:
