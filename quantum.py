@@ -164,7 +164,8 @@ try:
     ### Qiskit ###
     ##############
 
-    from qiskit import Aer, transpile, assemble, execute
+    from qiskit import transpile
+    from qiskit_aer import Aer
     from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
     from qiskit.quantum_info.operators import Operator
 
@@ -173,12 +174,15 @@ try:
     from qiskit.visualization import plot_histogram
     #from qiskit.circuit.library import *
 
-    def run(circuit, shots=0, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4)):
+    def run(circuit, shots=1, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4)):
         if shots > 10:
             tc = time_complexity(circuit)
             print("TC: %d, expected running time: %.3fs" % (tc, tc * 0.01))
         if generate_state:
             simulator = Aer.get_backend("statevector_simulator")
+            if shots is None or shots == 0:
+                print("Warning: shots=0 is not supported for statevector_simulator. Using shots=1 instead.")
+                shots = 1
         else:
             simulator = Aer.get_backend('aer_simulator')
         t_circuit = transpile(circuit, simulator)
@@ -209,9 +213,11 @@ try:
             q_k.unitary(Operator(u), self.all_qubits, label=f"exp^i{k}H")
             return q_k
 
-    def get_unitary(circ, decimals=42):
-        sim = execute(circ, Aer.get_backend('unitary_simulator')) # run the simulator
-        return sim.result().get_unitary(circ, decimals=decimals)
+    def get_unitary(circ, decimals=None):
+        sim = Aer.get_backend('unitary_simulator')
+        t_circuit = transpile(circ, sim)
+        res = sim.run(t_circuit).result()
+        return res.get_unitary(decimals=decimals)
 
     def get_pe_energies(U):
         if isinstance(U, QuantumCircuit):
@@ -240,7 +246,7 @@ try:
 
 
 except ModuleNotFoundError:
-    print("Warning: qiskit not installed! Use `pip install qiskit`.")
+    print("Warning: qiskit not installed! Use `pip install qiskit qiskit_aer pylatexenc`.")
     pass
 
 #############
