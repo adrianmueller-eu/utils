@@ -126,24 +126,25 @@ class ConvergenceCondition:
     """ Convergence condition for iterative algorithms.
 
     Additional properties
-        x_prev (list): List of previous x's for error calculation. At most `converged_sequence_length` x's are stored.
-        error (float): Error of the last iteration.
-        start_time (float): Time of the first iteration.
-        iter (int): Number of already performed iterations.
-        skipped (int): Number of iterations the error was below eps.
-        pbar (tqdm.tqdm): Progress bar object.
+        has_converged (bool): Whether a convergence condition has been met.
+        iter (int):           Number of already performed iterations.
+        error (float):        Error of the last iteration.
+        x_prev (list):        List of previous x's for error calculation. At most `period` x's are stored.
+        start_time (float):   Clock time of the first iteration.
+        skipped (int):        Number of successive iterations the error was below eps.
+        pbar (tqdm.tqdm):     Progress bar object.
     """
 
-    def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_time=None, converged_sequence_length=2, skip_initial=0, skip_converged=0, use_tqdm=False):
+    def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False):
         """ Convergence condition for iterative algorithms.
 
         Parameters
-            max_iter (int): Maximum number of iterations. If `None`, no maximum is set.
-            eps (float): Maximum error. If `None`, no error is calculated.
-            max_time (float): Maximum time in seconds. If `None`, no maximum is set.
-            converged_sequence_length (int): Number of previous iterations to check for convergence (useful for oscillating sequences)
-            skip_initial (int): Number of iterations to let pass in the beggining before checking for convergence
-            skip_converged (int): Number of iterations the error must be below eps
+            max_iter (int):              Maximum number of iterations. If `None`, no maximum is set.
+            eps (float):                 Maximum error. If `None`, no error is calculated.
+            max_time (float):            Maximum time in seconds. If `None`, no maximum is set.
+            period (int):                Number of previous iterations to check for convergence (useful for oscillating sequences)
+            skip_initial (int):          Number of iterations to let pass in the beggining before checking for convergence
+            skip_converged (int):        Number of successivee iterations the error must be below `eps`
             use_tqdm (bool | tqdm.tqdm): Set `True` to show a `tqdm` progress bar. Give a `tqdm.tqdm` object to use a custom `tqdm` progress bar.
 
         Example:
@@ -164,7 +165,7 @@ class ConvergenceCondition:
         self.max_iter = int(max_iter) if max_iter is not None else None
         self.eps = eps
         self.max_time = max_time
-        self.converged_sequence_length = converged_sequence_length
+        self.period = period
         self.skip_initial = skip_initial
         self.skip_converged = skip_converged
 
@@ -198,14 +199,10 @@ class ConvergenceCondition:
         if self.has_converged:
             return True
 
-        self.has_converged = self.check_convergence(x, iteration)
+        self.has_converged = self._check_convergence(x, iteration)
         return self.has_converged
 
-    @property
-    def has_converged(self):
-        return self.has_converged
-
-    def check_convergence(self, x, iteration=None):
+    def _check_convergence(self, x, iteration=None):
         if iteration is not None:
             self.iter = iteration
         else:
@@ -245,7 +242,7 @@ class ConvergenceCondition:
         if self.x_prev is None:
             self.x_prev = [deepcopy(x)]
         else:
-            if len(self.x_prev) >= self.converged_sequence_length:
+            if len(self.x_prev) >= self.period:
                 self.x_prev = self.x_prev[1:]
             self.x_prev.append(deepcopy(x))
         return False
