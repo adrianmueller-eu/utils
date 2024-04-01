@@ -226,9 +226,10 @@ try:
         energies = np.angle(eigvals)/(2*np.pi)
         return energies
 
-    def show_eigenvecs(circ, showrho=False):
-        u = get_unitary(circ)
-        eigvals, eigvecs = np.linalg.eig(u)
+    def show_eigenvecs(U, showrho=False):
+        if isinstance(U, QuantumCircuit):
+            U = get_unitary(U)
+        eigvals, eigvecs = np.linalg.eig(U)
         print(np.round(eigvecs, 3))
         for i in range(eigvecs.shape[1]):
             plotQ(eigvecs[:,i], figsize=(12,2), showrho=showrho)
