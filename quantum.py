@@ -208,9 +208,9 @@ try:
             self.unitary(Operator(u), self.all_qubits, label="exp^iH") # add unitary to circuit
 
         def power(self, k):
-            q_k = QuantumCircuit(self.n)
+            q_k = QuantumCircuit(self.n, name=f"exp({k}iH)")
             u = matexp(1j*k*self.H)
-            q_k.unitary(Operator(u), self.all_qubits, label=f"exp^i{k}H")
+            q_k.unitary(Operator(u), self.all_qubits, label=f"exp^{k}iH")
             return q_k
 
     def get_unitary(circ, decimals=None):
