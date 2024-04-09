@@ -262,13 +262,8 @@ def reverse_qubit_order(state):
     # if vector, just reshape
     if len(state.shape) == 1 or state.shape[0] != state.shape[1]:
         return state.reshape([2]*n).T.flatten()
-    # if matrix, reverse qubit order in eigenvectors and eigenvalues
-    # TODO: This doesn't work for mixed states!
     elif state.shape[0] == state.shape[1]:
-        vals, vecs = np.linalg.eig(state)
-        # vals = reverse_qubit_order(vals)
-        vecs = np.array([reverse_qubit_order(vecs[:,i]) for i in range(2**n)])
-        return vecs.T @ np.diag(vals) @ vecs
+        return state.reshape([2,2]*n).T.reshape(2**n, 2**n).conj()
 
 def partial_trace(rho, retain_qubits):
     """Trace out all qubits not specified in `retain_qubits`."""
@@ -1577,10 +1572,10 @@ def _test_reverse_qubit_order():
     H_rev2 = reverse_qubit_order(H)
     assert np.allclose(H_rev, H_rev2)
 
-    # TODO: This test fails
-    # H = parse_hamiltonian('XI + YI')
-    # H_rev = parse_hamiltonian('IX + IY')
-    # assert np.allclose(reverse_qubit_order(H), H_rev)
+    H = parse_hamiltonian('XI + YI')
+    H_rev = parse_hamiltonian('IX + IY')
+    H_rev2 = reverse_qubit_order(H)
+    assert np.allclose(H_rev, H_rev2), f"{H_rev} \n≠\n {H_rev2}"
 
     # pure density matrix
     psi = np.kron(np.kron([1,1], [0,1]), [1,-1])
@@ -1590,22 +1585,21 @@ def _test_reverse_qubit_order():
     rho_rev2 = reverse_qubit_order(rho)
     assert np.allclose(rho_rev, rho_rev2)
 
-    # TODO: This fails, too
-    # # draw n times 2 random 1-qubit states and a probability distribution over all n pairs
-    # n = 10
-    # psis = [[random_dm(1) for _ in range(2)] for _ in range(n)]
-    # p = normalize(np.random.rand(n), p=1)
-    # # compute the average state
-    # psi = np.zeros((2**2, 2**2), dtype=complex)
-    # for i in range(n):
-    #     psi += p[i]*np.kron(psis[i][0], psis[i][1])
-    # # compute the average state with reversed qubit order
-    # psi_rev = np.zeros((2**2, 2**2), dtype=complex)
-    # for i in range(n):
-    #     psi_rev += p[i]*np.kron(psis[i][1], psis[i][0])
+    # draw n times 2 random 1-qubit states and a probability distribution over all n pairs
+    n = 10
+    psis = [[random_dm(1) for _ in range(2)] for _ in range(n)]
+    p = normalize(np.random.rand(n), p=1)
+    # compute the average state
+    psi = np.zeros((2**2, 2**2), dtype=complex)
+    for i in range(n):
+        psi += p[i]*np.kron(psis[i][0], psis[i][1])
+    # compute the average state with reversed qubit order
+    psi_rev = np.zeros((2**2, 2**2), dtype=complex)
+    for i in range(n):
+        psi_rev += p[i]*np.kron(psis[i][1], psis[i][0])
 
-    # psi_rev2 = reverse_qubit_order(psi)
-    # assert np.allclose(psi_rev, psi_rev2), f"psi_rev = {psi_rev}\npsi_rev2 = {psi_rev2}"
+    psi_rev2 = reverse_qubit_order(psi)
+    assert np.allclose(psi_rev, psi_rev2), f"psi_rev = {psi_rev}\npsi_rev2 = {psi_rev2}"
 
     return True
 
