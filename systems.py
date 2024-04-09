@@ -154,6 +154,10 @@ def classify_fixed_point(f, fp, eps, verbose=True):
     `fp` (float or tuple):  The fixed point to classify
     `eps` (float):          The precision of the finite differences
     `verbose` (bool):       Whether to print the classification
+
+    Returns:
+    str|list[str]:        The classification(s) of the fixed point
+    bool:                 Whether the fixed point is stable in all dimensions
     """
     if isinstance(fp, (int, float)) or len(fp) == 1:
         x = np.array(fp)
@@ -162,6 +166,8 @@ def classify_fixed_point(f, fp, eps, verbose=True):
         df_l = (f(x - eps) - ffp)/eps
         df_r = (f(x + eps) - ffp)/eps
         stable = (df_r - df_l)/2 < 0 # (f(x + eps) - f(x - eps))/(2*eps) < 0
+        if df_l is None or df_r is None:
+            cls = "Unknown"
         if df_l > 0 and 0 > df_r:
             cls = "Stable"
         elif df_l < 0 and 0 < df_r:
@@ -178,24 +184,29 @@ def classify_fixed_point(f, fp, eps, verbose=True):
 
     # Estimate Jacobian matrix at the fixed point via finite differences
     dims = len(fp)
+    ffp = np.array(f(*fp))
     J = np.zeros((dims,dims))
     for k in range(dims):
         # partial derivative of f with respect to x_k at the root
         dfabu = np.array(f(*(fp + eps*np.eye(dims)[:,k])))
         dfabl = np.array(f(*(fp - eps*np.eye(dims)[:,k])))
         J[:,k] = (dfabu - dfabl)/(2*eps)
+    if np.any(np.isnan(J)):
+        if verbose:
+            print(f"Fixed point {fp}: Unknown ({np.round(ffp,3)})")
+        return "Unknown", False
     # all 2-combinations of the eigenvalues (use itertools.combinations)
     if dims == 2:
         cls, info = classify_fixed_point_2D(*np.linalg.eigvals(J), J)
         if verbose:
-            print(f"Fixed point {fp}: {cls}, tr={info['tr']}, det={info['det']}, dis={info['dis']}")
+            print(f"Fixed point {fp}: {cls} ({np.round(ffp,3)}), tr={info['tr']}, det={info['det']}, dis={info['dis']}")
         return cls, info['stable']
 
     # dims > 2
     classes = []
     stable = True
     if verbose:
-        print(f"Fixed point {fp}:")
+        print(f"Fixed point {fp}: ({np.round(ffp,3)})")
     for dims, (l1, l2) in zip(combinations(range(len(fp)), 2), combinations(np.linalg.eigvals(J), 2)):
         cls, info = classify_fixed_point_2D(l1, l2)
         if verbose:
@@ -284,7 +295,7 @@ def ODE_phase_1d(f, xlim=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x
         elif cls == 'Right half-stable':
             fillstyle = 'right'
         else:
-            fillstyle = 'full'
+            continue
         plt.plot(fp, 0, marker='o', fillstyle=fillstyle, markersize=8, color='k')
 
     # the slope field
@@ -463,6 +474,8 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
                 fp = fp_
         if stability_method == 'jacobian':
             clss, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+            if clss == 'Unkown' or 'Unknown' in clss:
+                continue
         elif stability_method == 'lyapunov':
             stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
         else:
@@ -624,6 +637,8 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
         for fp in fps:
             if stability_method == 'jacobian':
                 clss, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+                if 'Unknown' in clss:
+                    continue
             elif stability_method == 'lyapunov':
                 stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
             else:
@@ -708,7 +723,7 @@ def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_di
     if fp_stability_eps is not None:
         for r, roots in zip(rs, all_roots):
             if stability_method == 'jacobian':
-                stabilities.append([classify_fixed_point(f(r), root, eps=fp_stability_eps, verbose=False)[1] for root in roots])
+                stabilities.append([classify_fixed_point(f(r), root, eps=fp_stability_eps, verbose=False) for root in roots])
             elif stability_method == 'lyapunov':
                 stabilities.append([is_stable(f(r), root, eps=fp_stability_eps, verbose=False) for root in roots])
             else:
@@ -717,7 +732,9 @@ def bifurcation_diagram_1d(f, x0s, r_range, r_res=200, fp_filter_eps=1e-5, fp_di
     plt.figure(figsize=(8, 5))
     # scatter stable roots as black dots and unstable roots as red dots
     for r, roots, stables in zip(rs, all_roots, stabilities):
-        for root, stable in zip(roots, stables):
+        for root, (clss, stable) in zip(roots, stables):
+            if clss == 'Unknown' or 'Unknown' in clss:
+                continue
             color = 'k' if stable else 'r'
             if not isinstance(root, (int, float)):
                 root = root[dim]
@@ -793,7 +810,11 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
                 eps = fp_stability_eps
                 if len(root) == 1:
                     # derivative of the function
-                    df = (fab(root + eps) - fab(root - eps))/(2*eps)
+                    dfu = fab(root + eps)
+                    dfl = fab(root - eps)
+                    if dfu is None or dfl is None:
+                        continue
+                    df = (dfu - dfl)/(2*eps)
                     dfs.append(float(df))
                 else:
                     # smallest absolute eigenvalue of the Jacobian matrix
@@ -804,6 +825,8 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
                         dfabu = np.array(fab(root + eps*np.eye(dims)[:,k]))
                         dfabl = np.array(fab(root - eps*np.eye(dims)[:,k]))
                         J[:,k] = (dfabu - dfabl)/(2*eps)
+                    if np.any(np.isnan(J)):
+                        continue
                     if 'dis' in kind or 'logdis' in kind:
                         tr = np.trace(J)
                         det = np.linalg.det(J)
