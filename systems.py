@@ -575,8 +575,8 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
         return np.array(ps)
 
     def find_fixed_points(x_dot, y_dot, z_dot, filter_eps, distance_eps, xmin, dx, ymin, dy, zmin, dz):
-        row, col, depth = np.where(np.logical_and(
-            np.abs(x_dot) < filter_eps, np.abs(y_dot) < filter_eps, np.abs(z_dot) < filter_eps
+        row, col, depth = np.where(np.logical_and.reduce(
+            (np.abs(x_dot) < filter_eps, np.abs(y_dot) < filter_eps, np.abs(z_dot) < filter_eps)
         ))
 
         # first, sort fps by closeness into lists
