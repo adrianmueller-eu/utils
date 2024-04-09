@@ -955,7 +955,7 @@ def to_lorenz_map(f, dim=0, T=2, n_timesteps=200):
 ### Iterative maps ###
 ######################
 
-def flow_discrete(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(10, 4), title=None, show=True):
+def flow_discrete_1d(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(10, 4), title=None, show=True):
     if isinstance(x0s, tuple) and len(x0s) == 2:
         x0s = np.linspace(x0s[0], x0s[1], 100)
     elif isinstance(x0s, tuple) and len(x0s) == 3:
@@ -981,6 +981,39 @@ def flow_discrete(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsize=(
         plt.show()
 
     return xs
+
+def flow_discrete_2d(f, x0s, xlim=None, ylim=None, n_iter=1000, s=2, c=None, figsize=(10, 4), title=None, show=True):
+    x0s = np.array(x0s)
+    xs = np.zeros((n_iter+1, len(x0s)))
+    ys = np.zeros((n_iter+1, len(x0s)))
+    y0s = x0s[:,1]
+    x0s = x0s[:,0]
+    xs[0] = x0s
+    ys[0] = y0s
+    for i in range(n_iter):
+        xs[i+1], ys[i+1] = f(xs[i], ys[i])
+
+    plt.figure(figsize=figsize)
+    for i in range(len(x0s)):
+        if c is None:
+            plt.scatter(xs[:,i], ys[:,i], c=range(n_iter+1), cmap='plasma', s=s)
+        else:
+            plt.scatter(xs[:,i], ys[:,i], c=c, s=s)
+    plt.xlabel('$x_n$')
+    plt.ylabel('$y_n$')
+    plt.title(title)
+    if xlim is not None:
+        plt.xlim(*xlim)
+    if ylim is not None:
+        plt.ylim(*ylim)
+    elif len(x0s) > 1:
+        plt.xlim(np.min(x0s), np.max(x0s))
+        plt.ylim(np.min(y0s), np.max(y0s))
+    plt.grid()
+    if show:
+        plt.show()
+
+    return xs, ys
 
 def orbit_diagram_discrete(f, x0s, rs, n_iter=1000, figsize=(10, 10), ylim=None, title=None, markersize=.1, show=True):
     plt.figure(figsize=figsize)
