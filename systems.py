@@ -535,7 +535,7 @@ def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
 
     return ODE_phase_2d(f_cartesian, x0s, xlim=(-rlim, rlim), ylim=(-rlim, rlim), **args)
 
-def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_timesteps=6000, x_label="x", y_label="y", z_label="z", title="Phase portrait",
+def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_timesteps=6000, x_label="x", y_label="y", z_label="z", title="Phase portrait", ax=None,
                 fp_resolution=10, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4, linewidth=.2):
     """
     Phase portrait of a first-order 3D ODE system
@@ -555,6 +555,7 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
     `y_label` (str):            The label of the y axis
     `z_label` (str):            The label of the z axis
     `title` (str):              The title of the plot
+    `ax` (matplotlib axis):     Optional axis to plot the phase portrait
     `fp_resolution` (int):      The resolution of the grid in which to look for fixed points and plot the slope field
     `fp_filter_eps` (float):    The maximum `|f(x^*, y^*, z^*)|` for which `(x^*, y^*, z^*)` is considered a fixed point
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
@@ -612,8 +613,9 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
         x_dot, y_dot, z_dot = f(x,y,z)
 
     # no slope field for 3D
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
 
     # nullclines
     if nullclines:
