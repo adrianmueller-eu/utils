@@ -1146,20 +1146,27 @@ def Lyapunov_exponent_discrete(f, x0, f_derivative=None, max_iter=10000, finite_
         x = f(x)
     return sum_log/(conv.iter-skip_initial)
 
-def fractal(f, max_iters, x_lim, y_lim, res, eps=1e-7, show='it', cmap='hot', save_fig=None, **plt_kwargs):
+def fractal(f, max_iters=100, res=1000, xlim=(-2,2), ylim=(-2,2), eps=None, min_points=1, kind='it', cmap='hot', save_fig=None, title="", colorbar=False, ticks=None, grid=False, show=True, ppi=60, **plt_kwargs):
     """ Plot a discrete differential equation on the complex plane. The equation
     `z = f(it, z, z0)` is iterated until convergence or `max_iters` iterations.
 
     Parameters
         f (function):    The function to iterate. Must take the arguments `it`, `z`, and `z0`.
         max_iters (int): The maximum number of iterations.
-        x_lim (tuple):   The limits along the real axis.
-        y_lim (tuple):   The limits along the imaginary axis.
         res (int):       The number of pixels per unit length.
+        xlim (tuple):    The limits along the real axis.
+        ylim (tuple):    The limits along the imaginary axis.
         eps (float):     The maximum error allowed between iterations.
-        show (str):      What to show. Can be 'it' (for the number of iterations needed for convergence), 'z' (for the actual complex numbers), or 'both'. If `save_fig` is set, `plt.show()` is not called.
+        min_points (int): Minimum amount of points that must not have diverged to continue.
+        kind (str):      What to show. Can be 'it' (for the number of iterations needed for convergence), 'z' (for the actual complex numbers), or 'both'. If `save_fig` is set, `plt.show()` is not called.
         cmap (str):      The colormap to use when plotting the number of iterations.
         save_fig (str):  The name of the file to save the plot. If `None`, the plot is not saved.
+        title (str):     The title of the plot.
+        colorbar (bool): For the 'it' plot, whether to show the colorbar indicating the number of iterations until divergence.
+        ticks (tuple):   Number of xticks and yticks to show. Set `None` to use the default and `0` to deactivate the axis.
+        grid (bool):     Whether to show grid lines.
+        show (bool):     Whether to call `plt.show()`.
+        ppi (int):       The resolution of the plot in pixels per inch.
         **plt_kwargs:    Keyword arguments passed to `plt.imshow`.
 
     Returns
@@ -1173,76 +1180,85 @@ def fractal(f, max_iters, x_lim, y_lim, res, eps=1e-7, show='it', cmap='hot', sa
         iters = np.zeros_like(z, dtype='i4')
         for it in tq(range(1,max_iters+1)):
             z_ = f(it, z, z0)
-            iters[np.isfinite(z_)] = it
+            z_fin = np.isfinite(z_)
+            iters[z_fin] = it
             z_[np.isnan(z_)] = np.inf
             if eps is not None:
-                error_ = np.abs(z - z_)
-                finite = np.isfinite(error_)
-                if np.any(finite):
-                    error_ = np.max(error_[finite])
-                else:
-                    error_ = np.inf
+                if np.sum(z_fin) == 0:
+                    print(f"Chain diverged everywhere before {it} iterations")
+                    break
+                error_ = np.max(np.abs(z[z_fin] - z_[z_fin]))
                 # print(it, "Error:",error_,np.abs(error - error_))
                 if it > 1 and np.abs(error - error_) < eps:
                     print(f"Chain converged after {it} iterations (max error: {error_})")
                     break
                 if it == max_iters:
-                    print(f"Chain did not converge! (max error: {error_})")
+                    print(f"Chain did not converge in {it} iterations (max error: {error_})")
                 error = error_
+            elif it % 100 == 0 and np.sum(z_fin) < min_points:
+                print(f"Chain diverged everywhere before {it} iterations")
+                break
             z = z_
         return z, iters
 
-    def get_res(x_lim, y_lim, res):
+    def get_res(xlim, ylim, res):
         """ Get the resolution of the plot. `res` is the number of pixels per unit length """
-        x_d = x_lim[1] - x_lim[0]
-        y_d = y_lim[1] - y_lim[0]
+        x_d = xlim[1] - xlim[0]
+        y_d = ylim[1] - ylim[0]
         if x_d < 1e-10:
-            raise ValueError("x_lim is too small or negative")
+            raise ValueError("xlim is too small or negative")
         if y_d < 1e-10:
-            raise ValueError("y_lim is too small or negative")
+            raise ValueError("ylim is too small or negative")
         x_res = int(res * np.sqrt(x_d / y_d))
         y_res = int(res * np.sqrt(y_d / x_d))
         print(f"Resolution: {x_res} x {y_res}")
         return x_res, y_res
 
-    def get_grid(x_lim, y_lim, x_res, y_res):
+    def get_meshgrid(xlim, ylim, x_res, y_res):
         """ Get the grid of points to iterate over """
-        x = np.linspace(*x_lim, x_res)
-        y = np.linspace(*y_lim, y_res)
+        x = np.linspace(*xlim, x_res)
+        y = np.linspace(*ylim, y_res)
         x, y = np.meshgrid(x, y)
         return x + 1j*y
 
     def get_figsize(x_res, y_res):
         """ Get the size of the figure """
-        x_size = max(int(np.round(x_res / 30)),1)
-        y_size = max(int(np.round(y_res / 30)),1)
+        x_size = max(int(np.round(x_res / ppi)),1)
+        y_size = max(int(np.round(y_res / ppi)),1)
         print(f"Figure size: {x_size} x {y_size}")
         return x_size, y_size
 
-    x_res, y_res = get_res(x_lim, y_lim, res)
-    grid = get_grid(x_lim, y_lim, x_res, y_res)
-    z, iters = _fractal(f, grid, max_iters, eps)
+    x_res, y_res = get_res(xlim, ylim, res)
+    mesh = get_meshgrid(xlim, ylim, x_res, y_res)
+    z, iters = _fractal(f, mesh, max_iters, eps)
 
     # Plot the fractal
-    if show == 'it' or show == 'both':
+    def _plot(data, name):
         fig = plt.figure(figsize=get_figsize(x_res, y_res))
-        img = plt.imshow(iters, cmap=cmap, **plt_kwargs)
-        # plt.colorbar(img)
-        plt.axis('off')
-        if save_fig is None:
-            plt.show()
+        img = plt.imshow(data, cmap=cmap, **plt_kwargs)
+        plt.title(title)
+        if colorbar and name == 'it':
+            plt.colorbar(img, fraction=0.0312, pad=0.02)
+        if ticks is None:
+            plt.axis('off')
         else:
-            plt.savefig(save_fig + '_it.png', bbox_inches='tight', pad_inches=0)
-            print(f"Saved to {save_fig}_it.png")
-    if show == 'z' or show == 'both':
-        fig = plt.figure(figsize=get_figsize(x_res, y_res))
+            if ticks[0] is not None:
+                plt.xticks(np.linspace(0, x_res, ticks[0]), np.linspace(*xlim, ticks[0]))
+            if ticks[1] is not None:
+                plt.yticks(np.linspace(0, y_res, ticks[1]), np.linspace(*ylim, ticks[1]))
+        if grid:
+            plt.grid()
+        if show:
+            plt.show()
+        if save_fig is not None:
+            filename = save_fig + f'_{name}.png'
+            plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+            print(f"Saved to {filename}")
+
+    if kind == 'it' or kind == 'both':
+        _plot(iters, 'it')
+    if kind == 'z' or kind == 'both':
         img = colorize_complex(z)
-        plt.imshow(img, **plt_kwargs)
-        plt.axis('off')
-        if save_fig is None:
-            plt.show()
-        else:
-            plt.savefig(save_fig + '_z.png', bbox_inches='tight', pad_inches=0)
-            print(f"Saved to {save_fig}_z.png")
+        _plot(img, 'z')
 
     return z, iters

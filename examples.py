@@ -37,7 +37,7 @@ def fractal_heart():
 
     phi = np.exp(1j*1/4*2*np.pi)
     f = lambda it, z, z0: z**2 + 0.7 + z0*phi if it > 1 else (z*phi)**2 + 0.7 + z0*phi
-    fractal(f, 100, (-1, 1), (-0.2, 1.8), 2000, show='it', eps=None, save_fig='fractal_heart')
+    fractal(f, 100, 2000, (-1, 1), (-0.2, 1.8), save_fig='fractal_heart')
 
     f = lambda it, z, z0: z**2 + 0.7 + z0
-    fractal(f, 4000, (-0.79804, -0.79684), (-0.65403, -0.65283), 2000, show='it', eps=None, save_fig='fractal_heart_zoomed')
+    fractal(f, 4000, 2000, (-0.79804, -0.79682), (-0.65403, -0.65281), save_fig='fractal_heart_zoomed')
