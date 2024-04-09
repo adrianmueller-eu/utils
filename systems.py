@@ -22,8 +22,8 @@ def simulate(f, x0, T, dt):
     t = np.arange(0, T, dt)
     return *sol.sol(t), t
 
-def ODE_flow_1d(f, x0s=None, x_limits=(-2,2), T=10, n_timesteps=10000):
-    x_min, x_max = x_limits
+def ODE_flow_1d(f, x0s=None, xlim=(-2,2), T=10, n_timesteps=10000):
+    x_min, x_max = xlim
     dt = T/n_timesteps
     t, x = np.meshgrid(np.arange(0, T, T/20), np.arange(x_min, x_max, (x_max - x_min)/20))
     V = f(x)
@@ -206,7 +206,7 @@ def classify_fixed_point(f, fp, eps, verbose=True):
 
     return classes, stable
 
-def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x_label="x", title="Phase portrait",
+def ODE_phase_1d(f, xlim=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x_label="x", title="Phase portrait",
                  fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-2):
     """
     Phase portrait of a first-order 1D ODE
@@ -216,7 +216,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
 
     Args:
     `f` (function):             The ODE. Must take one argument, `x`, and return the first derivative `x_dot`
-    `x_limits` (tuple):         The limits of the x-axis
+    `xlim` (tuple):         The limits of the x-axis
     `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
@@ -230,7 +230,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     `fp_stability_eps` (float): The precision when checking for stability. If method is `jacobian`, it controls the precision of the finite differences and for method `lyapunov` the distance of the test particle.
     """
 
-    x_min, x_max = x_limits
+    x_min, x_max = xlim
     dt = T/n_timesteps
     dx = (x_max - x_min)/(fp_resolution*n_arrows)
     x = np.arange(x_min, x_max, dx)
@@ -296,7 +296,7 @@ def ODE_phase_1d(f, x_limits=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=1
     q = ax.quiver(x_, np.zeros_like(x_), x_dot_, np.zeros_like(x_dot_), np.abs(x_dot_),
                   cmap='cool', pivot='mid', angles='xy', headwidth=3, headlength=1, headaxislength=1)
     ax.quiverkey(q, X=0.8, Y=1.03, U=2, label='dx/dt', labelpos='E')
-    ax.set_xlim(x_limits)
+    ax.set_xlim(xlim)
     ax.set_ylim(*ax.get_ylim())
 
     ax.set_title(title)
@@ -638,6 +638,9 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
     ax.set_xlabel('$' + x_label + '$')
     ax.set_ylabel('$' + y_label + '$')
     ax.set_zlabel('$' + z_label + '$')
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+    ax.set_zlim(z_min, z_max)
     plt.show()
 
 
