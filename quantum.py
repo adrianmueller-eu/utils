@@ -476,6 +476,10 @@ def ket(specification):
             return normalize(np.array([1,1j], dtype=complex))
         elif specification == "-i":
             return normalize(np.array([1,-1j], dtype=complex))
+        elif specification.isdigit() and len(specification.replace('0', '').replace('1', '')) > 0:
+            a = int(specification)
+            n = int(np.ceil(np.log2(a+1)))
+            return normalize(bincoll_from_int(2**a, 2**n))
 
         # remove whitespace
         specification = specification.replace(" ", "")
@@ -485,6 +489,8 @@ def ket(specification):
         # Parse the specification into the dictionary, where the keys are the strings '00', '01', '10', '11', etc. and the values are the weights
         # The following cases have to be considered:
         #  00 + 11
+        #  00 - 11
+        #  00 - 0.1*11
         #  0.5*00 + 0.5*11
         #  0.5*(00 + 11)
         #  (1+1j)*00 + (1-1j)*11
@@ -493,10 +499,16 @@ def ket(specification):
 
         # if there are no brackets, then split by "+" and then by "*"
         if "(" not in specification and ")" not in specification:
+            specification = specification.replace("-", "+-")
             for term in specification.split("+"):
+                if term == "":
+                    continue
                 if "*" in term:
                     weight, state = term.split("*")
                     weight = complex(weight)
+                elif term[0] == '-':
+                    weight = -1
+                    state = term[1:]
                 else:
                     weight = 1
                     state = term
@@ -508,17 +520,10 @@ def ket(specification):
                     specification_dict[state] += weight
                 else:
                     specification_dict[state] = weight
+
+            specification = specification_dict
         else:
             raise NotImplementedError("Parentheses are not yet supported!")
-
-        # normalize the weights
-        specification = {}
-        for key in specification_dict:
-            specification[key] = specification_dict[key] / np.sum(list(specification_dict.values()))
-
-        # convert the weights to floats
-        for key in specification:
-            specification[key] = complex(specification[key])
 
     # convert the dictionary to a state vector
     n = len(list(specification.keys())[0])
