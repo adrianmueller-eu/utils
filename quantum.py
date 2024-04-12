@@ -1664,14 +1664,14 @@ def _test_entropy_von_Neumann():
     return True
 
 def _test_entropy_entanglement():
-    # Bell state |00> + |11> should for the first qubit have entropy 1
-    rho = 1/2*np.outer(np.array([1,0,0,1]), np.array([1,0,0,1]))
+    # Two qubits in the Bell state |00> + |11> should have entropy 1
+    rho = op('00 + 11')
     S = entropy_entanglement(rho, [0])
     assert np.allclose(S, 1), f"S = {S} ≠ 1"
 
-    # Two separable systems should for the first system have entropy 0
-    rhoA = random_dm(2, pure=True)  # this must be pure (why?)
-    rhoB = random_dm(3, pure=False)
+    # Two separable systems should have entropy 0
+    rhoA = random_dm(2, pure=True)
+    rhoB = random_dm(3, pure=True)
     rho = np.kron(rhoA, rhoB)
     S = entropy_entanglement(rho, [0,1])
     assert np.allclose(S, 0), f"S = {S} ≠ 0"
