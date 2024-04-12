@@ -593,7 +593,14 @@ def float_from_binstr(s, complement=False):
     return float(pre + frac) * (-1 if negative else 1)
 
 def binstr_from_int(n, places=0):
-    return ("{0:0" + str(places) + "b}").format(n)
+    if places > 0:
+        if n < 0:
+            return '-'+binstr_from_int(-n, places)
+        res = f"{n:0{places}b}"
+        if len(res) > places:
+            raise ValueError(f"Integer {n} can't be represented in {places} bits")
+        return res
+    return f"{n:b}"
 
 def int_from_binstr(s):
     return int(float_from_binstr(s))
