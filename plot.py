@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import re
-from .mathlib import is_complex, is_symmetric, normalize, int_sqrt
+from .mathlib import is_complex, is_symmetric, int_sqrt
 from .utils import *
 
-def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog=False, ylog=False, grid=True, show=True, save_file=None, **pltargs):
+def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", xlog=False, ylog=False, grid=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
 
     # make it a bit intelligent
@@ -37,7 +37,7 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog
         fmt=None
         y=None
     if callable(y):
-        y = [y(i) for i in x]
+        y = np.array([y(i) for i in x])
     if type(fmt) == tuple: # skip fmt
         title  = ylabel
         ylabel = xlabel
@@ -83,15 +83,25 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlabel="", ylabel="", title="", xlog
             plt.plot(x, y.imag, fmt, label="imag", **pltargs)
             plt.legend()
         else:
-            plt.plot(x, y, fmt, **pltargs)
+            if len(y.shape) == 1:
+                plt.plot(x, y, fmt, **pltargs)
+            else:
+                for yi in y:
+                    plt.plot(x, yi, fmt, **pltargs)
     else:
         if is_complex(x):
             plt.plot(x.real, fmt, label="real", **pltargs)
             plt.plot(x.imag, fmt, label="imag", **pltargs)
             plt.legend()
         else:
-            plt.plot(x, fmt, **pltargs)
+            if len(x.shape) == 1:
+                plt.plot(x, fmt, **pltargs)
+            else:
+                for xi in x:
+                    plt.plot(xi, fmt, **pltargs)
 
+    plt.xlim(xlim)
+    plt.ylim(ylim)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
