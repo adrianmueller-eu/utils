@@ -698,6 +698,27 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), dims=(None,
     ax.set_zlim(z_min, z_max)
     plt.show()
 
+def ODE_phase(f, x0s, dims, **args):
+    """
+    1D, 2D, or 3D Phase portrait of a first-order ODE system with any number of dimensions.
+
+    Args:
+    `f` (function):             The system of ODEs. Must take the number of dimensions as input and return the derivatives
+    `x0s` (list of iterables):  Initial conditions for the trajectories
+    `dims` (tuple):             Select the dimensions to plot by setting them to `None` and provide default values for the other dimensions. The length of `dims` must match the number of dimensions of the system.
+    `xlim` (tuple):             The limits of the x axis
+    `**args`:                   See arguments for `ODE_phase_1d`, `ODE_phase_2d`, `ODE_phase_3d`
+    """
+    plot_dims = dims.count(None)
+    if plot_dims == 1:
+        return ODE_phase_1d(f, x0s, **args)
+    elif plot_dims == 2:
+        return ODE_phase_2d(f, x0s, dims=dims, **args)
+    elif plot_dims == 3:
+        return ODE_phase_3d(f, x0s, dims=dims, **args)
+    else:
+        raise ValueError("Only 1D, 2D and 3D supported")
+
 
 ###########################
 ### Bifurcation diagram ###
