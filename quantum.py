@@ -174,7 +174,7 @@ try:
     from qiskit.visualization import plot_histogram
     #from qiskit.circuit.library import *
 
-    def run(circuit, shots=1, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4)):
+    def run(circuit, shots=1, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4), title=""):
         if shots > 10:
             tc = time_complexity(circuit)
             print("TC: %d, expected running time: %.3fs" % (tc, tc * 0.01))
@@ -193,7 +193,7 @@ try:
             # qiskit outputs the qubits in the reverse order
             state = reverse_qubit_order(state)
             if plot:
-                plotQ(state, showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize)
+                plotQ(state, showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize, title=title)
             return result, state
         else:
             return result
@@ -338,7 +338,7 @@ def state_trace(state, retain_qubits):
 
     return state, probs
 
-def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None):
+def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
     """My best attempt so far to visualize a state vector. Control with `showqubits` which subsystem you're interested in (`None` will show the whole state). `showcoeff` utilitzes `state_trace`, `showprobs` shows a pie chart of the probabilities when measured in the standard basis, and `showrho` gives a plt.imshow view on the corresponding density matrix."""
 
     def tobin(n, places):
@@ -441,6 +441,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
             plotrho(ax, rho)
 
     fig.tight_layout()
+    plt.title(title)
     plt.show()
 
 def random_ket(n=1):
