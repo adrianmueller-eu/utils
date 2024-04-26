@@ -542,7 +542,7 @@ def unket(state, as_dict=False):
     >>> unket(ket('00+01+10+11'), as_dict=True)
     {'00': 0.5, '01': 0.5, '10': 0.5, '11': 0.5}
     """
-    state = normalize(state, remove_global_phase_if_1D=True)
+    state = normalize(state)
     n = int(np.log2(len(state)))
     if as_dict:
         # cast to float if imaginary part is zero
@@ -1325,7 +1325,7 @@ def get_H_energies(H, expi=False, k=None):
     if expi:
         energies = (energies % (2*np.pi))/(2*np.pi)
         energies[energies > 0.5] -= 1
-        energies = np.sort(energies, axis=-1)
+        # energies = np.sort(energies, axis=-1)
     return energies
 
 def pauli_basis(n, kind='np', normalize=False):
@@ -1549,8 +1549,10 @@ def _test_get_H_energies_eq_get_pe_energies():
     H = parse_hamiltonian(H)
 
     A = np.sort(get_pe_energies(exp_i(H)))
-    B = get_H_energies(H, expi=True)
-    return np.allclose(A, B)
+    B = np.sort(get_H_energies(H, expi=True))
+    assert np.allclose(A, B), f"{A} ≠ {B}"
+
+    return True
 
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
