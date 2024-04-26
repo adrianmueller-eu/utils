@@ -1019,6 +1019,28 @@ def to_lorenz_map(f, dim=0, T=2, n_timesteps=200):
         return x[peaks[0]]
     return lorenz_map
 
+def attractor_reconstruction(x, delta_1, delta_2=None, ax=None, show=True):
+    # if delta_2 is not given, make a 2d reconstruction
+    if delta_2 is None:
+        x, y = x[:-delta_1], x[delta_1:]
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10,5))
+        ax.plot(x, y, '.', markersize=1)
+        ax.set_aspect('equal')
+        return x,y
+    # if delta_2 is given, make a 3d reconstruction
+    # delta_2 -= delta_1  # get the delay of the second coordinate over the first
+    x,y,z = x[:-(delta_1 + delta_2)], x[delta_1:-delta_2], x[delta_1 + delta_2:]
+    if ax is None:
+        fig = plt.figure(figsize=(10,5))
+        ax = fig.add_subplot(111, projection='3d')
+    ax.plot(x, y, z, '.', markersize=1)
+    # equal axis ratio
+    ax.set_box_aspect([np.ptp(x), np.ptp(y), np.ptp(z)])
+    if show:
+        plt.show()
+    return x,y,z
+
 ######################
 ### Iterative maps ###
 ######################
