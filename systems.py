@@ -953,6 +953,11 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
 ### Misc ###
 ############
 
+def potential(f, xmin=0, offset=0):
+    def _quad(x):
+        return -np.array([quad(f, xmin, x)[0] + offset for x in x])
+    return _quad
+
 def plt_diagonal(ax=None, fmt='k-', linewidth=.5):
     if ax is None:
         ax = plt.gca()
