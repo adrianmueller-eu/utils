@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.integrate import solve_ivp  # used for numerical integration
+from scipy.integrate import solve_ivp, quad
 from scipy.optimize import fsolve
 from itertools import product, combinations
 from tqdm.auto import tqdm as tq
@@ -16,24 +16,31 @@ from .mathlib import powerset, prime_factors
 ### Flow ###
 ############
 
-def simulate(f, x0, T, dt):
-    sol = solve_ivp(lambda t, state: f(*state),
-                    y0=x0, method='RK45', t_span=(0.0, T), dense_output=True)
+def simulate(f, x0, T, dt, method='RK45'):
+    sol = solve_ivp(lambda t, state: f(*state), y0=x0, method=method, t_span=(0.0, T), dense_output=True)
     t = np.arange(0, T, dt)
     return *sol.sol(t), t
 
-def ODE_flow_1d(f, x0s=None, xlim=(-2,2), T=10, n_timesteps=10000):
+def ODE_flow_1d(f, x0s=None, xlim=(-2,2), T=10, n_timesteps=10000, show_arrows=True, grid=False, dim=None, figsize=(6,3), c=None, linewidth=1, ax=None, title="Flow", show=True):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+
     x_min, x_max = xlim
     dt = T/n_timesteps
-    t, x = np.meshgrid(np.arange(0, T, T/20), np.arange(x_min, x_max, (x_max - x_min)/20))
-    V = f(x)
-    U = np.ones(V.shape)
+    if dim is None and show_arrows:
+        t, x = np.meshgrid(np.arange(0, T, T/20), np.arange(x_min, x_max, (x_max - x_min)/20))
+        V = f(x)
+        U = np.ones(V.shape)
 
-    # slope field
-    fig, ax = plt.subplots()
-    q = ax.quiver(t, x, U, V, angles='xy')
-    ax.quiverkey(q, X=0.8, Y=1.03, U=4, label='dx/dt', labelpos='E')
-    ax.set_ylim(*ax.get_ylim())
+        # slope field
+        q = ax.quiver(t, x, U, V, angles='xy')
+        ax.quiverkey(q, X=0.8, Y=1.03, U=4, label='dx/dt', labelpos='E')
+        ax.set_ylim(*ax.get_ylim())
+        dim = 0
+    else:
+        if dim is None:
+            dim = 0
+        ax.set_ylim(x_min, x_max)
 
     # trajectories
     if x0s is not None:
@@ -41,16 +48,20 @@ def ODE_flow_1d(f, x0s=None, xlim=(-2,2), T=10, n_timesteps=10000):
             # convert x0 to a list if it is a scalar
             if isinstance(x0, (int, float)):
                 x0 = [x0]
-            s = reversed(simulate(f, x0, T, dt))
-            plt.plot(*s)
+            s = simulate(f, x0, T, dt)
+            x, t = s[dim], s[-1]
+            ax.plot(t, x, c=c, linewidth=linewidth)
 
     ax.set_xlim(-0.02*T, T)
-    ax.set_title('Slope field')
+    if grid:
+        ax.grid()
+    ax.set_title(title)
     ax.set_xlabel('t')
     ax.set_ylabel('x')
-    plt.show()
+    if show:
+        plt.show()
 
-def ODE_flow_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=10000, ax=None):
+def ODE_flow_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=10000, ax=None, title="Flow"):
     dt = T/n_timesteps
 
     if ax is None:
@@ -63,6 +74,7 @@ def ODE_flow_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=10000, 
             ax.plot(t,x,y)
             ax.scatter(0, *x0, marker="x")
 
+    ax.set_title(title)
     ax.set_xlabel('t')
     ax.set_ylabel('x')
     ax.set_zlabel('y')
@@ -165,10 +177,10 @@ def classify_fixed_point(f, fp, eps, verbose=True):
         ffp = f(x)
         df_l = (f(x - eps) - ffp)/eps
         df_r = (f(x + eps) - ffp)/eps
-        stable = (df_r - df_l)/2 < 0 # (f(x + eps) - f(x - eps))/(2*eps) < 0
+        stable = (df_r - df_l)/2 <= 0 # (f(x + eps) - f(x - eps))/(2*eps) < 0
         if df_l is None or df_r is None:
             cls = "Unknown"
-        if df_l > 0 and 0 > df_r:
+        if df_l >= 0 and 0 >= df_r:
             cls = "Stable"
         elif df_l < 0 and 0 < df_r:
             cls = "Unstable"
@@ -179,12 +191,14 @@ def classify_fixed_point(f, fp, eps, verbose=True):
         else:
             cls = f"WTF? df_r={df_r}, df_l={df_l}"
         if verbose:
-            print(f"Fixed point {fp}: {cls}")
+            print(f"Fixed point {fp}: {cls} ({np.round(ffp,3)})")
         return cls, stable
 
     # Estimate Jacobian matrix at the fixed point via finite differences
+    if verbose:
+        ffp = np.array(f(*fp))
+    fp = np.array(fp)
     dims = len(fp)
-    ffp = np.array(f(*fp))
     J = np.zeros((dims,dims))
     for k in range(dims):
         # partial derivative of f with respect to x_k at the root
@@ -217,8 +231,52 @@ def classify_fixed_point(f, fp, eps, verbose=True):
 
     return classes, stable
 
-def ODE_phase_1d(f, xlim=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x_label="x", title="Phase portrait",
-                 fp_resolution=1000, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-2):
+def find_fixed_points(f, dots, mins, ds, filter_eps, distance_eps):
+    # sanity check
+    assert callable(f), "f must be a function"
+    assert len(dots) == len(mins) == len(ds), "The number of dimensions must match the number of dots, mins and ds"
+
+    idcs = np.where(np.logical_and.reduce([np.abs(dot) < filter_eps for dot in dots]))
+
+    # first, sort fps by closeness into lists
+    fps_lists = []
+    for idx in zip(*idcs):
+        if len(dots) == 1:
+            fp = [mins[0] + idx[0]*ds[0]]
+        elif len(dots) == 2:
+            fp = [mins[0] + idx[1]*ds[0], mins[1] + idx[0]*ds[1]]
+        elif len(dots) == 3:
+            fp = [mins[0] + idx[1]*ds[0], mins[1] + idx[0]*ds[1], mins[2] + idx[2]*ds[2]]
+        else:
+            raise ValueError("Only 1D, 2D and 3D supported")
+
+        # check if it actually is a fixed point, i.e. if the other dimensions are close to zero, as well
+        if np.max(np.abs(f(*fp))) > filter_eps:
+            continue
+        found = False
+        for j, fps_list in enumerate(fps_lists):
+            # if np.linalg.norm(np.array(fps_list[0]) - np.array(fp)) < eps:
+            if np.mean(np.linalg.norm(np.array(fps_list) - np.array(fp), axis=1)) < distance_eps:
+                fps_list.append(fp)
+                found = True
+                break
+        if not found:
+            fps_lists.append([fp])
+    # then, find for each list the fp, such that dots are closest to 0
+    fps = []
+    for fps_list in fps_lists:
+        # evaluate f at all fps
+        dots = np.array([f(*fp) for fp in fps_list])
+        if len(dots.shape) == 1:
+            dots = dots[:,None]
+        # find the closest point to 0
+        errors = np.linalg.norm(dots, axis=1)
+        idx = np.argmin(errors)
+        fps.append(fps_list[idx])
+    return fps
+
+def ODE_phase_1d(f, xlim=(-2,2), dims=(None,), T=20, n_timesteps=4000, ax=None, n_arrows=10, x_label="x", title="Phase portrait", figsize=(8,4), grid=False, show=True, ylim=None,
+                 fp_resolution=1000, fp_filter_eps=1e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-2):
     """
     Phase portrait of a first-order 1D ODE
 
@@ -227,13 +285,17 @@ def ODE_phase_1d(f, xlim=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x
 
     Args:
     `f` (function):             The ODE. Must take one argument, `x`, and return the first derivative `x_dot`
-    `xlim` (tuple):         The limits of the x-axis
+    `xlim` (tuple):             The limits of the x-axis
+    `dims` (tuple):             If the system has more than one dimension, select which dimension to plot by setting it to `None` and provide a default value for the other dimensions.
     `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
     `n_arrows` (int):           The number of arrows in the x axis
     `x_label` (str):            The label of the x axis
     `title` (str):              The title of the plot
+    `figsize` (tuple):          The size of the plot
+    `grid` (bool):              Whether to show a grid
+    `show` (bool):              Whether to show the plot
     `fp_resolution` (int):      The resolution of the grid in which to look for fixed points and plot the slope field
     `fp_filter_eps` (float):    The maximum `|f(x^*)|` for which `x^*` is considered a fixed point
     `fp_distance_eps` (float):  The maximum distance between fixed points for them to be considered the same.
@@ -243,78 +305,77 @@ def ODE_phase_1d(f, xlim=(-2,2), T=20, n_timesteps=4000, ax=None, n_arrows=10, x
 
     x_min, x_max = xlim
     dt = T/n_timesteps
-    dx = (x_max - x_min)/(fp_resolution*n_arrows)
+    if n_arrows is None or n_arrows < 1:
+        n_arrows = 0
+        dx = (x_max - x_min)/(fp_resolution*10)
+    else:
+        dx = (x_max - x_min)/(fp_resolution*n_arrows)
     x = np.arange(x_min, x_max, dx)
-    x_dot = f(x)
+    xdim = dims.index(None)
+    if len(dims) > 1:
+        def f_1d(x):
+            args = list(dims)
+            args[xdim] = x
+            return f(*args)
+    else:
+        f_1d = f
+    x_dot = f_1d(x)
 
     # plot the function
     if ax is None:
-        fig, ax = plt.subplots(figsize=(10, 5))
+        fig, ax = plt.subplots(figsize=figsize)
     ax.plot(x, x_dot)
 
-    # fixed points
-    def find_fixed_points(x_dot, x, filter_eps, distance_eps):
-        fps = np.where(np.abs(x_dot) < filter_eps)
-        # first, sort fps by closeness into lists
-        fps_lists = []
-        for i in fps[0]:
-            found = False
-            for j, fps_list in enumerate(fps_lists):
-                # if np.abs(fps_list[0] - x[i]) < eps:
-                if np.mean(np.abs(fps_list - x[i])) < distance_eps:
-                    fps_list.append(x[i])
-                    found = True
-                    break
-            if not found:
-                fps_lists.append([x[i]])
-        # then, calculate the mean of each list
-        fps = []
-        for fps_list in fps_lists:
-            fps.append(np.mean(fps_list))
-        return fps
-
-    # print(fps)
     # round and set
-    fps = find_fixed_points(x_dot, x, filter_eps=fp_filter_eps, distance_eps=fp_distance_eps)
-    # print(fps)
+    fps = find_fixed_points(f_1d, [x_dot], [x_min], [dx], fp_filter_eps, fp_distance_eps)
     for fp in fps:
+        _fp = list(dims)
+        _fp[xdim] = fp
         if stability_method == 'jacobian':
-            cls, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+            cls, stable = classify_fixed_point(f, _fp, fp_stability_eps, verbose=True)
         elif stability_method == 'lyapunov':
-            stable = is_stable(f, [fp], T, dt, fp_stability_eps, verbose=True)
+            stable = is_stable(f, _fp, T, dt, fp_stability_eps, verbose=True)
             cls = 'Stable' if stable else 'Unstable'
         else:
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
 
-        if cls == 'Stable':
-            fillstyle = 'full'
-        elif cls == 'Unstable':
-            fillstyle = 'none'
-        elif cls == 'Left half-stable':
-            fillstyle = 'left'
-        elif cls == 'Right half-stable':
-            fillstyle = 'right'
+        if isinstance(cls, str):
+            if cls == 'Stable':
+                fillstyle = 'full'
+            elif cls == 'Unstable':
+                fillstyle = 'none'
+            elif cls == 'Left half-stable':
+                fillstyle = 'left'
+            elif cls == 'Right half-stable':
+                fillstyle = 'right'
+            else:
+                continue
         else:
-            continue
+            fillstyle = 'full' if stable else 'none'
         plt.plot(fp, 0, marker='o', fillstyle=fillstyle, markersize=8, color='k')
 
     # the slope field
-    skip = fp_resolution
-    x_dot_ = x_dot[skip//2::skip]
-    x_dot_ = np.sign(x_dot_)*np.sqrt(np.abs(x_dot_))
-    x_ = x[skip//2::skip]
-    # print(x.shape, x_.shape, x_dot.shape, x_dot_.shape)
-    q = ax.quiver(x_, np.zeros_like(x_), x_dot_, np.zeros_like(x_dot_), np.abs(x_dot_),
-                  cmap='cool', pivot='mid', angles='xy', headwidth=3, headlength=1, headaxislength=1)
-    ax.quiverkey(q, X=0.8, Y=1.03, U=2, label='dx/dt', labelpos='E')
+    if n_arrows > 0:
+        skip = fp_resolution
+        x_dot_ = x_dot[skip//2::skip]
+        x_dot_ = np.sign(x_dot_)*np.sqrt(np.abs(x_dot_))
+        x_ = x[skip//2::skip]
+        q = ax.quiver(x_, np.zeros_like(x_), x_dot_, np.zeros_like(x_dot_), np.abs(x_dot_),
+                    cmap='cool', pivot='mid', angles='xy', headwidth=3, headlength=1, headaxislength=1)
+        ax.quiverkey(q, X=0.8, Y=1.03, U=2, label='dx/dt', labelpos='E')
     ax.set_xlim(xlim)
-    ax.set_ylim(*ax.get_ylim())
+    if ylim:
+        ax.set_ylim(ylim)
+    else:
+        ax.set_ylim(*ax.get_ylim())
 
     ax.set_title(title)
     ax.set_xlabel('$' + x_label + '$')
     ax.set_ylabel('$\\dot{'+x_label+'}$')
-    ax.grid()
-    plt.show()
+    if grid:
+        ax.grid()
+    if show:
+        plt.show()
 
 def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30, n_timesteps=6000, ax=None, x_arrows=20, y_arrows=20, figsize=None, x_label="x", y_label="y", title="Phase portrait", trajectory_width=1,
               fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4):
@@ -327,11 +388,11 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
     - `stability_method = 'lyapunov'` is significantly slower and often needs a larger `fp_stability_eps` to work well, but is more reliable for non-hyperbolic fixed points
 
     Args:
-    `f` (function):             The system of ODEs. Must take at least two arguments (see `dims`), `x` and `y`, and return the respective first derivatives
+    `f` (function):             The system of ODEs with at least two dimensions.
     `x0s` (list of iterables):  Initial conditions for the trajectories (number of dimensions must match the number of input to `f`)
     `xlim` (tuple):             The limits of the x axis
     `ylim` (tuple):             The limits of the y axis
-    `dims` (tuple):             If the system has more than two dimensions, place the values of the extra dimensions at which to project and `None` for exactly two dimensions to plot the phase portrait
+    `dims` (tuple):             If the system has more than two dimensions, select which dimensions to plot by setting them to `None` and provide default values for the other dimensions.
     `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `ax` (matplotlib axis):     Optional axis to plot the phase portrait
@@ -360,31 +421,6 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
 
         return np.array(ps)
 
-    def find_fixed_points(x_dot, y_dot, filter_eps, distance_eps, xmin, dx, ymin, dy):
-        row, col = np.where(np.logical_and(
-            np.abs(x_dot) < filter_eps, np.abs(y_dot) < filter_eps
-        ))
-
-        # first, sort fps by closeness into lists
-        fps_lists = []
-        for r,c in zip(row, col):
-            fp = [xmin + c*dx, ymin + r*dy]
-            found = False
-            for i, fps_list in enumerate(fps_lists):
-                # if np.linalg.norm(np.array(fps_list[0]) - np.array(fp)) < eps:
-                if np.mean(np.linalg.norm(np.array(fps_list) - np.array(fp), axis=1)) < distance_eps:
-                    fps_list.append(fp)
-                    found = True
-                    break
-            if not found:
-                fps_lists.append([fp])
-        # then, calculate the mean of each list
-        fps = []
-        for fps_list in fps_lists:
-            fps.append(np.mean(fps_list, axis=0))
-
-        return fps
-
     x_min, x_max = xlim
     y_min, y_max = ylim
     dt = T/n_timesteps
@@ -400,19 +436,19 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
         dy = (y_max - y_min)/(fp_resolution*y_arrows)
     x, y = np.meshgrid(np.arange(x_min, x_max, dx), np.arange(y_min, y_max, dy))
 
-    x_dim = dims.index(None)
-    y_dim = dims.index(None, x_dim+1)
-    if len(dims) > 2:
+    xdim = dims.index(None)
+    ydim = dims.index(None, xdim+1)
+    if len(dims) > 0:
         # place x,y, where dims is None and pick the output of f accordingly
         def f_2d(x,y):
             args = list(dims)
-            args[x_dim] = x
-            args[y_dim] = y
-            dots = f(*args)
-            return dots[x_dim], dots[y_dim]
+            args[xdim] = x
+            args[ydim] = y
+            return f(*args)
     else:
         f_2d = f
-    x_dot, y_dot = f_2d(x,y)
+    dots = f_2d(x,y)
+    x_dot, y_dot = dots[xdim], dots[ydim]
 
     # the slope field
     ax_orig = ax
@@ -444,47 +480,49 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
 
     # nullclines
     if nullclines:
-        # x nullclines are red
-        p = get_nullclines(x_dot, nullclines_eps, x_min, dx, y_min, dy)
-        if len(p) > 0:
-            ax.scatter(*p.T, linewidths=0, s=.5, color="r")
-        # y nullclines are black
-        p = get_nullclines(y_dot, nullclines_eps, x_min, dx, y_min, dy)
-        if len(p) > 0:
-            ax.scatter(*p.T, linewidths=0, s=.5, color="k")
+        if fp_resolution is None or fp_resolution < 1:
+            raise ValueError("fp_resolution must be >= 1 to plot nullclines")
+        if isinstance(nullclines_eps, (int, float)):
+            nullclines_eps = 2*[nullclines_eps]
+        elif len(nullclines_eps) != 2:
+            raise ValueError("nullclines_eps must be a float or a tuple of three floats")
+        for i, dot, c, nc_eps in zip(['x', 'y'], [x_dot, y_dot], ['r', 'k'], nullclines_eps):
+            if isinstance(nullclines, str):
+                if nullclines != i:
+                    continue
+            p = get_nullclines(dot, nc_eps, x_min, dx, y_min, dy)
+            if len(p) > 0:
+                ax.scatter(*p.T, linewidths=0, s=.5, color=c)
 
     # trajectories
     if x0s is not None:
         for x0 in x0s:
             res = simulate(f, x0, T, dt)
-            x = res[x_dim]
-            y = res[y_dim]
-            x0x = x0[x_dim]
-            x0y = x0[y_dim]
+            x, y = res[xdim], res[ydim]
+            x0x, x0y = x0[xdim], x0[ydim]
             ax.plot(x,y, linewidth=trajectory_width)
             ax.scatter(x0x, x0y, marker="x")
 
     # fixed points
-    fps = find_fixed_points(x_dot, y_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy)
+    fps = find_fixed_points(f_2d, (x_dot, y_dot),(x_min, y_min), (dx,dy), fp_filter_eps, fp_distance_eps)
     for fp in fps:
-        if len(dims) > 2:
-                fp_ = list(dims)
-                fp_[x_dim] = fp[0]
-                fp_[y_dim] = fp[1]
-                fp = fp_
+        # use the default values for the other dimensions
+        _fp = list(dims)
+        _fp[xdim] = fp[0]
+        _fp[ydim] = fp[1]
         if stability_method == 'jacobian':
-            clss, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+            clss, stable = classify_fixed_point(f, _fp, fp_stability_eps, verbose=True)
             if clss == 'Unkown' or 'Unknown' in clss:
                 continue
         elif stability_method == 'lyapunov':
-            stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
+            stable = is_stable(f, _fp, T, dt, fp_stability_eps, verbose=True)
         else:
             raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
 
         if stable:
-            ax.scatter(fp[x_dim], fp[y_dim], facecolors='k', edgecolors='k')
+            ax.scatter(*fp, facecolors='k', edgecolors='k')
         else:
-            ax.scatter(fp[x_dim], fp[y_dim], facecolors='none', edgecolors='k')
+            ax.scatter(*fp, facecolors='none', edgecolors='k')
 
     ax.set_title(title)
     ax.set_xlabel('$' + x_label + '$')
@@ -535,8 +573,8 @@ def ODE_phase_2d_polar(f, polar0s=None, x0s=None, rlim=2, **args):
 
     return ODE_phase_2d(f_cartesian, x0s, xlim=(-rlim, rlim), ylim=(-rlim, rlim), **args)
 
-def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_timesteps=6000, x_label="x", y_label="y", z_label="z", title="Phase portrait", ax=None,
-                fp_resolution=10, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4, linewidth=.2):
+def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), dims=(None, None, None), T=30, n_timesteps=6000, x_label="x", y_label="y", z_label="z", title="Phase portrait", ax=None,
+                fp_resolution=100, fp_filter_eps=2.5e-3, fp_distance_eps=1e-1, stability_method='jacobian', fp_stability_eps=1e-5, nullclines=False, nullclines_eps=5e-4, linewidth=.2):
     """
     Phase portrait of a first-order 3D ODE system
 
@@ -544,11 +582,12 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
     - If there are multiple fixed points stacked on top of each other, try increasing `fp_distance_eps`
 
     Args:
-    `f` (function):             The system of ODEs. Must take at least three arguments, `x`, `y`, and `z`, and return the derivatives `x_dot`, `y_dot`, and `z_dot` as the first three return values
+    `f` (function):             The system of ODEs with at least three dimensions.
     `x0s` (list of iterables):  Initial conditions for the trajectories (number of dimensions must match the number of input to `f`)
     `xlim` (tuple):             The limits of the x axis
     `ylim` (tuple):             The limits of the y axis
     `zlim` (tuple):             The limits of the z axis
+    `dims` (tuple):             If the system has more than three dimensions, select which dimensions to plot by setting them to `None` and provide default values for the other dimensions.
     `T` (float):                The time to simulate the trajectories and check the stability of the fixed points
     `n_timesteps` (int):        The number of timesteps to simulate the trajectories in `[0, T]`
     `x_label` (str):            The label of the x axis
@@ -574,31 +613,6 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
 
         return np.array(ps)
 
-    def find_fixed_points(x_dot, y_dot, z_dot, filter_eps, distance_eps, xmin, dx, ymin, dy, zmin, dz):
-        row, col, depth = np.where(np.logical_and.reduce(
-            (np.abs(x_dot) < filter_eps, np.abs(y_dot) < filter_eps, np.abs(z_dot) < filter_eps)
-        ))
-
-        # first, sort fps by closeness into lists
-        fps_lists = []
-        for r,c,d in zip(row, col, depth):
-            fp = [xmin + c*dx, ymin + r*dy, zmin + d*dz]
-            found = False
-            for i, fps_list in enumerate(fps_lists):
-                # if np.linalg.norm(np.array(fps_list[0]) - np.array(fp)) < eps:
-                if np.mean(np.linalg.norm(np.array(fps_list) - np.array(fp), axis=1)) < distance_eps:
-                    fps_list.append(fp)
-                    found = True
-                    break
-            if not found:
-                fps_lists.append([fp])
-        # then, calculate the mean of each list
-        fps = []
-        for fps_list in fps_lists:
-            fps.append(np.mean(fps_list, axis=0))
-
-        return fps
-
     dt = T/n_timesteps
     x_min, x_max = xlim
     y_min, y_max = ylim
@@ -610,7 +624,20 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
         dz = (z_max - z_min)/(fp_resolution)
         x, y, z = np.meshgrid(np.arange(x_min, x_max, dx), np.arange(y_min, y_max, dy), np.arange(z_min, z_max, dz))
 
-        x_dot, y_dot, z_dot = f(x,y,z)
+        xdim = dims.index(None)
+        ydim = dims.index(None, xdim+1)
+        zdim = dims.index(None, ydim+1)
+        if len(dims) > 3:
+            # place x,y, where dims is None and pick the output of f accordingly
+            def f_3d(x,y,z):
+                args = list(dims)
+                args[xdim] = x
+                args[ydim] = y
+                args[zdim] = z
+                return f(*args)
+        else:
+            f_3d = f
+        x_dot, y_dot, z_dot = f_3d(x,y,z)
 
     # no slope field for 3D
     if ax is None:
@@ -621,10 +648,17 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
     if nullclines:
         if fp_resolution is None or fp_resolution < 1:
             raise ValueError("fp_resolution must be >= 1 to plot nullclines")
-        for dot, c in zip([x_dot, y_dot, z_dot], ['r', 'k', 'g']):
-            p = get_nullclines(dot, nullclines_eps, x_min, dx, y_min, dy, z_min, dz)
+        if isinstance(nullclines_eps, (int, float)):
+            nullclines_eps = 3*[nullclines_eps]
+        elif len(nullclines_eps) != 3:
+            raise ValueError("nullclines_eps must be a float or a tuple of three floats")
+        for i, dot, c, nc_eps in zip(['x', 'y', 'z'], [x_dot, y_dot, z_dot], ['r', 'k', 'g'], nullclines_eps):
+            if isinstance(nullclines, str):
+                if nullclines != i:
+                    continue
+            p = get_nullclines(dot, nc_eps, x_min, dx, y_min, dy, z_min, dz)
             if len(p) > 0:
-                ax.scatter(*p.T, color=c)
+                ax.scatter(*p.T, linewidths=0, s=.5, color=c)
 
     # trajectories
     if x0s is not None:
@@ -635,14 +669,18 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), T=30, n_tim
 
     # fixed points
     if fp_resolution >= 1:
-        fps = find_fixed_points(x_dot, y_dot, z_dot, fp_filter_eps, fp_distance_eps, x_min, dx, y_min, dy, z_min, dz)
+        fps = find_fixed_points(f_3d, [x_dot, y_dot, z_dot], [x_min, y_min, z_min], [dx, dy, dz], fp_filter_eps, fp_distance_eps)
         for fp in fps:
+            _fp = list(dims)
+            _fp[xdim] = fp[0]
+            _fp[ydim] = fp[1]
+            _fp[zdim] = fp[2]
             if stability_method == 'jacobian':
-                clss, stable = classify_fixed_point(f, fp, fp_stability_eps, verbose=True)
+                clss, stable = classify_fixed_point(f, _fp, fp_stability_eps, verbose=True)
                 if 'Unknown' in clss:
                     continue
             elif stability_method == 'lyapunov':
-                stable = is_stable(f, fp, T, dt, fp_stability_eps, verbose=True)
+                stable = is_stable(f, _fp, T, dt, fp_stability_eps, verbose=True)
             else:
                 raise ValueError(f"stability_method must be 'lyapunov' or 'jacobian', not {stability_method}")
 
