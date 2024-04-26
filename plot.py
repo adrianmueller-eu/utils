@@ -282,10 +282,18 @@ def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=F
 
     return n, bins
 
-def scatter1d(data, xticks=None, alpha=.5, s=500, marker="|", xlim=None, title="", show=True, save_file=None, **pltargs):
+def scatter1d(data, figsize=None, xticks=None, alpha=.5, s=500, marker="|", xlim=None, xlabel="", title="", show=True, save_file=None, **pltargs):
     """Create only one axis on which to plot the data."""
 
-    fig = plt.figure(figsize=(10,1))
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+    else:
+        figsize = [10,1]
+        if xlabel:
+            figsize[1] += 0.2
+        if title:
+            figsize[1] += 0.2
+        fig = plt.figure(figsize=figsize)
     ax = fig.gca()
     size = np.array(data).flatten().shape
     plt.scatter(data, np.zeros(*size), alpha=alpha, marker=marker, s=s, **pltargs)
@@ -299,6 +307,7 @@ def scatter1d(data, xticks=None, alpha=.5, s=500, marker="|", xlim=None, title="
         ax.set_title(title)
     if xlim is not None:
         ax.set_xlim(xlim)
+    ax.set_xlabel(xlabel)
     fig.tight_layout()
     if save_file:
         plt.savefig(save_file, bbox_inches='tight')
