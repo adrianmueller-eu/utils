@@ -222,7 +222,7 @@ except:
     def matsqrt(A, n=2):
         return matpow(A, 1/n)
 
-def normalize(a, p=2, axis=0, remove_global_phase_if_1D=True):
+def normalize(a, p=2, axis=0, remove_global_phase_if_1D=False):
     if is_complex(a):
         a = np.array(a, dtype=complex)
     else:
