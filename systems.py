@@ -1011,6 +1011,10 @@ def to_lorenz_map(f, dim=0, T=2, n_timesteps=200):
         peaks, _ = find_peaks(x)
         if len(peaks) > 10:
             print(f"Warning: {len(peaks)} peaks found. Consider decreasing `T` or increasing `n_timesteps`.")
+        elif len(peaks) < 2:
+            print('Warning: Insufficient peaks found. Try increasing `T` or `n_timesteps`.')
+        elif len(peaks) == 0:
+            raise ValueError('No peaks found. Does the system have periodic behavior?')
         # return the next peak
         return x[peaks[0]]
     return lorenz_map
