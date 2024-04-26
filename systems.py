@@ -1002,7 +1002,7 @@ def lorenz_map(f, x0, dim=0, T=1000, n_timesteps=100000, figsize=(6,7), cmap='pl
 
 def to_lorenz_map(f, dim=0, T=2, n_timesteps=200):
     """
-    Returns a iterative map for the ODE `f`, returnings the next peak in the `dim`-th dimension after a given `x0`.
+    Returns an iterative map for the ODE `f`, returnings the next peak in the `dim`-th dimension after a given `x0`.
     """
     from scipy.signal import find_peaks
     def lorenz_map(x):
