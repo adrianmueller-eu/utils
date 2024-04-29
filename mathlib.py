@@ -5,121 +5,9 @@ from itertools import combinations, chain
 import scipy.sparse as sp
 from .isprime import is_prime
 
-### Tests
-
-def _sq_matrix_allclose(a, f, rtol=1e-05, atol=1e-08):
-    a = np.array(a)
-    if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
-        return False
-    a[np.isnan(a)] = 0
-    a, b = f(a)
-    return np.allclose(a, b, rtol=rtol, atol=atol)
-
-def is_symmetric(a, rtol=1e-05, atol=1e-08):
-    return _sq_matrix_allclose(a, lambda a: (
-    	a, a.T
-    ), rtol=rtol, atol=atol)
-
-def is_hermitian(a, rtol=1e-05, atol=1e-08):
-    return _sq_matrix_allclose(a, lambda a: (
-    	a, a.conj().T
-    ), rtol=rtol, atol=atol)
-
-def is_orthogonal(a, rtol=1e-05, atol=1e-08):
-    return _sq_matrix_allclose(a, lambda a: (
-        a @ a.T, np.eye(a.shape[0])
-    ), rtol=rtol, atol=atol)
-
-def is_unitary(a, rtol=1e-05, atol=1e-08):
-    return _sq_matrix_allclose(a, lambda a: (
-    	a @ a.conj().T, np.eye(a.shape[0])
-    ), rtol=rtol, atol=atol)
-
-def is_involutory(a, rtol=1e-05, atol=1e-08):
-    return _sq_matrix_allclose(a, lambda a: (
-    	a @ a, np.eye(a.shape[0])
-    ), rtol=rtol, atol=atol)
-
-def is_complex(a):
-    if hasattr(a, 'dtype'):
-        return np.issubdtype(a.dtype, complex)
-    return np.iscomplex(a).any()
-
-def is_psd(a, rtol=1e-05, atol=1e-08):
-    if not is_hermitian(a, rtol=rtol, atol=atol):
-        return False
-    eigv = np.linalg.eigvalsh(a)
-    return np.all(np.abs(eigv.imag) < atol) and np.all(eigv.real >= -atol)
-
-def is_normal(a, rtol=1e-05, atol=1e-08):
-    return _sq_matrix_allclose(a, lambda a: (
-        a @ a.conj().T, a.conj().T @ a
-    ), rtol=rtol, atol=atol)
-
-### Conversion
-
-def deg(rad):
-    return rad/np.pi*180
-
-def rad(deg):
-    return deg/180*np.pi
-
-
-### Functions
-
-def roots(coeffs):
-    """ Solve a polynomial equation. """
-    def linear(a,b):
-        """Solve a linear equation: ax + b = 0. """
-        return -b/a
-
-    def quadratic(a,b,c):
-        """Solve a quadratic equation: ax^2 + bx + c = 0. """
-        d = (b**2 - 4*a*c)**(1/2)
-        return (-b + d)/(2*a), (-b - d)/(2*a)
-
-    def cubic(a,b,c,d):
-        """Solve a cubic equation: ax^3 + bx^2 + cx + d = 0. """
-        del_0 = b**2 - 3*a*c
-        del_1 = 2*(b**3) - 9*a*b*c + 27*(a**2)*d
-        discriminant = del_1**2 - 4*(del_0**3)
-        const = (del_1/2 + (1/2)*discriminant**(1/2))**(1/3)
-
-        tmp1 = const
-        tmp2 = const * np.exp(4/3*np.pi*1j)
-        tmp3 = const * np.exp(8/3*np.pi*1j)
-        pre = -1/(3*a)
-        return pre*(b + tmp1 + del_0/tmp1), pre*(b + tmp2 + del_0/tmp2), pre*(b + tmp3 + del_0/tmp3)
-
-    def quatric(a,b,c,d,e):
-        """ Solve a quartic equation: ax^4 + bx^3 + cx^2 + dx + e = 0. """
-        p = c/a - 3*(b**2)/(8*(a**2))
-        q = b**3/(8*(a**3)) - b*c/(2*(a**2)) + d/a
-        delta_0 = c**2 - 3*b*d + 12*a*e
-        delta_1 = 2*c**3 - 9*b*c*d + 27*(b**2)*e + 27*a*d**2 - 72*a*c*e
-        discr = complex(delta_1**2 - 4*delta_0**3)
-        Q = ((delta_1 + discr**(1/2))/2)**(1/3)
-        S = 1/2 * (-2/3 * p + 1/(3*a) * (Q + delta_0/Q))**(1/2)
-        pre = -1/(4*a) * b
-        tmp0_1 = -S**2 - p/2
-        tmp0_2 = q/(4*S)
-        tmp1 = np.sqrt(tmp0_1 + tmp0_2)
-        tmp2 = np.sqrt(tmp0_1 - tmp0_2)
-        return pre - S - tmp1, pre - S + tmp1, pre + S - tmp2, pre + S + tmp2
-
-    coeffs = list(map(complex, coeffs))
-    if len(coeffs) < 2:
-        raise ValueError("The degree of the polynomial must be at least 1.")
-    elif len(coeffs) == 2:
-        return linear(*coeffs)
-    elif len(coeffs) == 3:
-        return quadratic(*coeffs)
-    elif len(coeffs) == 4:
-        return cubic(*coeffs)
-    elif len(coeffs) == 5:
-        return quatric(*coeffs)
-    else:
-        return np.roots(coeffs)
+##############
+### Basics ###
+##############
 
 # e.g. series(lambda n, _: 1/factorial(2*n)) + series(lambda n, _: 1/factorial(2*n + 1))
 def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter=100000, verbose=False):
@@ -194,6 +82,101 @@ def sequence(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_it
         print(f"Warning: Sequence didn't converge after {max_iter} iterations! Error: {error}")
     return current_term
 
+def normalize(a, p=2, axis=0, remove_global_phase_if_1D=False):
+    if is_complex(a):
+        a = np.array(a, dtype=complex)
+    else:
+        a = np.array(a, dtype=float)
+    a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
+    if len(a.shape) == 1 and remove_global_phase_if_1D and is_complex(a):
+        # this works only for a 1D array
+        a *= np.exp(-1j*np.angle(a[0]))
+    return a
+
+def arctan2(y, x):  # same as np.arctan2
+    if x == 0:
+        return np.sign(y) * np.pi/2
+    if y == 0:
+        return (1 - np.sign(x)) * np.pi/2
+    if x < 0:
+        return np.arctan(y/x) + np.sign(y)* np.pi
+    return np.arctan(y/x)
+    # if x == 0:
+    #     return np.sign(y) * np.pi/2
+    # if x < 0:
+    #     if y < 0:
+    #         return np.arctan(y/x) - np.pi
+    #     else:
+    #         return np.arctan(y/x) + np.pi
+    # return np.arctan(y/x)
+
+#################
+### Deg / rad ###
+#################
+
+def deg(rad):
+    return rad/np.pi*180
+
+def rad(deg):
+    return deg/180*np.pi
+
+################
+### Matrices ###
+################
+
+### property checks
+
+def _sq_matrix_allclose(a, f, rtol=1e-05, atol=1e-08):
+    a = np.array(a)
+    if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
+        return False
+    a[np.isnan(a)] = 0
+    a, b = f(a)
+    return np.allclose(a, b, rtol=rtol, atol=atol)
+
+def is_symmetric(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a, a.T
+    ), rtol=rtol, atol=atol)
+
+def is_hermitian(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a, a.conj().T
+    ), rtol=rtol, atol=atol)
+
+def is_orthogonal(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a @ a.T, np.eye(a.shape[0])
+    ), rtol=rtol, atol=atol)
+
+def is_unitary(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a @ a.conj().T, np.eye(a.shape[0])
+    ), rtol=rtol, atol=atol)
+
+def is_involutory(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a @ a, np.eye(a.shape[0])
+    ), rtol=rtol, atol=atol)
+
+def is_complex(a):
+    if hasattr(a, 'dtype'):
+        return np.issubdtype(a.dtype, complex)
+    return np.iscomplex(a).any()
+
+def is_psd(a, rtol=1e-05, atol=1e-08):
+    if not is_hermitian(a, rtol=rtol, atol=atol):
+        return False
+    eigv = np.linalg.eigvalsh(a)
+    return np.all(np.abs(eigv.imag) < atol) and np.all(eigv.real >= -atol)
+
+def is_normal(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a @ a.conj().T, a.conj().T @ a
+    ), rtol=rtol, atol=atol)
+
+### matrix functions
+
 try:
     from scipy.linalg import expm as matexp
     from scipy.linalg import logm as _matlog
@@ -222,48 +205,7 @@ except:
     def matsqrt(A, n=2):
         return matpow(A, 1/n)
 
-def normalize(a, p=2, axis=0, remove_global_phase_if_1D=False):
-    if is_complex(a):
-        a = np.array(a, dtype=complex)
-    else:
-        a = np.array(a, dtype=float)
-    a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
-    if len(a.shape) == 1 and remove_global_phase_if_1D and is_complex(a):
-        # this works only for a 1D array
-        a *= np.exp(-1j*np.angle(a[0]))
-    return a
-
-def softmax(a, beta=1):
-    a = np.exp(beta*a)
-    Z = np.sum(a)
-    return a / Z
-
-def arctan2(y, x):  # same as np.arctan2
-    if x == 0:
-        return np.sign(y) * np.pi/2
-    if y == 0:
-        return (1 - np.sign(x)) * np.pi/2
-    if x < 0:
-        return np.arctan(y/x) + np.sign(y)* np.pi
-    return np.arctan(y/x)
-    # if x == 0:
-    #     return np.sign(y) * np.pi/2
-    # if x < 0:
-    #     if y < 0:
-    #         return np.arctan(y/x) - np.pi
-    #     else:
-    #         return np.arctan(y/x) + np.pi
-    # return np.arctan(y/x)
-
-### Sets
-
-# https://docs.python.org/3/library/itertools.html
-def powerset(iterable):
-    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
-    s = list(iterable)
-    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
-
-### Groups
+### rotation groups
 
 def SO(n):
     """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
@@ -346,19 +288,7 @@ def SU(n):
         return lambda phi: U @ np.diag(np.exp(-1j*phi/2*D)) @ U.conj().T
     return [rotmat(G) for G in generators]
 
-### Random
-
-def choice(a, size=None, replace=True, p=None):
-    if p is not None:
-        if np.abs(np.sum(p) - 1) > sys.float_info.epsilon:
-            p = normalize(p, p=1)
-
-    if hasattr(a, '__len__'):
-        n = len(a)
-        idx = np.random.choice(n, size=size, replace=replace, p=p)
-        return np.array(a)[idx]
-    else:
-        return np.random.choice(a, size=size, replace=replace, p=p)
+### random
 
 def random_vec(size, limits=(0,1), complex=False):
     if complex:
@@ -394,7 +324,67 @@ def random_psd(size, limits=(0,1)):
     a = random_square(size, limits=limits, complex=True)
     return a @ a.conj().T
 
-### Integers & Primes
+###################
+### Polynomials ###
+###################
+
+def roots(coeffs):
+    """ Solve a polynomial equation in one variable: $a_0x^n + a_1x^{n-1} + ... + a_{n-1}x + a_n = 0$."""
+    def linear(a,b):
+        """Solve a linear equation: ax + b = 0. """
+        return -b/a
+
+    def quadratic(a,b,c):
+        """Solve a quadratic equation: ax^2 + bx + c = 0. """
+        d = (b**2 - 4*a*c)**(1/2)
+        return (-b + d)/(2*a), (-b - d)/(2*a)
+
+    def cubic(a,b,c,d):
+        """Solve a cubic equation: ax^3 + bx^2 + cx + d = 0. """
+        del_0 = b**2 - 3*a*c
+        del_1 = 2*(b**3) - 9*a*b*c + 27*(a**2)*d
+        discriminant = del_1**2 - 4*(del_0**3)
+        const = (del_1/2 + (1/2)*discriminant**(1/2))**(1/3)
+
+        tmp1 = const
+        tmp2 = const * np.exp(4/3*np.pi*1j)
+        tmp3 = const * np.exp(8/3*np.pi*1j)
+        pre = -1/(3*a)
+        return pre*(b + tmp1 + del_0/tmp1), pre*(b + tmp2 + del_0/tmp2), pre*(b + tmp3 + del_0/tmp3)
+
+    def quatric(a,b,c,d,e):
+        """ Solve a quartic equation: ax^4 + bx^3 + cx^2 + dx + e = 0. """
+        p = c/a - 3*(b**2)/(8*(a**2))
+        q = b**3/(8*(a**3)) - b*c/(2*(a**2)) + d/a
+        delta_0 = c**2 - 3*b*d + 12*a*e
+        delta_1 = 2*c**3 - 9*b*c*d + 27*(b**2)*e + 27*a*d**2 - 72*a*c*e
+        discr = complex(delta_1**2 - 4*delta_0**3)
+        Q = ((delta_1 + discr**(1/2))/2)**(1/3)
+        S = 1/2 * (-2/3 * p + 1/(3*a) * (Q + delta_0/Q))**(1/2)
+        pre = -1/(4*a) * b
+        tmp0_1 = -S**2 - p/2
+        tmp0_2 = q/(4*S)
+        tmp1 = np.sqrt(tmp0_1 + tmp0_2)
+        tmp2 = np.sqrt(tmp0_1 - tmp0_2)
+        return pre - S - tmp1, pre - S + tmp1, pre + S - tmp2, pre + S + tmp2
+
+    coeffs = list(map(complex, coeffs))
+    if len(coeffs) < 2:
+        raise ValueError("The degree of the polynomial must be at least 1.")
+    elif len(coeffs) == 2:
+        return linear(*coeffs)
+    elif len(coeffs) == 3:
+        return quadratic(*coeffs)
+    elif len(coeffs) == 4:
+        return cubic(*coeffs)
+    elif len(coeffs) == 5:
+        return quatric(*coeffs)
+    else:
+        return np.roots(coeffs)
+
+#####################
+### Number theory ###
+#####################
 
 def prime_factors(n):
     """Simple brute-force algorithm to find prime factors"""
@@ -490,7 +480,9 @@ def carmichael_numbers(to):
         if is_carmichael(n):
             yield n
 
-### Binary strings
+######################
+### Binary strings ###
+######################
 
 def binFrac_i(j, i):
     return int(j % (1/2**(i-1)) != j % (1/2**i))
@@ -618,8 +610,36 @@ def int_from_bincoll(l):
 def bincoll_from_int(n, places=0):
     return bincoll_from_binstr(binstr_from_int(n, places))
 
+############
+### Misc ###
+############
 
-### Misc
+### useful
+
+def softmax(a, beta=1):
+    a = np.exp(beta*a)
+    Z = np.sum(a)
+    return a / Z
+
+# https://docs.python.org/3/library/itertools.html
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+
+def choice(a, size=None, replace=True, p=None):
+    if p is not None:
+        if np.abs(np.sum(p) - 1) > sys.float_info.epsilon:
+            p = normalize(p, p=1)
+
+    if hasattr(a, '__len__'):
+        n = len(a)
+        idx = np.random.choice(n, size=size, replace=replace, p=p)
+        return np.array(a)[idx]
+    else:
+        return np.random.choice(a, size=size, replace=replace, p=p)
+
+### special numbers
 
 Phi = (1 + np.sqrt(5))/2
 def Fibonacci(n):
@@ -692,6 +712,8 @@ def BBP_formula(s, b, m, a, N=100, verbose=False):
         return 1/(b**k)*sum([a[j]/(m*k+j+1)**s for j in range(len(a))])
 
     return series(P, start_value=0, start_index=-1, max_iter=N+1, verbose=verbose)
+
+### more
 
 def sqrt_brain_compatible(x, correction_term=False, n_max = 20):
     """ Nice way to calculate approximate square roots in the head:
