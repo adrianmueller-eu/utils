@@ -224,6 +224,11 @@ class Polynomial(Function):
             return res[0]
         return res
 
+    def __mod__(self, other):
+        if isinstance(other, Polynomial):
+            return self.__truediv__(other)[1]
+        return NotImplemented
+
     def derivative(self, m=1):
         return Polynomial(polyder(self.coeffs, m))
 
@@ -231,8 +236,9 @@ class Polynomial(Function):
         return Polynomial(polyint(self.coeffs,m))
 
     def gcd(self, other):
-        # TODO: implement the euclidean algorithm
-        return NotImplemented
+        while other:
+            self, other = other, self % other
+        return self
 
     def __eq__(self, other):
         if isinstance(other, Polynomial):
@@ -297,6 +303,9 @@ class Polynomial(Function):
     def is_zero(self):
         return np.allclose(self.coeffs, 0)
 
+    def __bool__(self):
+        return not self.is_zero
+
 def polynomial_division(f: Polynomial, g: Polynomial, verbose=True):
     """ Polynomial division. Returns the two polynomials q and r such that $f = qg + r$ and either r = 0 or deg(r) < deg(g). If r = 0, we say "g divides f". """
     assert not g.is_zero, "Division by zero."
@@ -308,13 +317,13 @@ def polynomial_division(f: Polynomial, g: Polynomial, verbose=True):
 
     q = Polynomial([0])
     r = f
-    lt_g, lt_r = g.lt, r.lt
+    lt_g = g.lt
     if verbose:
         i = 0
         print('q_0:', q)
         print('r_0:', r)
-    while not r.is_zero and lt_g.divides(lt_r):
-        lt_rg, _ = lt_r / lt_g
+    while not r.is_zero and lt_g.divides(r.lt):
+        lt_rg, _ = r.lt / lt_g
         q = q + lt_rg
         r = r - lt_rg * g
         if verbose:
@@ -322,7 +331,6 @@ def polynomial_division(f: Polynomial, g: Polynomial, verbose=True):
             # print(f'lt_rg_{i}:', lt_rg)
             print(f'q_{i}:', q)
             print(f'r_{i}:', r)
-        lt_r = r.lt()
     return q, r
 
 x = Polynomial([0, 1])
