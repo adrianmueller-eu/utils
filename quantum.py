@@ -692,7 +692,8 @@ def get_E0(H):
     return ground_state_exact(H)[0]
 
 def ground_state_ITE(H, tau=5, eps=1e-6):  # eps=1e-6 gives almost perfect precision in the energy
-    """ Calculate the ground state using the Imaginary Time-Evolution (ITE) scheme. Since its vanilla form uses diagonalization, it can't be more efficient than the Lanczos algorithm itself. """
+    """ Calculate the ground state using the Imaginary Time-Evolution (ITE) scheme.
+    Since its vanilla form uses diagonalization (to calculate the matrix exponential), it can't be more efficient than diagonalization itself. """
     def evolve(i, psi):
         psi = U @ psi
         return normalize(psi)
@@ -1023,7 +1024,7 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
         If a 2-element vector but `n_qubit > 2` (or tuple), all couplings are set to a random value in this range.
         If a matrix, this matrix is used as the coupling matrix.
         For `kind='pairwise'`, `kind='2d'`, or `kind='3d'`, `J` is read as an incidence matrix, where the rows and columns correspond to the qubits and the values are the coupling strengths. Only the upper triangular part of the matrix is used.
-        For `kind='full'`, specify a dictionary with keys being tuples of qubit indices and values being the corresponding coupling strength.
+        For `kind='all'`, specify a dictionary with keys being tuples of qubit indices and values being the corresponding coupling strength.
     h : float or array, optional
         Longitudinal field strength.
         If a scalar, all fields are set to this value.
@@ -1036,7 +1037,7 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
         If a vector of size `n_qubits`, its elements specify the individual strengths of the transverse field.
     offset : float, optional
         Offset of the Hamiltonian.
-    kind : {'1d', '2d', '3d', 'pairwise', 'full'}, optional
+    kind : {'1d', '2d', '3d', 'pairwise', 'all'}, optional
         Whether the couplings are along a string (`1d`), on a 2d-lattice (`2d`), 3d-lattice (`3d`), fully connected graph (`pairwise`), or specify the desired multi-particle interactions.
     circular : bool, optional
         Whether the couplings are circular (i.e. the outermost qubits are coupled to each other). Only applies to `kind='1d'`, `kind='2d'`, and `kind='3d'`.
@@ -1072,7 +1073,7 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
     elif kind == 'pairwise':
         assert type(n_qubits) == int, f"For kind={kind}, n_qubits must be an integer, but is {n_qubits}"
         couplings = (n_qubits, n_qubits)
-    elif kind == 'full':
+    elif kind == 'all':
         assert type(n_qubits) == int, f"For kind={kind}, n_qubits must be an integer, but is {n_qubits}"
         couplings = (2**n_qubits,)
     else:
@@ -1090,8 +1091,12 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
                 # add the edge element
                 idxs = (np.append(idxs[0], 0), np.append(idxs[1], n_qubits-1))
             J = J[idxs]
+        if kind == 'pairwise' and len(J.shape) == 1 and len(J) == len(np.triu_indices(n_qubits, k=1)[0]):
+            J_mat = np.zeros(couplings)
+            J_mat[np.triu_indices(n_qubits, k=1)] = J
+            J = J_mat
         assert J.shape == couplings, f"For kind={kind}, J must be a scalar, 2-element vector, or matrix of shape {couplings}, but is {J.shape}"
-    elif isinstance(J, dict) and kind != 'full':
+    elif isinstance(J, dict) and kind != 'all':
         raise ValueError(f"For kind={kind}, J must not be a dict!")
 
     if h is not None:
@@ -1214,7 +1219,7 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
                         continue
                     H_str += str(J[i,j]) + '*'
                 H_str += 'I'*i + 'Z' + 'I'*(j-i-1) + 'Z' + 'I'*(n_qubits-j-1) + ' + '
-    elif kind == 'full':
+    elif kind == 'all':
         if np.isscalar(J):
             if n_qubits > 20:
                 raise ValueError("Printing out all interactions for n_qubits > 20 is not recommended. Please use a dict instead.")
@@ -1818,11 +1823,11 @@ def _test_ising():
     assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
 
     # full
-    H_str = ising(3, J=1.5, h=.4, g=.7, offset=1, kind='full')
+    H_str = ising(3, J=1.5, h=.4, g=.7, offset=1, kind='all')
     expected = "1.5*(ZZI + ZIZ + IZZ + ZZZ) + 0.4*(ZII + IZI + IIZ) + 0.7*(XII + IXI + IIX) + 1"
     assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
 
-    H_str = ising(3, kind='full', J={(0,1): 2, (0,1,2): 3, (1,2):0}, g=0, h=1.35)
+    H_str = ising(3, kind='all', J={(0,1): 2, (0,1,2): 3, (1,2):0}, g=0, h=1.35)
     expected = "2*ZZI + 3*ZZZ + 1.35*(ZII + IZI + IIZ)"
     assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
 
@@ -1833,7 +1838,7 @@ def _test_ising():
         (0,1,2): 3,
         (0,1,2,3): 0.5
     }
-    H_str = ising(4, J=J_dict, h=.3, g=.5, offset=1.2, kind='full')
+    H_str = ising(4, J=J_dict, h=.3, g=.5, offset=1.2, kind='all')
     expected = "1.5*ZZII + 2*ZIZI + 0.5*IZZI + 3*ZZZI + 0.5*ZZZZ + 0.3*(ZIII + IZII + IIZI + IIIZ) + 0.5*(XIII + IXII + IIXI + IIIX) + 1.2"
     assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
 
