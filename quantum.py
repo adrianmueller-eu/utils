@@ -705,6 +705,16 @@ def ground_state_ITE(H, tau=5, eps=1e-6):  # eps=1e-6 gives almost perfect preci
     ground_state_energy = (ground_state.conj().T @ H @ ground_state).real
     return ground_state_energy, ground_state
 
+def ceil_state(A, eps=1e-6):
+    """ Calculate the ground state using the power iteration algorithm. """
+    eigvec = sequence(
+        lambda i, b: normalize(A @ b),
+        start_value=random_vec(A.shape[1]),
+        eps=eps
+    )
+    eigval = eigvec.T.conj() @ A @ eigvec
+    return eigval, eigvec
+
 ###################
 ### Hamiltonian ###
 ###################
