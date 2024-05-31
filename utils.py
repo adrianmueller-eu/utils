@@ -35,12 +35,38 @@ def reversed_keys(d):
     return {k[::-1]:v for k,v in d.items()}
 
 def npp(precision=5):
-    np.set_printoptions(precision=5, suppress=True)
+    np.set_printoptions(precision=precision, suppress=True)
 
-def mapp(func, *iterables, **kwargs):
+def mapl(func, *iterables, iterator=list, **kwargs):
+    """map function that returns a collection (default: list)"""
+    return iterator(map(func, *iterables, **kwargs))
+
+def zipl(*iterables, iterator=list):
+    """zip function that returns a collection (default: list)"""
+    return iterator(zip(*iterables))
+
+def tqmap(func, *iterables, **kwargs):
     """map function that uses tq for progress bar"""
+    from tqdm.auto import tqdm as tq
+
     for i in tq(range(len(iterables[0]))):
         yield func(*[iterable[i] for iterable in iterables], **kwargs)
+
+def tqmapl(func, *iterables, iterator=list, **kwargs):
+    """map function that uses tq for progress bar and returns a collection (default: list)"""
+    return iterator(tqmap(func, *iterables, **kwargs))
+
+def tqt(iterable, **kwargs):
+    if not isinstance(iterable, Iterable):
+        raise TypeError(f"tqt expected an iterable, not {type(iterable)}")
+    if len(iterable) == 0:
+        raise ValueError("tqt expected a non-empty iterable")
+
+    from tqdm.contrib import telegram
+
+    token = os.environ['TELEGRAM_BOT_TOKEN']
+    chat_id = os.environ['TELEGRAM_CHAT_ID']
+    return telegram.tqdm(iterable, token=token, chat_id=chat_id, **kwargs)
 
 def nbytes(n):
     """ Returns the number of bytes of some common objects. """
@@ -90,7 +116,7 @@ def duh(n, precision=3):
 def shape_it(a, progress=True):
     """ Iterate over all indices of a numpy array. """
     from itertools import product
-    from tqdm import tqdm as tq
+    from tqdm.auto import tqdm as tq
 
     for n in tq(product(*[list(range(s)) for s in a.shape]),
                         disable=not progress, total=np.prod(a.shape)):
@@ -105,18 +131,6 @@ def allclose_set(a, b):
                 matched_b_indices.append(i)
                 break
     return len(matched_b_indices) == len(a)
-
-def tqt(iterable, **kwargs):
-    if not isinstance(iterable, Iterable):
-        raise TypeError(f"tqt expected an iterable, not {type(iterable)}")
-    if len(iterable) == 0:
-        raise ValueError("tqt expected a non-empty iterable")
-
-    from tqdm.contrib import telegram
-
-    token = os.environ['TELEGRAM_BOT_TOKEN']
-    chat_id = os.environ['TELEGRAM_CHAT_ID']
-    return telegram.tqdm(iterable, token=token, chat_id=chat_id, **kwargs)
 
 def now():
     return time.time()
