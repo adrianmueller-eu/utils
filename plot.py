@@ -330,7 +330,7 @@ def colorize_complex(z):
     c = np.array(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
     return c
 
-def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, show_colorbar='auto', show=True, save_file=None, **pltargs):
+def imshow(a, figsize=None, title="", cmap="hot", xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', magic_reshape=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty images from arrays.
 
     Parameters
@@ -343,7 +343,8 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
         xticks_rot (float):   Rotation of the xticks
         xlabel (str):         Label for the x-axis
         ylabel (str):         Label for the y-axis
-        show_colorbar (bool|str): Whether to show the colorbar. If 'auto', show if the array is not complex.
+        colorbar (bool|str):  Whether to show the colorbar. If 'auto', show if the array is not complex.
+        magic_reshape (bool): If True, automatically reshape long vectors if possible
         show (bool):          Whether to show the plot
         save_file (str):      If given, save the plot to this file
         **pltargs:            Additional arguments to pass to plt.imshow
@@ -353,37 +354,52 @@ def imshow(a, figsize=(8,6), title="", cmap="hot", xticks=None, yticks=None, xti
     """
 
     a = np.array(a)
-    if np.prod(a.shape) == np.max(a.shape):
-        a = a.flatten()
-    fig = plt.figure(figsize=figsize)
+    is_vector = np.prod(a.shape) == np.max(a.shape)
+
     # magic reshape
-    if len(a.shape) == 1 and a.shape[0] >= 100:
+    if magic_reshape and is_vector and max(a.shape) >= 100:
+        a = a.flatten()
         best_divisor = int_sqrt(a.shape[0])
         a = a.reshape(best_divisor, -1)
-
+        is_vector = False
     if len(a.shape) == 1:
-        a = a[:,None] # vertical
+        a = a[:,None]   # default to vertical
+
+    # intelligent figsize
+    if figsize is None:
+        max_dim = 32
+        if a.shape[0] >= a.shape[1]:
+            xdim, ydim = max_dim, min(max_dim, np.log2(max(2,a.shape[0])))  # matplotlib automatially scales the other dimension
+        else:
+            xdim, ydim = min(max_dim, np.log2(max(2,a.shape[1]))), max_dim
+        figsize = (xdim, ydim)
+    fig = plt.figure(figsize=figsize)
+
+    if is_vector:
         if is_complex(a):
             img = colorize_complex(a)
-            if show_colorbar == True:
+            if colorbar == True:
                 print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, aspect=5/a.shape[0], **pltargs)
         else:
             a = a.real
             img = plt.imshow(a, cmap=cmap, **pltargs)
-            if show_colorbar:  # True or 'auto'
-                fig.colorbar(img, fraction=0.1, pad=0.05)
+            if colorbar:  # True or 'auto'
+                fig.colorbar(img, fraction=0.01, pad=0.01)
     elif len(a.shape) == 2:
         if is_complex(a):
             img = colorize_complex(a)
-            if show_colorbar == True:
+            if colorbar == True:
                 print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, **pltargs)
         else:
             a = a.real
             img = plt.imshow(a, cmap=cmap, **pltargs)
-            if show_colorbar:  # True or 'auto'
-                fig.colorbar(img, fraction=0.1, pad=0.05, shrink=0.87)
+            if colorbar:  # True or 'auto'
+                if 1 <= a.shape[1] / a.shape[0] < 2.5:
+                    fig.colorbar(img, fraction=0.04 * a.shape[0] / a.shape[1], pad=0.01)
+                else:
+                    fig.colorbar(img, fraction=0.02, pad=0.01)
     else:
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
 
