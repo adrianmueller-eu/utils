@@ -10,7 +10,7 @@ from .isprime import is_prime
 ##############
 
 # e.g. series(lambda n, _: 1/factorial(2*n)) + series(lambda n, _: 1/factorial(2*n + 1))
-def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter=100000, verbose=False):
+def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter=100000, verbose=False, tqdm=False):
     """ Calculate the series $start_value + \\sum_{n=start_index+1}^{\\infty} f(n, f(n-1, ...))$. Throws an error if the series doesn't converge.
 
     Parameters
@@ -20,6 +20,7 @@ def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter
         eps (float, optional): The precision to which the series should be calculated (default: `sys.float_info.epsilon`).
         max_iter (int, optional): The maximum number of iterations (default: 100000).
         verbose (bool, optional): If True, print the current iteration and the current value of the series (default: False).
+        tqdm (tqdm.tqdm, optional): Use tqdm for progress bar (default: False). You might give a custom tqdm object.
 
     Returns
         float | np.ndarray: The value of the series.
@@ -28,17 +29,26 @@ def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter
         >>> series(lambda n, _: 1/factorial(2*n), 1) + series(lambda n, _: 1/factorial(2*n + 1), 1)
         2.7182818284590455
     """
+    if not tqdm:
+        def tq(x):  # dummy function
+            return x
+    elif not callable(tqdm):
+        from tqdm.auto import tqdm as tq
+    else:
+        tq = tqdm
+
     if not np.isscalar(start_value):
         start_value = np.array(start_value)
     res = start_value
     term = res
-    for i in range(start_index+1, max_iter):
+    for i in tq(range(start_index+1, max_iter)):
         term = f(i, term)
         res += term
+        change = np.nansum(np.abs(term))
         if verbose:
             print(f"Iteration {i}:", res, term)
-        if np.sum(np.abs(term)) < eps:
-            return res # return when converged
+        if change < eps:
+            return res  # return when converged
         if np.max(res) == np.inf:
             break
 
