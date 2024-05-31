@@ -196,11 +196,11 @@ try:
     def matlog(A, base=np.e):
         return _matlog(A) / np.log(base)
 except:
-    def matexp(A, base=np.e):
+    def matexp(A):
         # there is a faster method for hermitian matrices
         if is_hermitian(A):
             eigval, eigvec = np.linalg.eigh(A)
-            return eigvec @ np.diag(np.power(base, eigval)) @ eigvec.conj().T
+            return eigvec @ np.diag(np.power(np.e, eigval)) @ eigvec.conj().T
         # use series expansion
         return np.eye(A.shape[0]) + series(lambda n, A_pow: A_pow @ A / n, start_value=A, start_index=1)
 
