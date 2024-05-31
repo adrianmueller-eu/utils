@@ -10,7 +10,7 @@ F = False
 def moving_avg(x, w=3):
     return np.convolve(x, np.ones(w), 'valid') / w
 
-def r(x, precision=5):
+def r(x, precision=7):
     return np.round(x, precision)
 
 def bins_sqrt(data):
