@@ -5,6 +5,13 @@ from itertools import combinations, chain
 import scipy.sparse as sp
 from .isprime import is_prime
 
+sage_loded = False
+try:
+    from sage.all import *
+    sage_loded = True
+except ImportError:
+    pass
+
 ##############
 ### Basics ###
 ##############
@@ -217,86 +224,88 @@ except:
 
 ### rotation groups
 
-def SO(n):
-    """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
-    def rotmat(i, j, phi):
-        a = np.eye(n)
-        a[i,i] = np.cos(phi)
-        a[j,j] = np.cos(phi)
-        a[i,j] = -np.sin(phi)
-        a[j,i] = np.sin(phi)
-        return a
-    return [lambda phi: rotmat(i, j, phi) for i,j in combinations(range(n), 2)]
+if not sage_loded:
 
-def su(n, include_identity=False, sparse=False, normalize=False):
-    """ The Lie algebra associated with the Lie group SU(n). Returns the n^2-1 generators (traceless Hermitian matrices) of the group. Use `include_identity = True` to return a complete orthogonal basis of hermitian `n x n` matrices.
+    def SO(n):
+        """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
+        def rotmat(i, j, phi):
+            a = np.eye(n)
+            a[i,i] = np.cos(phi)
+            a[j,j] = np.cos(phi)
+            a[i,j] = -np.sin(phi)
+            a[j,i] = np.sin(phi)
+            return a
+        return [lambda phi: rotmat(i, j, phi) for i,j in combinations(range(n), 2)]
 
-    Parameters
-        n (int): The dimension of the matrices.
-        include_identity (bool, optional): If True, include the identity matrix in the basis (default: False).
-        sparse (bool, optional): If True, return a sparse representation of the matrices (default: False).
-        normalize (bool, optional): If True, normalize the matrices to have norm 1 (default: False).
+    def su(n, include_identity=False, sparse=False, normalize=False):
+        """ The Lie algebra associated with the Lie group SU(n). Returns the n^2-1 generators (traceless Hermitian matrices) of the group. Use `include_identity = True` to return a complete orthogonal basis of hermitian `n x n` matrices.
 
-    Returns
-        list[ np.ndarray | scipy.sparse.csr_array ]: A list of `n^2-1` matrices that form a basis of the Lie algebra.
-    """
-    if sparse:
-        base = sp.lil_array((n,n), dtype=complex)
-    else:
-        if n > 100:
-            print(f"Warning: For `n = {n} > 100`, it is recommended to use `sparse=True` to save memory.")
-        base = np.zeros((n,n), dtype=complex)
+        Parameters
+            n (int): The dimension of the matrices.
+            include_identity (bool, optional): If True, include the identity matrix in the basis (default: False).
+            sparse (bool, optional): If True, return a sparse representation of the matrices (default: False).
+            normalize (bool, optional): If True, normalize the matrices to have norm 1 (default: False).
 
-    basis = []
+        Returns
+            list[ np.ndarray | scipy.sparse.csr_array ]: A list of `n^2-1` matrices that form a basis of the Lie algebra.
+        """
+        if sparse:
+            base = sp.lil_array((n,n), dtype=complex)
+        else:
+            if n > 100:
+                print(f"Warning: For `n = {n} > 100`, it is recommended to use `sparse=True` to save memory.")
+            base = np.zeros((n,n), dtype=complex)
 
-    # Identity matrix, optional
-    if include_identity:
-        identity = base.copy()
+        basis = []
+
+        # Identity matrix, optional
+        if include_identity:
+            identity = base.copy()
+            for i in range(n):
+                identity[i,i] = 1
+            if normalize:
+                # factor 2 to get norm sqrt(2), too
+                identity = np.sqrt(2/n) * identity
+            basis.append(identity)
+
+        # Generate the off-diagonal matrices
         for i in range(n):
-            identity[i,i] = 1
+            for j in range(i+1, n):
+                m = base.copy()
+                m[i,j] = 1
+                m[j,i] = 1
+                basis.append(m)
+
+                m = base.copy()
+                m[i, j] = -1j
+                m[j, i] = 1j
+                basis.append(m)
+
+        # Generate the diagonal matrices
+        for i in range(1,n):
+            m = base.copy()
+            for j in range(i):
+                m[j,j] = 1
+            m[i,i] = -i
+            if i > 1:
+                m = np.sqrt(2/(i*(i+1))) * m
+            basis.append(m)
+
         if normalize:
-            # factor 2 to get norm sqrt(2), too
-            identity = np.sqrt(2/n) * identity
-        basis.append(identity)
+            # su have norm sqrt(2) by default
+            basis = [m/np.sqrt(2) for m in basis]
+        if sparse:
+            # convert to csr format for faster arithmetic operations
+            return [sp.csr_matrix(m) for m in basis]
+        return basis
 
-    # Generate the off-diagonal matrices
-    for i in range(n):
-        for j in range(i+1, n):
-            m = base.copy()
-            m[i,j] = 1
-            m[j,i] = 1
-            basis.append(m)
-
-            m = base.copy()
-            m[i, j] = -1j
-            m[j, i] = 1j
-            basis.append(m)
-
-    # Generate the diagonal matrices
-    for i in range(1,n):
-        m = base.copy()
-        for j in range(i):
-            m[j,j] = 1
-        m[i,i] = -i
-        if i > 1:
-            m = np.sqrt(2/(i*(i+1))) * m
-        basis.append(m)
-
-    if normalize:
-        # su have norm sqrt(2) by default
-        basis = [m/np.sqrt(2) for m in basis]
-    if sparse:
-        # convert to csr format for faster arithmetic operations
-        return [sp.csr_matrix(m) for m in basis]
-    return basis
-
-def SU(n):
-    """ Special unitary group. Returns n^2-1 functions that take an angle and return the corresponding complex rotation matrix """
-    generators = su(n)
-    def rotmat(G):
-        D, U = np.linalg.eigh(G)
-        return lambda phi: U @ np.diag(np.exp(-1j*phi/2*D)) @ U.conj().T
-    return [rotmat(G) for G in generators]
+    def SU(n):
+        """ Special unitary group. Returns n^2-1 functions that take an angle and return the corresponding complex rotation matrix """
+        generators = su(n)
+        def rotmat(G):
+            D, U = np.linalg.eigh(G)
+            return lambda phi: U @ np.diag(np.exp(-1j*phi/2*D)) @ U.conj().T
+        return [rotmat(G) for G in generators]
 
 ### random
 
@@ -396,23 +405,50 @@ def roots(coeffs):
 ### Number theory ###
 #####################
 
-def prime_factors(n):
-    """Simple brute-force algorithm to find prime factors"""
-    factors = []
-    # remove all factors of 2 first
-    while n % 2 == 0:
-        factors.append(2)
-        n //= 2
-    i = 3
-    while i * i <= n:
-        if n % i:
-            i += 2
-        else:
-            n //= i
-            factors.append(i)
-    if n > 1:
-        factors.append(n)
-    return factors
+if not sage_loded:
+
+    def prime_factors(n):
+        """Simple brute-force algorithm to find prime factors"""
+        factors = []
+        # remove all factors of 2 first
+        while n % 2 == 0:
+            factors.append(2)
+            n //= 2
+        i = 3
+        while i * i <= n:
+            if n % i:
+                i += 2
+            else:
+                n //= i
+                factors.append(i)
+        if n > 1:
+            factors.append(n)
+        return factors
+
+    def gcd(*a):
+        """ Greatest common divisor. """
+        if len(a) == 2:
+            a, b = a
+            while b:
+                a, b = b, a % b
+            return a
+        return gcd(a[0], gcd(*a[1:]))
+
+    def lcm(*a):
+        """ Least common multiple. """
+        if len(a) == 2:
+            a, b = a
+            return a * b // gcd(a, b)
+        return lcm(a[0], lcm(*a[1:]))
+
+    def is_coprime(a, b):
+        """ Test if `a` and `b` are coprime. """
+        return gcd(a, b) == 1
+
+    def euler_phi(n):
+        """ Euler's totient function. """
+        return round(n * np.prod([1 - 1/p for p in prime_factors(n)]))
+        # return sum([1 for k in range(1, n) if is_coprime(n, k)])  # ~100x slower
 
 def closest_prime_factors_to(n, m):
     """Find the set of prime factors of n with product closest to m."""
@@ -432,25 +468,6 @@ def int_sqrt(n):
     if n == 1 or n == 0:
         return n
     return int(np.prod(closest_prime_factors_to(n, sqrt(n))))
-
-def gcd(a, b):
-    """ Greatest common divisor. """
-    while b:
-        a, b = b, a % b
-    return a
-
-def lcm(a, b):
-    """ Least common multiple. """
-    return a * b // gcd(a, b)
-
-def is_coprime(a, b):
-    """ Test if `a` and `b` are coprime. """
-    return gcd(a, b) == 1
-
-def euler_phi(n):
-    """ Euler's totient function. """
-    return round(n * np.prod([1 - 1/p for p in prime_factors(n)]))
-    # return sum([1 for k in range(1, n) if is_coprime(n, k)])  # ~100x slower
 
 def dlog(x,g,n):
     """ Discrete logarithm, using the baby-step giant-step algorithm.
@@ -631,12 +648,6 @@ def softmax(a, beta=1):
     Z = np.sum(a)
     return a / Z
 
-# https://docs.python.org/3/library/itertools.html
-def powerset(iterable):
-    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
-    s = list(iterable)
-    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
-
 def choice(a, size=None, replace=True, p=None):
     if p is not None:
         if np.abs(np.sum(p) - 1) > sys.float_info.epsilon:
@@ -648,6 +659,13 @@ def choice(a, size=None, replace=True, p=None):
         return np.array(a)[idx]
     else:
         return np.random.choice(a, size=size, replace=replace, p=p)
+
+if not sage_loded:
+    # https://docs.python.org/3/library/itertools.html
+    def powerset(iterable):
+        "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+        s = list(iterable)
+        return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 ### special numbers
 
