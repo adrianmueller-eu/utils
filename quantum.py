@@ -578,7 +578,7 @@ def unket(state, as_dict=False):
             res += [f"{weight}*{weights[weight][0]}"]
         else:
             res += [f"{weight}*({'+'.join(weights[weight])})"]
-    return "+".join(res)
+    return "+".join(res).replace("+-", "-")
 
 def op(specification1, specification2=None):
     # If it's already a matrix, ensure it's a density matrix and return it
