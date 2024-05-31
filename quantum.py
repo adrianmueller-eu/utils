@@ -688,6 +688,9 @@ def ground_state_exact(hamiltonian):
     ground_state = evecs[:,0]
     return ground_state_energy, ground_state
 
+def get_E0(H):
+    return ground_state_exact(H)[0]
+
 def ground_state_ITE(H, tau=5, eps=1e-6):  # eps=1e-6 gives almost perfect precision in the energy
     """ Calculate the ground state using the Imaginary Time-Evolution (ITE) scheme. Since its vanilla form uses diagonalization, it can't be more efficient than the Lanczos algorithm itself. """
     def evolve(i, psi):
