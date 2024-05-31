@@ -440,8 +440,8 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
         elif showrho:
             plotrho(ax, rho)
 
+    fig.suptitle(title)
     fig.tight_layout()
-    plt.title(title)
     plt.show()
 
 def random_ket(n=1):
