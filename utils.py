@@ -139,7 +139,7 @@ class ConvergenceCondition:
         error (float):        Error of the last iteration.
         x_prev (list):        List of previous x's for error calculation. At most `period` x's are stored.
         start_time (float):   Clock time of the first iteration.
-        skipped (int):        Number of successive iterations the error was below eps.
+        skipped (int):        Number of successive iterations the error was below `eps`.
         pbar (tqdm.tqdm):     Progress bar object.
     """
 
@@ -158,12 +158,10 @@ class ConvergenceCondition:
         Example:
 
             >>> def expm(A):
-            >>>     i = 0
             >>>     res = A_i = np.eye(A.shape[0], dtype=A.dtype)
-            >>>     has_converged = ConvergenceCondition()
-            >>>     while not has_converged(res):
-            >>>         i += 1
-            >>>         A_i = A_i @ A / i
+            >>>     conv = ConvergenceCondition()
+            >>>     while not conv(res):
+            >>>         A_i = A_i @ A / conv.iter
             >>>         res += A_i
             >>>     return res
             >>> expm(np.eye(2))
