@@ -144,7 +144,7 @@ class Polynomial(Function):
 
     @property
     def degree(self):
-        if self.is_zero:
+        if self == 0:
             return np.inf
         return len(self.coeffs)-1
 
@@ -210,7 +210,7 @@ class Polynomial(Function):
     def __truediv__(self, other):
         if isinstance(other, Polynomial):
             # return Polynomial(polydiv(self.coeffs, other.coeffs))
-            if other.is_zero:
+            if other == 0:
                 raise ZeroDivisionError("Division by zero.")
             return polynomial_division(self, other, verbose=False)
         elif isinstance(other, (int, float, complex)):
@@ -235,14 +235,11 @@ class Polynomial(Function):
     def integrate(self,m=1):
         return Polynomial(polyint(self.coeffs,m))
 
-    def gcd(self, other):
-        while other:
-            self, other = other, self % other
-        return self
-
     def __eq__(self, other):
         if isinstance(other, Polynomial):
             return np.all(self.coeffs == other.coeffs)
+        if isinstance(other, (int, float, complex)):
+            return np.isclose(self.coeffs[-1], other) and np.allclose(self.coeffs[:-1], 0)
         return False
 
     def __ne__(self, other):
@@ -276,54 +273,47 @@ class Polynomial(Function):
 
     @property
     def factors(self):
-        roots = self.roots
-        roots = sorted(roots, key=lambda r: abs(r))
+        roots = sorted(self.roots, key=lambda r: abs(r))
         factors = [Polynomial([-r, 1]) for r in roots]
         return factors
 
-    @property
     def lt(self):
         return Polynomial([0]*self.degree + [self.coeffs[-1]])
 
-    @property
     def is_monomial(self):
-        return np.isclose(sum(self.coeffs), self.coeffs[-1])
+        return np.isclose(np.sum(np.abs(self.coeffs)), np.abs(self.coeffs[-1]))
 
     def divides(self, other):
         if self.degree > other.degree:
             return False
-        if self.is_monomial and other.is_monomial:
+        if self.is_monomial() and other.is_monomial():
             return True
-        return polynomial_division(other, self, verbose=False)[1].is_zero
+        return polynomial_division(other, self, verbose=False)[1] == 0
 
     def divisible(self, other):
         return other.divides(self)
 
-    @property
-    def is_zero(self):
-        return np.allclose(self.coeffs, 0)
-
     def __bool__(self):
-        return not self.is_zero
+        return self != 0
 
 def polynomial_division(f: Polynomial, g: Polynomial, verbose=True):
     """ Polynomial division. Returns the two polynomials q and r such that $f = qg + r$ and either r = 0 or deg(r) < deg(g). If r = 0, we say "g divides f". """
-    assert not g.is_zero, "Division by zero."
+    assert g != 0, "Division by zero."
 
     # special case for monomial division
-    if f.is_monomial and g.is_monomial:
+    if f.is_monomial() and g.is_monomial():
         coeffs = [0]*(f.degree - g.degree) + [f.coeffs[-1]/g.coeffs[-1]]
         return Polynomial(coeffs), Polynomial([0])
 
     q = Polynomial([0])
     r = f
-    lt_g = g.lt
+    lt_g = g.lt()
     if verbose:
         i = 0
         print('q_0:', q)
         print('r_0:', r)
-    while not r.is_zero and lt_g.divides(r.lt):
-        lt_rg, _ = r.lt / lt_g
+    while r != 0 and lt_g.divides(r.lt()):
+        lt_rg, _ = r.lt() / lt_g
         q = q + lt_rg
         r = r - lt_rg * g
         if verbose:
