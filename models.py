@@ -74,11 +74,11 @@ def _generate_poly_label(coeffs, precision=3):
                 return _to_str_coeff_1(c, precision) + "x"
         elif type(c) == int:
             if c == 1:
-                return f"x^{i}"
+                return f"x**{i}"
             elif c != 0:
-                return f"{c}x^{i}"
+                return f"{c}x**{i}"
         elif not np.isclose(c, 0):
-            return _to_str_coeff_1(c, precision) + f"x^{i}"
+            return _to_str_coeff_1(c, precision) + f"x**{i}"
         return ""
 
     q = len(coeffs) - 1
@@ -176,9 +176,9 @@ class Polynomial(Function):
                     factor = f"(x-{r})"
                     factor = factor.replace("--", "+")
                 if m > 1:
-                    factor += f"^{m}"
+                    factor += f"**{m}"
                 factors.append(factor)
-            return "".join(factors)
+            return "*".join(factors)
         return _generate_poly_label(self.coeffs, precision)
 
     def __add__(self, other):
