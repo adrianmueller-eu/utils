@@ -5,10 +5,10 @@ from itertools import combinations, chain
 import scipy.sparse as sp
 from .isprime import is_prime
 
-sage_loded = False
+sage_loaded = False
 try:
     from sage.all import *
-    sage_loded = True
+    sage_loaded = True
 except ImportError:
     pass
 
@@ -224,7 +224,7 @@ except:
 
 ### rotation groups
 
-if not sage_loded:
+if not sage_loaded:
 
     def SO(n):
         """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
@@ -405,7 +405,36 @@ def roots(coeffs):
 ### Number theory ###
 #####################
 
-if not sage_loded:
+def _two_arguments(f, *a):
+    if len(a) == 2:
+        return a
+    elif len(a) == 3:
+        return a[0], f(a[1], a[2])
+    elif len(a) > 3:
+        mid = len(a) // 2
+        return f(*a[:mid]), f(*a[mid:])
+    elif len(a) == 1:
+        if hasattr(a[0], '__iter__'):
+            return _two_arguments(f, *a[0])
+        return a[0], None
+    raise ValueError("No arguments given.")
+
+def gcd(*a):
+    """ Greatest common divisor. """
+    a, b = _two_arguments(gcd, a)
+    if hasattr(a, 'gcd'):
+        return a.gcd(b)
+    if not hasattr(a, '__bool__'):
+        raise ValueError(f"Can't calculate gcd of {a} and {b}.")
+    while b:
+        a, b = b, a % b
+    return a
+
+def is_coprime(*a):
+    """ Test if `a` and `b` are coprime. """
+    return gcd(*a) == 1
+
+if not sage_loaded:
 
     def prime_factors(n):
         """Simple brute-force algorithm to find prime factors"""
@@ -425,30 +454,19 @@ if not sage_loded:
             factors.append(n)
         return factors
 
-    def gcd(*a):
-        """ Greatest common divisor. """
-        if len(a) == 2:
-            a, b = a
-            while b:
-                a, b = b, a % b
-            return a
-        return gcd(a[0], gcd(*a[1:]))
-
-    def lcm(*a):
-        """ Least common multiple. """
-        if len(a) == 2:
-            a, b = a
-            return a * b // gcd(a, b)
-        return lcm(a[0], lcm(*a[1:]))
-
-    def is_coprime(a, b):
-        """ Test if `a` and `b` are coprime. """
-        return gcd(a, b) == 1
-
     def euler_phi(n):
         """ Euler's totient function. """
         return round(n * np.prod([1 - 1/p for p in prime_factors(n)]))
         # return sum([1 for k in range(1, n) if is_coprime(n, k)])  # ~100x slower
+
+    def lcm(*a):
+        """ Least common multiple. """
+        a, b = _two_arguments(lcm, a)
+        if b is None:
+            return a
+        if hasattr(a, 'lcm'):
+            return a.lcm(b)
+        return a * b // gcd(a, b)
 
 def closest_prime_factors_to(n, m):
     """Find the set of prime factors of n with product closest to m."""
@@ -660,7 +678,7 @@ def choice(a, size=None, replace=True, p=None):
     else:
         return np.random.choice(a, size=size, replace=replace, p=p)
 
-if not sage_loded:
+if not sage_loaded:
     # https://docs.python.org/3/library/itertools.html
     def powerset(iterable):
         "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
@@ -787,6 +805,11 @@ def Hutchinson_trace(A, n=1000):
 
 def test_mathlib_all():
     tests = [
+        _test_series,
+        _test_sequence,
+        _test_normalize,
+        _test_rad,
+        _test_deg,
         _test_is_symmetric,
         _test_random_symmetric,
         _test_is_orthogonal,
@@ -797,23 +820,15 @@ def test_mathlib_all():
         _test_random_unitary,
         _test_is_psd,
         _test_random_psd,
-        _test_rad,
-        _test_deg,
         _test_matexp,
         _test_matlog,
         _test_roots,
-        _test_series,
-        _test_sequence,
-        _test_normalize,
-        _test_softmax,
-        _test_su,
-        _test_SU,
-        _test_prime_factors,
+        _test_gcd,
+        _test_is_coprime,
         _test_closest_prime_factors_to,
-        _test_is_prime,
-        _test_euler_phi,
-        _test_dlog,
         _test_int_sqrt,
+        _test_dlog,
+        _test_is_carmichael,
         _test_binFrac,
         _test_binstr_from_float,
         _test_float_from_binstr,
@@ -823,137 +838,26 @@ def test_mathlib_all():
         _test_binstr_from_bincoll,
         _test_int_from_bincoll,
         _test_bincoll_from_int,
+        _test_softmax,
         _test_Fibonacci,
         _test_calc_pi
     ]
+    if not sage_loaded:
+        tests += [
+            _test_SO,
+            _test_su,
+            _test_SU,
+            _test_is_prime,
+            _test_prime_factors,
+            _test_euler_phi,
+            _test_lcm,
+            _test_powerset
+        ]
 
     for test in tests:
         print("Running", test.__name__, "... ", end="")
-        if test():
-            print("Test succeed!")
-        else:
-            print("ERROR!")
-            break
-
-def _test_is_symmetric():
-    a = np.random.rand(5,5)
-    b = a + a.T
-    assert is_symmetric(b)
-
-    c = a + 1
-    assert not is_symmetric(c)
-    return True
-
-def _test_random_symmetric():
-    a = random_symmetric(5)
-    assert is_symmetric(a)
-    return True
-
-def _test_is_orthogonal():
-    a, b = np.random.rand(2)
-    a, b = normalize([a, b])
-    a = np.array([
-        [a, b],
-        [-b, a]
-    ])
-    assert is_orthogonal(a)
-
-    c = a + 1
-    assert not is_orthogonal(c)
-    return True
-
-def _test_random_orthogonal():
-    a = random_orthogonal(5)
-    assert is_orthogonal(a)
-    return True
-
-def _test_is_hermitian():
-    a = random_vec((5,5), complex=True)
-    b = a + a.conj().T
-    assert is_hermitian(b)
-    c = a + 1
-    assert not is_hermitian(c)
-    return True
-
-def _test_random_hermitian():
-    a = random_hermitian(5)
-    assert is_hermitian(a)
-    return True
-
-def _test_is_unitary():
-    a, b = random_vec(2, complex=True)
-    a, b = normalize([a, b])
-    phi = np.random.rand()*2*np.pi
-    a = np.array([
-        [a, b],
-        [-np.exp(1j*phi)*b.conjugate(), np.exp(1j*phi)*a.conjugate()]
-    ])
-    assert is_unitary(a)
-
-    c = a + 1
-    assert not is_unitary(c)
-    return True
-
-def _test_random_unitary():
-    a = random_unitary(5)
-    assert is_unitary(a)
-    return True
-
-def _test_is_psd():
-    # A @ A^\dagger => PSD
-    a = random_vec((5,5), complex=True)
-    a = a @ a.conj().T
-    assert is_psd(a)
-
-    # unitarily diagonalizable (= normal) + positive eigenvalues <=> PSD
-    U = random_unitary(5)
-    p = np.random.rand(5)
-    a = U @ np.diag(p) @ U.conj().T
-    assert is_psd(a)
-
-    # sum(p) can't be larger than 5 here, so make the trace negative to guarantee negative eigenvalues
-    b = a - 5
-    assert not is_psd(b)
-    return True
-
-def _test_random_psd():
-    a = random_psd(5)
-    assert is_psd(a)
-    return True
-
-def _test_rad():
-    assert rad(180) == np.pi
-    assert rad(0) == 0
-    return True
-
-def _test_deg():
-    assert deg(np.pi) == 180
-    assert deg(0) == 0
-    return True
-
-def _test_matexp():
-    a = random_vec((5,5), complex=True)
-    # check if det(matexp(A)) == exp(trace(A))
-    assert np.isclose(np.linalg.det(matexp(a)), np.exp(np.trace(a)))
-    return True
-
-def _test_matlog():
-    alpha = np.random.rand()*2*np.pi - np.pi
-    A = np.array([[np.cos(alpha), -np.sin(alpha)],[np.sin(alpha), np.cos(alpha)]])
-    assert np.allclose(matlog(A), alpha*np.array([[0, -1],[1, 0]])), f"Error for alpha = {alpha}! {matlog(A)} != {alpha*np.array([[0, -1],[1, 0]])}"
-    return True
-
-def _test_roots():
-    # Test cases
-    assert np.allclose(roots([1,0,-1]), (1.0, -1.0))
-    assert np.allclose(roots([1,0,1]), (1j, -1j))
-    assert np.allclose(roots([1, -2, -11, 12]), [-3, 1, 4])
-    assert np.allclose(roots([1, -7, 5, 31, -30]), [-2, 1, 3, 5])
-
-    for degree in range(1, 6):
-        coeffs = random_vec(degree+1, (-10, 10), complex=True)
-        assert np.allclose(np.polyval(coeffs, roots(coeffs)), 0), f"{coeffs}: {roots(coeffs)}"
-    return True
+        test()
+        print("Test succeed!")
 
 def _test_series():
     res = series(lambda n, _: 1/factorial(2*n), 1) + series(lambda n, _: 1/factorial(2*n + 1), 1)
@@ -980,8 +884,6 @@ def _test_series():
     expected = np.array([[np.e, 0], [0, 1/np.e]])
     assert np.allclose(a, expected)
 
-    return True
-
 def _test_sequence():
     # for any converging series, the sequence should converge to 0
     res = sequence(lambda n, _: 1/factorial(2*n), 1)
@@ -992,19 +894,134 @@ def _test_sequence():
     res = sequence(lambda i,x: (0.3+1j)*x*(1-x), start_value=x+1j*y, max_iter=200)
     res[np.isnan(res)] = np.inf
     np.allclose(np.mean(np.isinf(res)), 0.78815)
-    return True
 
 def _test_normalize():
     a = random_vec(5, complex=True)
     b = normalize(a)
     assert np.isclose(np.linalg.norm(b), 1)
-    return True
 
-def _test_softmax():
-    a = np.random.rand(5)
-    b = softmax(a)
-    assert np.isclose(np.sum(b), 1)
-    return True
+def _test_rad():
+    assert rad(180) == np.pi
+    assert rad(0) == 0
+
+def _test_deg():
+    assert deg(np.pi) == 180
+    assert deg(0) == 0
+
+def _test_is_symmetric():
+    a = np.random.rand(5,5)
+    b = a + a.T
+    assert is_symmetric(b)
+
+    c = a + 1
+    assert not is_symmetric(c)
+
+def _test_random_symmetric():
+    a = random_symmetric(5)
+    assert is_symmetric(a)
+
+def _test_is_orthogonal():
+    a, b = np.random.rand(2)
+    a, b = normalize([a, b])
+    a = np.array([
+        [a, b],
+        [-b, a]
+    ])
+    assert is_orthogonal(a)
+
+    c = a + 1
+    assert not is_orthogonal(c)
+
+def _test_random_orthogonal():
+    a = random_orthogonal(5)
+    assert is_orthogonal(a)
+
+def _test_is_hermitian():
+    a = random_vec((5,5), complex=True)
+    b = a + a.conj().T
+    assert is_hermitian(b)
+    c = a + 1
+    assert not is_hermitian(c)
+
+def _test_random_hermitian():
+    a = random_hermitian(5)
+    assert is_hermitian(a)
+
+def _test_is_unitary():
+    a, b = random_vec(2, complex=True)
+    a, b = normalize([a, b])
+    phi = np.random.rand()*2*np.pi
+    a = np.array([
+        [a, b],
+        [-np.exp(1j*phi)*b.conjugate(), np.exp(1j*phi)*a.conjugate()]
+    ])
+    assert is_unitary(a)
+
+    c = a + 1
+    assert not is_unitary(c)
+
+def _test_random_unitary():
+    a = random_unitary(5)
+    assert is_unitary(a)
+
+def _test_is_psd():
+    # A @ A^\dagger => PSD
+    a = random_vec((5,5), complex=True)
+    a = a @ a.conj().T
+    assert is_psd(a)
+
+    # unitarily diagonalizable (= normal) + positive eigenvalues <=> PSD
+    U = random_unitary(5)
+    p = np.random.rand(5)
+    a = U @ np.diag(p) @ U.conj().T
+    assert is_psd(a)
+
+    # sum(p) can't be larger than 5 here, so make the trace negative to guarantee negative eigenvalues
+    b = a - 5
+    assert not is_psd(b)
+
+def _test_random_psd():
+    a = random_psd(5)
+    assert is_psd(a)
+
+def _test_matexp():
+    a = random_vec((5,5), complex=True)
+    # check if det(matexp(A)) == exp(trace(A))
+    assert np.isclose(np.linalg.det(matexp(a)), np.exp(np.trace(a)))
+
+def _test_matlog():
+    alpha = np.random.rand()*2*np.pi - np.pi
+    A = np.array([[np.cos(alpha), -np.sin(alpha)],[np.sin(alpha), np.cos(alpha)]])
+    assert np.allclose(matlog(A), alpha*np.array([[0, -1],[1, 0]])), f"Error for alpha = {alpha}! {matlog(A)} != {alpha*np.array([[0, -1],[1, 0]])}"
+
+def _test_roots():
+    # Test cases
+    assert np.allclose(roots([1,0,-1]), (1.0, -1.0))
+    assert np.allclose(roots([1,0,1]), (1j, -1j))
+    assert np.allclose(roots([1, -2, -11, 12]), [-3, 1, 4])
+    assert np.allclose(roots([1, -7, 5, 31, -30]), [-2, 1, 3, 5])
+
+    for degree in range(1, 6):
+        coeffs = random_vec(degree+1, (-10, 10), complex=True)
+        assert np.allclose(np.polyval(coeffs, roots(coeffs)), 0), f"{coeffs}: {roots(coeffs)}"
+
+def _test_SO():
+    n = 4
+    SOn = SO(n)
+
+    # check the number of generators
+    n_expected = n*(n-1)//2
+    assert len(SOn) == n_expected, f"Number of generators is {len(SOn)}, but should be {n_expected}!"
+
+    # check if all generators are orthogonal
+    for i, A in enumerate(SOn):
+        random_angle = np.random.randn()
+        assert is_orthogonal(A(random_angle)), f"Generator {i} is not orthogonal! ({random_angle})"
+
+    # check if all generators are determinant 1
+    for i, A in enumerate(SOn):
+        random_angle = np.random.randn()
+        assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} does not have determinant 1! ({random_angle})"
 
 def _test_su():
     n = np.random.randint(2**1, 2**3)
@@ -1026,7 +1043,7 @@ def _test_su():
     for i, A in enumerate(sun):
         assert is_hermitian(A), f"Generator {i} is not Hermitian!"
 
-    # check if all generators are orthogonal
+    # check if all generators are pairwise orthogonal
     for i, (A,B) in enumerate(combinations(sun,2)):
         assert np.allclose(np.trace(A.conj().T @ B), 0), f"Pair {i} is not orthogonal!"
 
@@ -1041,8 +1058,6 @@ def _test_su():
     # check the generators are the same
     for i, (A,B) in enumerate(zip(sun, sun_sp)):
         assert np.allclose(A, B.todense()), f"Pair {i} is not the same!"
-
-    return True
 
 def _test_SU():
     n = 4
@@ -1062,50 +1077,89 @@ def _test_SU():
         random_angle = np.random.randn()
         assert not np.allclose(A(random_angle), B(random_angle)), f"Pair {i} is not different! ({random_angle})"
 
-    return True
+    # check if all generators are determinant 1
+    for i, A in enumerate(SUn):
+        random_angle = np.random.randn()
+        assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} does not have determinant 1! ({random_angle})"
 
-def _test_prime_factors():
-    assert prime_factors(12) == [2, 2, 3] and prime_factors(1) == []
-    return True
+def _test_gcd():
+    # integers
+    assert gcd(2*3*7, 2*2*2*7) == 2*7
+    assert gcd(2*3*7, 3*19) == 3
+    assert gcd(42, 0) == 42
+    assert gcd(0, 0) == 0
+    assert gcd(12) == 12
+    try:
+        gcd([])
+        assert False
+    except:
+        pass
+    assert gcd(2,4,6,8) == 2
+    assert gcd([2,4,6,8]) == 2
+    assert gcd(range(0, 1000000, 10)) == 10
 
-def _test_closest_prime_factors_to():
-    assert np.array_equal(closest_prime_factors_to(42, 13), [2, 7])
-    return True
-
-def _test_int_sqrt():
-    assert int_sqrt(42) == 6
-    assert int_sqrt(1) == 1
-    assert int_sqrt(0) == 0
-    return True
+def _test_is_coprime():
+    assert is_coprime(42, 57) == False
+    assert is_coprime(42, 57, 13) == True
 
 def _test_is_prime():
     assert is_prime(2) == True
     assert is_prime(1) == False
     assert is_prime(42) == False
     assert is_prime(43) == True
-    assert is_carmichael(997633) == True
+    # assert is_carmichael(997633) == True
     assert is_prime(997633) == False
     # assert is_prime(1000000000000066600000000000001) == True  # out of bounds
     # assert is_prime(512 * 2**512 - 1) == True  # out of bounds
-    return True
+
+def _test_prime_factors():
+    assert prime_factors(12) == [2, 2, 3] and prime_factors(1) == []
 
 def _test_euler_phi():
     assert euler_phi(1) == 1
     assert euler_phi(2) == 1
     assert euler_phi(10) == 4
     assert euler_phi(42) == 12
-    return True
+
+def _test_lcm():
+    # Integers
+    assert lcm(2*3*3, 2*2*3) == 2*2*3*3
+    assert lcm(2*3*7, 3*19) == 2*3*7*19
+    assert lcm(42, 0) == 0
+    assert lcm(12) == 12
+    assert lcm(2,4,6,8) == 24
+    assert lcm([2,4,6,8]) == 24
+    assert lcm(range(1, 50, 13)) == 7560
+    try:
+        lcm(0, 0)
+        lcm([])
+        assert False
+    except:
+        pass
+
+def _test_closest_prime_factors_to():
+    assert np.array_equal(closest_prime_factors_to(42, 13), [2, 7])
+
+def _test_int_sqrt():
+    assert int_sqrt(42) == 6
+    assert int_sqrt(1) == 1
+    assert int_sqrt(0) == 0
 
 def _test_dlog():
     assert dlog(18, 2, 67) == 13
     assert dlog(17, 2, 67) == 64
-    return True
+
+def _test_is_carmichael():
+    res = list(carmichael_numbers(2000))
+    assert res == [561, 1105, 1729], f"Found {res} instead of [561, 1105, 1729]"
+    for r in res:
+        assert is_carmichael(r)
+        assert not is_carmichael(r+2)
 
 def _test_binFrac():
     assert binFrac(0.5, prec=12) == ".100000000000"
     assert binFrac(0.5, prec=0) == "."
     assert binFrac(np.pi-3, prec=12) == ".001001000011"
-    return True
 
 def _test_binstr_from_float():
     assert binstr_from_float(0) == "0"
@@ -1122,7 +1176,6 @@ def _test_binstr_from_float():
     assert binstr_from_float(-0.875, complement=False) == "-.111"
     assert binstr_from_float(0, r=3, complement=True) == ".000"
     assert binstr_from_float(-1.0, r=3, complement=True) == "-1.000"
-    return True
 
 def _test_float_from_binstr():
     assert np.allclose(float_from_binstr('1010'), 10)
@@ -1140,49 +1193,50 @@ def _test_float_from_binstr():
     assert np.allclose(float_from_binstr(binstr_from_float(-np.pi, r=20)), -np.pi, atol=1e-6)
     assert np.allclose(float_from_binstr(binstr_from_float(-0.375, r=3)), -0.375)
     assert np.allclose(float_from_binstr(binstr_from_float(-0.375, r=3, complement=True), complement=True), -0.375)
-    return True
 
 def _test_binstr_from_int():
     assert binstr_from_int(42) == "101010"
     assert binstr_from_int(0) == "0"
     assert binstr_from_int(1) == "1"
-    return True
 
 def _test_int_from_binstr():
     assert int_from_binstr("101010") == 42
     assert int_from_binstr("0") == 0
     assert int_from_binstr("1") == 1
-    return True
 
 def _test_binstr_from_bincoll():
     assert binstr_from_bincoll([1, 0, 1, 0, 1, 0]) == "101010"
     assert binstr_from_bincoll([0]) == "0"
     assert binstr_from_bincoll([1]) == "1"
-    return True
 
 def _test_bincoll_from_binstr():
     assert bincoll_from_binstr("101010") == [1, 0, 1, 0, 1, 0]
     assert bincoll_from_binstr("0") == [0]
     assert bincoll_from_binstr("1") == [1]
-    return True
 
 def _test_int_from_bincoll():
     assert int_from_bincoll([1, 0, 1, 0, 1, 0]) == 42
     assert int_from_bincoll([0]) == 0
     assert int_from_bincoll([1]) == 1
-    return True
 
 def _test_bincoll_from_int():
     assert bincoll_from_int(42) == [1, 0, 1, 0, 1, 0]
     assert bincoll_from_int(0) == [0]
     assert bincoll_from_int(1) == [1]
-    return True
+
+def _test_softmax():
+    a = np.random.rand(5)
+    b = softmax(a)
+    assert np.isclose(np.sum(b), 1)
+
+def _test_powerset():
+    assert list(powerset([1,2,3])) == [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
+    assert list(powerset([])) == [()]
 
 def _test_Fibonacci():
     assert Fibonacci(10) == 55
     assert Fibonacci(0) == 0
     assert Fibonacci(1) == 1
-    return True
 
 def _test_calc_pi():
     assert np.allclose(float(calc_pi1()), np.pi)
@@ -1191,4 +1245,3 @@ def _test_calc_pi():
     assert np.allclose(float(calc_pi4()), np.pi)
     assert np.allclose(BBP_formula(1, 16, 8, [4, 0, 0, -2, -1, -1]), np.pi)
     assert np.allclose(1/2*BBP_formula(1, 2, 1, [1]), np.log(2))
-    return True

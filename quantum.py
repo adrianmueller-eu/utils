@@ -1454,11 +1454,8 @@ def test_quantum_all():
 
     for test in tests:
         print("Running", test.__name__, "... ", end="", flush=True)
-        if test():
-            print("Test succeed!", flush=True)
-        else:
-            print("ERROR!")
-            break
+        test()
+        print("Test succeed!", flush=True)
 
 def _test_constants():
     global I, X, Y, Z, H_gate, S, T_gate, CNOT, SWAP
@@ -1476,8 +1473,6 @@ def _test_constants():
     assert np.allclose(Ry(2*np.pi), -I)
     assert np.allclose(Rz(2*np.pi), -I)
 
-    return True
-
 def _test_is_dm():
     assert is_dm(np.eye(2**2)/2**2)
     # random Bloch vectors
@@ -1488,7 +1483,6 @@ def _test_is_dm():
         # create dm from Bloch vector
         rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
         assert is_dm(rho)
-    return True
 
 def _test_random_ket():
     for _ in range(100):
@@ -1496,14 +1490,12 @@ def _test_random_ket():
         psi = random_ket(n_qubits)
         assert psi.shape == (2**n_qubits,)
         assert np.allclose(np.linalg.norm(psi), 1)
-    return True
 
 def _test_random_dm():
     for _ in range(100):
         n_qubits = np.random.randint(1, 5)
         rho = random_dm(n_qubits)
         assert is_dm(rho)
-    return True
 
 def _test_ph():
     H = parse_hamiltonian('0.5*(II + ZI - ZX + IX)')
@@ -1531,8 +1523,6 @@ def _test_ph():
     IZZI = np.kron(np.kron(I, Z), np.kron(Z, I))
     assert np.allclose(H, 1.2*IZZI)
 
-    return True
-
 def _test_random_ham():
     for _ in range(100):
         n_qubits = np.random.randint(1, 5)
@@ -1543,7 +1533,6 @@ def _test_random_ham():
         assert H.shape == (2**n_qubits, 2**n_qubits)
         assert np.allclose(np.trace(H), 0)
         assert is_hermitian(H)
-    return True
 
 def _test_ground_state():
     H = parse_hamiltonian('ZZII + IZZI + IIZZ', dtype=float)
@@ -1557,8 +1546,6 @@ def _test_ground_state():
     assert np.allclose(res_ITE[0], ge)
     # assert np.allclose(res_ITE[1], gs) # might be complex due to random state initialization
 
-    return True
-
 def _test_get_H_energies_eq_get_pe_energies():
     n_qubits = np.random.randint(1, 5)
     n_terms = np.random.randint(1, 100)
@@ -1569,8 +1556,6 @@ def _test_get_H_energies_eq_get_pe_energies():
     A = np.sort(get_pe_energies(exp_i(H)))
     B = np.sort(get_H_energies(H, expi=True))
     assert np.allclose(A, B), f"{A} ≠ {B}"
-
-    return True
 
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
@@ -1627,8 +1612,6 @@ def _test_reverse_qubit_order():
     psi_rev2 = reverse_qubit_order(psi)
     assert np.allclose(psi_rev, psi_rev2), f"psi_rev = {psi_rev}\npsi_rev2 = {psi_rev2}"
 
-    return True
-
 def _test_partial_trace():
     # known 4x4 matrix
     rho = np.arange(16).reshape(4,4)
@@ -1671,8 +1654,6 @@ def _test_partial_trace():
     assert rho.shape == rho_tr.shape, f"rho.shape = {rho.shape} ≠ rho_tr.shape = {rho_tr.shape}"
     assert np.allclose(rho, rho_tr), f"rho_expected = {rhoA_expected}\nrho_actual = {rhoA_actual}"
 
-    return True
-
 def _test_entropy_von_Neumann():
     rho = random_dm(2, pure=True)
     S = entropy_von_Neumann(rho)
@@ -1681,8 +1662,6 @@ def _test_entropy_von_Neumann():
     rho = np.eye(2)/2
     S = entropy_von_Neumann(rho)
     assert np.allclose(S, 1), f"S = {S} ≠ 1"
-
-    return True
 
 def _test_entropy_entanglement():
     # Two qubits in the Bell state |00> + |11> should have entropy 1
@@ -1696,8 +1675,6 @@ def _test_entropy_entanglement():
     rho = np.kron(rhoA, rhoB)
     S = entropy_entanglement(rho, [0,1])
     assert np.allclose(S, 0), f"S = {S} ≠ 0"
-
-    return True
 
 def _test_fidelity():
     # same state
@@ -1740,8 +1717,6 @@ def _test_fidelity():
     assert 0 <= fidelity(psi1, rho2) <= 1, f"fidelity = {fidelity(psi1, rho2)} ∉ [0,1]"
     assert 0 <= fidelity(rho1, psi2) <= 1, f"fidelity = {fidelity(rho1, psi2)} ∉ [0,1]"
 
-    return True
-
 def _test_Schmidt_decomposition():
     n = 6
     subsystem = np.random.choice(n, size=np.random.randint(1, n), replace=False)
@@ -1768,8 +1743,6 @@ def _test_Schmidt_decomposition():
     S_expected = entropy_entanglement(psi, subsystem)
     S_actual = -np.sum([l_i**2 * np.log2(l_i**2) for l_i in l])
     assert np.allclose(S_expected, S_actual), f"S_expected = {S_expected} ≠ S_actual = {S_actual}"
-
-    return True
 
 
 def _test_ising():
@@ -1842,8 +1815,6 @@ def _test_ising():
     expected = "1.5*ZZII + 2*ZIZI + 0.5*IZZI + 3*ZZZI + 0.5*ZZZZ + 0.3*(ZIII + IZII + IIZI + IIIZ) + 0.5*(XIII + IXII + IIXI + IIIX) + 1.2"
     assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
 
-    return True
-
 def _test_pauli_basis():
     n = np.random.randint(1,4)
     pauli_n = pauli_basis(n)
@@ -1890,8 +1861,6 @@ def _test_pauli_basis():
     for i, (A,B) in enumerate(zip(pauli_n, pauli_n_sp)):
         assert np.allclose(A, B.todense()), f"Generator {i} is not the same!"
 
-    return True
-
 def _test_pauli_decompose():
     global f2, H_gate, SWAP
     H = H_gate
@@ -1924,5 +1893,3 @@ def _test_pauli_decompose():
     n_expected = 2**(2*n)  # == len(pauli_basis(n))
     assert len(coeff) == n_expected, f"len(coeff) = {len(coeff)} ≠ {n_expected}"
     assert len(basis) == n_expected, f"len(basis) = {len(basis)} ≠ {n_expected}"
-
-    return True
