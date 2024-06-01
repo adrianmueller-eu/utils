@@ -4,6 +4,7 @@ from math import factorial, sqrt, ceil
 from itertools import combinations, chain
 import scipy.sparse as sp
 from random import randint
+from .models import Polynomial
 
 sage_loaded = False
 try:
@@ -400,6 +401,204 @@ def roots(coeffs):
         return quatric(*coeffs)
     else:
         return np.roots(coeffs)
+
+if sage_loaded:
+    def lagrange_multipliers(f, g, filter_real=False):
+        """
+        Solve a constrained optimization problem using the Lagrange multipliers.
+
+        Parameters:
+            f (sage.symbolic.expression.Expression): The objective function.
+            g (list of sage.symbolic.expression.Expression): The equality constraints.
+
+        Returns:
+            list of dict: Solutions to the optimization problem.
+
+        Example:
+            >>> x, y, z = var('x y z')
+            >>> f = (x-1)^2 + (y-1)^2 + (z-1)^2  # objective to minimize
+            >>> g = x^4 + y^2 + z^2 - 1          # constraint (points need to lie on this surface)
+            >>> lagrange_multipliers(f, g, filter_real=True)
+        """
+        g = g or []
+        # multipliers
+        if isinstance(g, Expression):
+            g = [g]
+        if len(g) == 0:
+            lambdas = []
+        else:
+            lambdas = var(['lambda{}'.format(i) for i in range(len(g))])
+        # Lagrange function
+        L = f + sum(l * g for l, g in zip(lambdas, g))
+        partials = list(L.gradient())
+        # Solve the system
+        solutions = solve(partials + g, L.variables(), solution_dict=True)
+        # Filter out non-real solutions if desired
+        sols = []
+        for sol in solutions:
+            for v in sol:
+                sol[v] = sol[v].simplify_full()
+            if filter_real:
+                if not all(val.is_real() for val in sol.values()):
+                    continue
+            sol['f'] = f.subs(sol)
+            sols.append(sol)
+        return sols
+
+    def polynomial_division(f, L):
+        """ Division of polynomials. Returns the polynomials q and remainder r such that $f = r + \\sum_i q_i*g_i$ and either r = 0 or multideg(r) < multideg(g). If r == 0, we say "L divides f".
+
+        Parameters:
+            f (sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular)
+            L (list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular])
+
+        Returns:
+            q (list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]): The quotients.
+            r (sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular): The remainder.
+        """
+        if not isinstance(L, (list, tuple)):
+            L = [L]
+        q = [0] * len(L)
+        r = 0
+        p = f
+
+        while p != 0:
+            i = 0
+            division_occurred = False
+
+            while i < len(L) and not division_occurred:
+                LTLi = L[i].lt()
+                LTp = p.lt()
+                if LTLi.divides(LTp):
+                    nqt = (LTp / LTLi).numerator()
+                    q[i] += nqt
+                    p -= nqt * L[i]
+                    division_occurred = True
+                else:
+                    i += 1
+
+            if not division_occurred:
+                LTp = p.lt()
+                r += LTp
+                p -= LTp
+
+        return q, r
+
+    def s_polynomial(f, g):
+        """
+        Compute the S-polynomial of two polynomials.
+
+        Parameters:
+            f (sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular)
+            g (sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular)
+
+        Returns:
+            sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular: The S-polynomial.
+        """
+        flt, glt = f.lt(), g.lt()
+        lcmfg = lcm(flt, glt)
+        res = lcmfg * (f / flt - g / glt)
+        assert res.denominator() == 1, "Not a polynomial"
+        return res.numerator()
+
+    def Buchberger(F, verbose=False):
+        """
+        Compute a Grobner basis using the Buchberger algorithm.
+
+        Parameters:
+            F (list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]): The list of polynomials.
+            verbose (bool, optional): If True, print intermediate steps.
+
+        Returns:
+            list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]: The Grobner basis.
+        """
+        G = F.copy()
+        G_ = []
+        while G != G_:
+            G_ = G.copy()
+            for p, q in combinations(G, 2):
+                sp = s_polynomial(p, q)
+                _, r = polynomial_division(sp, G)
+                if r != 0:
+                    G.append(r)
+                    if verbose:
+                        print(f"{p} and {q} give {sp} which reduces to {r}")
+                        print(f"G is now {G}")
+        return G
+
+    def is_grobner_basis(G):
+        return Buchberger(G) == G
+
+    def is_minimal_grobner_basis(G):
+        # 1. G is a Grobner basis
+        if not is_grobner_basis(G):
+            return False
+        # 2. All leading coefficients are 1
+        for p in G:
+            if p.lc() != 1:
+                return False
+        # 3. No leading monomial is divisible by the leading monomial of another polynomial
+        for p, q in combinations(G, 2):
+            if p.lt().divides(q.lt()):
+                return False
+        return True
+
+    def is_reduced_grobner_basis(G):
+        # 1. G is a minimal Grobner basis
+        if not is_minimal_grobner_basis(G):
+            return False
+        # 2. No monomial of any polynomial in G is divisible by the leading monomial of another polynomial
+        for p, q in combinations(G, 2):
+            for m in p.monomials():
+                if q.lt().divides(m):
+                    return False
+        return True
+
+    def implicitization(r, m, tnames=None, xnames=None):
+        R = PolynomialRing(QQ, ['t{}'.format(i) for i in range(m)], order='lex')
+        tmp = r(*R.gens())
+        n = len(tmp)
+        def generate_names(names, s, k):
+            if names is None:
+                names = [f'{s}{i}' for i in range(m)]
+            else:
+                if isinstance(names, str):
+                    names = names.split(', ')
+                    if len(names) == 1:
+                        names = names[0].split(' ')
+                        if len(names) == 1:
+                            names = names[0].split(',')
+                assert len(names) == k, f"Expected {k} names for {s}, but got {len(names)}: {names}"
+            return names
+        tnames = generate_names(tnames, 't', m)
+        xnames = generate_names(xnames, 'x', n)
+
+        R = PolynomialRing(QQ, ['λ'] + tnames + xnames, order='lex')
+        l = R.gens()[0]
+        t = R.gens()[1:m+1]
+        x = R.gens()[m+1:]
+        r = r(*t)
+        p = [gi.numerator() for gi in r]
+        q = [gi.denominator() for gi in r]
+        if all(qi == 1 for qi in q):
+            gens = [xi - pi for xi, pi in zip(x, p)]
+            toeliminate = list(t)
+        else:
+            gens = [qi*xi - pi for xi, pi, qi in zip(x, p, q)] + [1-l*prod(q)]
+            toeliminate = [l] + list(t)
+        I = R.ideal(gens)
+        return [I] + [I.elimination_ideal(toeliminate[:i+1]) for i in range(len(toeliminate))]
+
+    def random_polynomial(variables, n_terms=10, max_degree=2, seed=None):
+        """Generate a random polynomial with integer coefficients."""
+        import random
+        from random import randint
+
+        seed = randint(0, 1000) if seed is None else seed
+        random.seed(int(seed))
+        # monomials = [prod([var^randint(0, q) for var in variables]) for _ in range(randint(1, n))]
+        monomials = [prod([var^randint(0, max_degree) for var in variables]) for _ in range(1, n_terms)]
+        return sum([randint(-100, 100)*m for m in monomials])
 
 #####################
 ### Number theory ###
@@ -885,7 +1084,14 @@ def test_mathlib_all():
         _test_Fibonacci,
         _test_calc_pi
     ]
-    if not sage_loaded:
+    if sage_loaded:
+        tests += [
+            _test_lagrange_multipliers,
+            _test_polynomial_division,
+            _test_s_polynomial,
+            _test_implicitization
+        ]
+    else:
         tests += [
             _test_SO,
             _test_su,
@@ -1125,6 +1331,91 @@ def _test_SU():
         random_angle = np.random.randn()
         assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} does not have determinant 1! ({random_angle})"
 
+def _test_lagrange_multipliers():
+    tol = 1e-10
+    def assert_dict_close(a, b):
+        for k in a.keys():
+            k_ = str(k)
+            assert k_ in b, f"Key {k} not in b!"
+            assert abs(a[k]-b[k_]) < tol, f"Value {a[k]} != {b[k_]}!"
+
+    x, y, z = var('x y z')
+    f = (x-1)**2 + (y-1)**2 + (z-1)**2   # objective to minimize
+    g = x**2 + y**2 + z**2 - 3           # constraint (points need to lie on this surface)
+
+    sols = lagrange_multipliers(f, g)
+    assert len(sols) == 2
+    assert abs(sols[0]['f']) < tol or abs(sols[1]['f']) < tol
+    assert_dict_close(sols[0], {'lambda0': -2, 'x': -1, 'y': -1, 'z': -1, 'f': 12}), sols
+    assert_dict_close(sols[1], {'lambda0': 0, 'x': 1, 'y': 1, 'z': 1, 'f': 0}), sols
+
+    g2 = x*y - 1   # another constraint
+    sols = lagrange_multipliers(f, [g, g2])
+    assert len(sols) == 4
+    assert_dict_close(sols[0], {'lambda0': -2, 'lambda1': 0, 'x': -1, 'y': -1, 'z': -1, 'f': 12}), sols
+    assert_dict_close(sols[1], {'lambda0': 0, 'lambda1': -4, 'x': -1, 'y': -1, 'z': 1, 'f': 8}), sols
+    assert_dict_close(sols[2], {'lambda0': 0, 'lambda1': 0, 'x': 1, 'y': 1, 'z': 1, 'f': 0}), sols
+    assert_dict_close(sols[3], {'lambda0': -2, 'lambda1': 4, 'x': 1, 'y': 1, 'z': -1, 'f': 4}), sols
+
+def _test_polynomial_division():
+    R = PolynomialRing(QQ, 'x')
+    x, = R.gens()
+    f = x**2 - 1
+    g = x - 1
+    q, r = polynomial_division(f, g)
+    assert q == [x + 1] and r == 0, f"q = {q}, r = {r}"
+
+    R = PolynomialRing(QQ, 'x, y')
+    x,y = R.gens()
+    f = x**2*y + x*y**2 + y**2
+    f1 = x*y - 1
+    f2 = y**2 - 1
+    q,r = polynomial_division(f, [f1, f2])
+    assert f == q[0]*f1 + q[1]*f2 + r
+
+def _test_s_polynomial():
+    R = PolynomialRing(QQ, 'x, y', order='deglex')
+    x,y = R.gens()
+    f1 = x**3 - 2*x*y
+    f2 = x**2*y - 2*y**2 + x
+    f3 = s_polynomial(f1, f2)
+    assert f3 == -x**2, f"S{f1, f2} = -x^2 != {f3}"
+    f4 = s_polynomial(f1, f3)
+    assert f4 == 2*x*y, f"S{f1, f3} = 2xy != {f4}"
+    f5 = s_polynomial(f2, f3)
+    assert f5 == 2*y**2 - x, f"S{f2, f3} = 2y^2 - x != {f5}"
+    # all combinations should be zero now -> f1, f2, f3, f4, f5 is a Groebner basis
+    for f, g in combinations([f1, f2, f3, f4, f5], 2):
+        S = s_polynomial(f, g)
+        assert polynomial_division(S, [f1, f2, f3, f4, f5])[1] == 0
+
+    assert not is_grobner_basis([f1, f2, f3, f4])
+    assert is_grobner_basis([f1, f2, f3, f4, f5])
+    assert not is_minimal_grobner_basis([f1, f2, f3, f4, f5])
+    assert not is_reduced_grobner_basis([f1, f2, f3, f4, f5])
+    I = R.ideal([f1, f2])
+    assert is_reduced_grobner_basis(I.groebner_basis())
+
+    assert Buchberger([f1, f2]) == [f1, f2, f3, f4, f5]
+
+def _test_implicitization():
+    g = lambda t,u: [t + u, t**2 + 2*t*u, t**3 + 3*t**2*u]  # polynomial parametric representation
+    I = implicitization(g, 2, tnames='t,u', xnames='x,y,z')
+    assert len(I) == 3
+    assert len(I[0].gens()) == 3
+    assert len(I[0].groebner_basis()) == 7
+    assert len(I[1].gens()) == 6
+    assert len(I[-1].gens()) == 1
+    assert str(I[-1].gens()[0]) == '4*x^3*z - 3*x^2*y^2 - 6*x*y*z + 4*y^3 + z^2', f'Got {I[-1].gens()[0]}'
+
+    r = lambda u,v: [u**2/v, v**2/u, u]  # rational parametric representation
+    I = implicitization(r, 2, 'u, v', 'x, y, z')
+    assert len(I[0].gens()) == 4
+    assert len(I[0].groebner_basis()) == 8
+    assert len(I[1].gens()) == 5
+    assert len(I[-1].gens()) == 1
+    assert str(I[-1].gens()[0]) == 'x^2*y - z^3', f'Got {I[-1].gens()[0]}'
+
 def _test_gcd():
     # integers
     assert gcd(2*3*7, 2*2*2*7) == 2*7
@@ -1140,6 +1431,18 @@ def _test_gcd():
     assert gcd(2,4,6,8) == 2
     assert gcd([2,4,6,8]) == 2
     assert gcd(range(0, 1000000, 10)) == 10
+
+    # polynomials
+    if sage_loaded:
+        x, y = PolynomialRing(QQ, 'x, y').gens()
+        assert gcd(x**6 - 1, x**4 - 1) == x**2 - 1
+
+        f = 9*x**2*y**2 + 9*x*y**3 + 18*x**2*y + 27*x*y**2 - 9*y**3 + 9*x**2 + 27*x*y - 36*y**2 + 9*x - 45*y - 18
+        g = 3*x**2*y+3*x*y**2 + 3*x**2 + 12*x*y+3*y**2 + 9*x + 9*y + 6
+        assert gcd(f, g) == x*y + x + y**2 + 3*y + 2
+    else:
+        x = Polynomial([0, 1])
+        assert gcd(x**6 - 1, x**4 - 1) == x**2 - 1
 
 def _test_is_coprime():
     assert is_coprime(42, 57) == False
@@ -1179,6 +1482,11 @@ def _test_lcm():
         assert False
     except:
         pass
+
+    # Polynomials
+    x = Polynomial([0, 1])
+    assert lcm(x**3, x**2) == x**3
+    assert lcm(x**2 + 1, x*2 + 2) == x**3 + x**2 + x + 1
 
 def _test_closest_prime_factors_to():
     assert np.array_equal(closest_prime_factors_to(42, 13), [2, 7])
