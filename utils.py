@@ -4,14 +4,8 @@ from warnings import warn
 from collections.abc import Iterable
 from copy import deepcopy
 
-T = True
-F = False
-
 def moving_avg(x, w=3):
     return np.convolve(x, np.ones(w), 'valid') / w
-
-def r(x, precision=7):
-    return np.round(x, precision)
 
 def bins_sqrt(data):
     return int(np.ceil(np.sqrt(len(data))))
