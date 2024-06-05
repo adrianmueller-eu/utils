@@ -599,7 +599,7 @@ if sage_loaded:
         n = len(tmp)
         def generate_names(names, s, k):
             if names is None:
-                names = [f'{s}{i}' for i in range(m)]
+                names = [f'{s}{i}' for i in range(k)]
             else:
                 if isinstance(names, str):
                     names = names.split(', ')
