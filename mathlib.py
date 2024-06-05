@@ -1132,7 +1132,9 @@ def test_mathlib_all():
             _test_lagrange_multipliers,
             _test_polynomial_division,
             _test_s_polynomial,
-            _test_implicitization
+            _test_elimination_ideal,
+            _test_implicitization,
+            _test_reduction
         ]
     else:
         tests += [
@@ -1424,22 +1426,37 @@ def _test_s_polynomial():
     f3 = s_polynomial(f1, f2)
     assert f3 == -x**2, f"S{f1, f2} = -x^2 != {f3}"
     f4 = s_polynomial(f1, f3)
-    assert f4 == 2*x*y, f"S{f1, f3} = 2xy != {f4}"
+    assert f4 == -2*x*y, f"S{f1, f3} = 2xy != {f4}"
     f5 = s_polynomial(f2, f3)
-    assert f5 == 2*y**2 - x, f"S{f2, f3} = 2y^2 - x != {f5}"
-    # all combinations should be zero now -> f1, f2, f3, f4, f5 is a Groebner basis
+    assert f5 == x - 2*y**2, f"S{f2, f3} = x - 2y^2 != {f5}"
+    # all combinations should be zero now -> f1, f2, f3, f4, f5 is a Gröbner basis
     for f, g in combinations([f1, f2, f3, f4, f5], 2):
         S = s_polynomial(f, g)
         assert polynomial_division(S, [f1, f2, f3, f4, f5])[1] == 0
 
-    assert not is_grobner_basis([f1, f2, f3, f4])
-    assert is_grobner_basis([f1, f2, f3, f4, f5])
-    assert not is_minimal_grobner_basis([f1, f2, f3, f4, f5])
-    assert not is_reduced_grobner_basis([f1, f2, f3, f4, f5])
+    assert not is_groebner_basis([f1, f2, f3, f4])
+    assert is_groebner_basis([f1, f2, f3, f4, f5])
+    assert not is_minimal_groebner_basis([f1, f2, f3, f4, f5])
+    assert not is_reduced_groebner_basis([f1, f2, f3, f4, f5])
     I = R.ideal([f1, f2])
-    assert is_reduced_grobner_basis(I.groebner_basis())
+    assert is_reduced_groebner_basis(I.groebner_basis())
 
     assert Buchberger([f1, f2]) == [f1, f2, f3, f4, f5]
+
+def _test_elimination_ideal():
+    R = PolynomialRing(QQ, 'x, y, z', order='lex')
+    x,y,z = R.gens()
+    I = R.ideal([x*y - 1, x*z - 1])
+    assert elimination_ideal(I, x) == I.elimination_ideal(x)  # y - z
+
+    # eliminate two variables
+    I = R.ideal([x**2 + y**2 + z**2 - 1, x**2 + y**2 - z**2 - 1])
+    assert elimination_ideal(I, [x,y]) == I.elimination_ideal([x, y])  # z^2
+
+    R = PolynomialRing(CC, 'x, y, z', order='lex')
+    x,y,z = R.gens()
+    I = R.ideal([x*y - 1, x*z - 1])
+    assert elimination_ideal(I, x) == R.ideal(y-z)  # I.elimination_ideal(x) doesn't work for CC
 
 def _test_implicitization():
     g = lambda t,u: [t + u, t**2 + 2*t*u, t**3 + 3*t**2*u]  # polynomial parametric representation
@@ -1458,6 +1475,12 @@ def _test_implicitization():
     assert len(I[1].gens()) == 5
     assert len(I[-1].gens()) == 1
     assert str(I[-1].gens()[0]) == 'x^2*y - z^3', f'Got {I[-1].gens()[0]}'
+
+def _test_reduction():
+    R = PolynomialRing(QQ, 'x, y, z', order='lex')
+    x,y,z = R.gens()
+    f = x**4*y**3 + x**3*y**4
+    assert reduction(f) == R.ideal(f).radical().gens()[0]
 
 def _test_gcd():
     # integers
