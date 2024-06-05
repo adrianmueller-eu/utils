@@ -491,7 +491,7 @@ if sage_loaded:
 
         return q, r
 
-    def s_polynomial(f, g):
+    def s_polynomial(f, g, verbose=False):
         """
         Compute the S-polynomial of two polynomials.
 
@@ -502,9 +502,11 @@ if sage_loaded:
         Returns:
             sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular: The S-polynomial.
         """
-        flt, glt = f.lt(), g.lt()
-        lcmfg = lcm(flt, glt)
-        res = lcmfg * (f / flt - g / glt)
+        flm, glm = f.lm(), g.lm()
+        lcmfg = lcm(flm, glm)
+        if verbose:
+            print(f"lcm({flm}, {glm}) = {lcmfg}")
+        res = lcmfg * (f / f.lt() - g / g.lt())
         assert res.denominator() == 1, "Not a polynomial"
         return res.numerator()
 
