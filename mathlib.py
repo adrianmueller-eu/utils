@@ -445,12 +445,13 @@ if sage_loaded:
             sols.append(sol)
         return sols
 
-    def polynomial_division(f, L):
+    def polynomial_division(f, L, verbose=False):
         """ Division of polynomials. Returns the polynomials q and remainder r such that $f = r + \\sum_i q_i*g_i$ and either r = 0 or multideg(r) < multideg(g). If r == 0, we say "L divides f".
 
         Parameters:
             f (sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular)
             L (list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular])
+            verbose (bool, optional): If True, print intermediate steps (default: False)
 
         Returns:
             q (list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]): The quotients.
@@ -469,11 +470,15 @@ if sage_loaded:
             while i < len(L) and not division_occurred:
                 LTLi = L[i].lt()
                 LTp = p.lt()
+                if verbose:
+                    print(i, f"LT(L_i) = {LTLi} divides LT(p) = {LTp}? ", LTLi.divides(LTp))
                 if LTLi.divides(LTp):
                     nqt = (LTp / LTLi).numerator()
                     q[i] += nqt
                     p -= nqt * L[i]
                     division_occurred = True
+                    if verbose:
+                        print(f"Set q_i = {q[i]} and p = {p}")
                 else:
                     i += 1
 
@@ -481,6 +486,8 @@ if sage_loaded:
                 LTp = p.lt()
                 r += LTp
                 p -= LTp
+                if verbose:
+                    print(f"No divison occurred -> Set r = r + LT(p) = {r} and p = p - LT(p) = {p}")
 
         return q, r
 
