@@ -628,6 +628,10 @@ if sage_loaded:
         I = R.ideal(gens)
         return [I] + [I.elimination_ideal(toeliminate[:i+1]) for i in range(len(toeliminate))]
 
+    def reduction(f):
+        """ Return the reduction of f. This is the same as `R.ideal(f).radical().gens()[0]`. """
+        return f / gcd(f, *f.gradient())
+
     def random_polynomial(variables, n_terms=10, max_degree=2, seed=None):
         """Generate a random polynomial with integer coefficients."""
         import random
