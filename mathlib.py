@@ -577,6 +577,22 @@ if sage_loaded:
                     return False
         return True
 
+    def elimination_ideal(I, variables):
+        """
+        Compute the elimination ideal of a given ideal.
+
+        Parameters:
+            I (sage.rings.polynomial.multi_polynomial_ideal.MPolynomialIdeal): The ideal.
+            variables (list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]): The variables to eliminate.
+
+        Returns:
+            sage.rings.polynomial.multi_polynomial_ideal.MPolynomialIdeal: The elimination ideal.
+        """
+        if not isinstance(variables, (list, tuple)):
+            variables = [variables]
+        R = I.ring()
+        return R.ideal([g for g in I.groebner_basis() if all(x not in g.variables() for x in variables)])
+
     def implicitization(r, m, tnames=None, xnames=None):
         R = PolynomialRing(QQ, ['t{}'.format(i) for i in range(m)], order='lex')
         tmp = r(*R.gens())
