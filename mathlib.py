@@ -535,8 +535,16 @@ if sage_loaded:
                         print(f"G is now {G}")
         return G
 
-    def is_grobner_basis(G):
-        return Buchberger(G) == G
+    def is_groebner_basis(G, verbose=False):
+        """ Use Buchberger's criterion to check whether G is a Gröbner basis. """
+        for p, q in combinations(G, 2):
+            sp = s_polynomial(p, q)
+            _, r = polynomial_division(sp, G)
+            if r != 0:
+                if verbose:
+                    print(f"S({p}, {q}) = {sp} reduces to {r}")
+                return False
+        return True
 
     def is_minimal_grobner_basis(G):
         # 1. G is a Grobner basis
