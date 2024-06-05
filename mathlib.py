@@ -512,14 +512,14 @@ if sage_loaded:
 
     def Buchberger(F, verbose=False):
         """
-        Compute a Grobner basis using the Buchberger algorithm.
+        Compute a Gröbner basis using the Buchberger algorithm.
 
         Parameters:
             F (list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]): The list of polynomials.
             verbose (bool, optional): If True, print intermediate steps.
 
         Returns:
-            list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]: The Grobner basis.
+            list[sage.rings.polynomial.multi_polynomial_libsingular.MPolynomial_libsingular]: The Gröbner basis.
         """
         G = F.copy()
         G_ = []
@@ -546,28 +546,34 @@ if sage_loaded:
                 return False
         return True
 
-    def is_minimal_grobner_basis(G):
-        # 1. G is a Grobner basis
-        if not is_grobner_basis(G):
+    def is_minimal_groebner_basis(G, verbose=False):
+        # 1. G is a Gröbner basis
+        if not is_groebner_basis(G, verbose):
             return False
         # 2. All leading coefficients are 1
         for p in G:
             if p.lc() != 1:
+                if verbose:
+                    print(f"Leading coefficient of {p} is not 1")
                 return False
         # 3. No leading monomial is divisible by the leading monomial of another polynomial
         for p, q in combinations(G, 2):
             if p.lt().divides(q.lt()):
+                if verbose:
+                    print(f"LT({p}) = {p.lt()} divides LT({q}) = {q.lt()}")
                 return False
         return True
 
-    def is_reduced_grobner_basis(G):
-        # 1. G is a minimal Grobner basis
-        if not is_minimal_grobner_basis(G):
+    def is_reduced_groebner_basis(G, verbose=False):
+        # 1. G is a minimal Gröbner basis
+        if not is_minimal_groebner_basis(G, verbose):
             return False
         # 2. No monomial of any polynomial in G is divisible by the leading monomial of another polynomial
         for p, q in combinations(G, 2):
             for m in p.monomials():
                 if q.lt().divides(m):
+                    if verbose:
+                        print(f"LT({q}) = {q.lt()} divides {m}, which is a monomial of {p}")
                     return False
         return True
 
