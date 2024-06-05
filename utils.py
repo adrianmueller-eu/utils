@@ -28,9 +28,6 @@ def logbins(data, start=None, stop=None, num=None, scale=2):
 def reversed_keys(d):
     return {k[::-1]:v for k,v in d.items()}
 
-def npp(precision=5):
-    np.set_printoptions(precision=precision, suppress=True)
-
 def mapl(func, *iterables, iterator=list, **kwargs):
     """map function that returns a collection (default: list)"""
     return iterator(map(func, *iterables, **kwargs))
@@ -125,10 +122,6 @@ def allclose_set(a, b):
                 matched_b_indices.append(i)
                 break
     return len(matched_b_indices) == len(a)
-
-def now():
-    return time.time()
-
 
 class ConvergenceCondition:
     """ Convergence condition for iterative algorithms.
