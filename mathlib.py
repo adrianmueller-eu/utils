@@ -593,22 +593,25 @@ if sage_loaded:
         R = I.ring()
         return R.ideal([g for g in I.groebner_basis() if all(x not in g.variables() for x in variables)])
 
+    def generate_names(names=None, s=None, k=None):
+        """ Give either `names`, or `s` and `k`. Returns as list. """
+        if names is None:
+            names = [f'{s}{i}' for i in range(k)]
+        else:
+            if isinstance(names, str):
+                names = names.split(', ')
+                if len(names) == 1:
+                    names = names[0].split(' ')
+                    if len(names) == 1:
+                        names = names[0].split(',')
+            if k is not None:
+                assert len(names) == k, f"Expected {k} names for {s}, but got {len(names)}: {names}"
+        return names
+
     def implicitization(r, m, tnames=None, xnames=None):
         R = PolynomialRing(QQ, ['t{}'.format(i) for i in range(m)], order='lex')
         tmp = r(*R.gens())
         n = len(tmp)
-        def generate_names(names, s, k):
-            if names is None:
-                names = [f'{s}{i}' for i in range(k)]
-            else:
-                if isinstance(names, str):
-                    names = names.split(', ')
-                    if len(names) == 1:
-                        names = names[0].split(' ')
-                        if len(names) == 1:
-                            names = names[0].split(',')
-                assert len(names) == k, f"Expected {k} names for {s}, but got {len(names)}: {names}"
-            return names
         tnames = generate_names(tnames, 't', m)
         xnames = generate_names(xnames, 'x', n)
 
