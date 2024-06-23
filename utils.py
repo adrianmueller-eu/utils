@@ -36,6 +36,10 @@ def zipl(*iterables, iterator=list):
     """zip function that returns a collection (default: list)"""
     return iterator(zip(*iterables))
 
+def rangel(*args, iterator=list, **kwargs):
+    """range function that returns a collection (default: list)"""
+    return iterator(range(*args), **kwargs)
+
 def tqmap(func, *iterables, **kwargs):
     """map function that uses tq for progress bar"""
     from tqdm.auto import tqdm as tq
