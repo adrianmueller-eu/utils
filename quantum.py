@@ -78,6 +78,7 @@ def Fourier_matrix(n, n_is_qubits=True):
 
 def parse_unitary(unitary):
     """Parse a string representation of a unitary into its matrix representation. The result is guaranteed to be unitary.
+    A universal set of quantum gates is given with 'H', 'T', 't', and 'CX'.
 
     Example:
     >>> parse_unitary('CX @ XC @ CX') # SWAP
@@ -92,41 +93,39 @@ def parse_unitary(unitary):
            [ 0.+0.j  0.+0.j  0.+0.j  1.+0.j]])
     """
     def s(chunk):
-        # think of XCXC, which applies X on the first and fifth qubit, controlled on the second and forth qubit
-        # select the first "C", then recursively call s on the part before and after (if they exist), and combine them afterwards
-        chunk_matrix = np.array([1]) # initialize with a stub
-        for i, c in enumerate(chunk):
+        gates = []  # set dtype
+        for c in chunk:
+            # positive and negative controls
             if c == "C":
-                n_before = i
-                n_after = len(chunk) - i - 1
-                # if it's the first C, then there is no part before
-                if n_before == 0:
-                    return np.kron([[1,0],[0,0]], I_(n_after)) + np.kron([[0,0],[0,1]], s(chunk[i+1:]))
-                # if it's the last C, then there is no part after
-                elif n_after == 0:
-                    return np.kron(I_(n_before), [[1,0],[0,0]]) + np.kron(chunk_matrix, [[0,0],[0,1]])
-                # if it's in the middle, then there is a part before and after
-                else:
-                    return np.kron(I_(n_before), np.kron([[1,0],[0,0]], I_(n_after))) + np.kron(chunk_matrix, np.kron([[0,0],[0,1]], s(chunk[i+1:])))
-            # N is negative control, so it's the same as C, but with the roles of 0 and 1 reversed
+                gate = op(1)
             elif c == "N":
-                n_before = i
-                n_after = len(chunk) - i - 1
-                # if it's the first N, then there is no part before
-                if n_before == 0:
-                    return np.kron([[0,0],[0,1]], I_(n_after)) + np.kron([[1,0],[0,0]], s(chunk[i+1:]))
-                # if it's the last N, then there is no part after
-                elif n_after == 0:
-                    return np.kron(I_(n_before), [[0,0],[0,1]]) + np.kron(chunk_matrix, [[1,0],[0,0]])
-                # if it's in the middle, then there is a part before and after
-                else:
-                    return np.kron(I_(n_before), np.kron([[0,0],[0,1]], I_(n_after))) + np.kron(chunk_matrix, np.kron([[1,0],[0,0]], s(chunk[i+1:])))
-            # if there is no C, then it's just a single gate
+                gate = op(0)
+            # single-qubit gates
             elif c == "T":
-                 gate = T_gate
+                    gate = T_gate
+            elif c == "t":
+                    gate = T_gate.conj()
+            elif c == "s":
+                    gate = S.conj()
             else:
-                 gate = globals()[chunk[i]]
-            chunk_matrix = np.kron(chunk_matrix, gate)
+                    gate = globals()[c]
+            gates.append(gate)
+
+        chunk_matrix = reduce(np.kron, gates)
+        if "C" in chunk or "N" in chunk:
+            n = len(chunk)
+            part_matrix = np.array([[1]])
+            no_control = 0
+            for i, c in enumerate(chunk):
+                if c == "C" or c == "N":
+                    part_matrix = np.kron(part_matrix, I_(no_control))
+                    no_control = 0
+                    on, off = (op(1), op(0)) if c == "C" else (op(0), op(1))
+                    chunk_matrix += np.kron(part_matrix, np.kron(off, I_(n-i-1)))
+                    part_matrix = np.kron(part_matrix, on)
+                else:
+                    no_control += 1
+
         return chunk_matrix
 
     # Remove whitespace
@@ -139,7 +138,7 @@ def parse_unitary(unitary):
     # Use the first chunk to determine the number of qubits
     n = len(chunks[0])
 
-    U = np.eye(2**n, dtype=complex)
+    U = I_(n)
     for chunk in chunks:
         # print(chunk, unitary)
         chunk_matrix = None
@@ -155,7 +154,7 @@ def parse_unitary(unitary):
         # print("chunk", chunk, unitary, chunk_matrix)
         U = U @ chunk_matrix
 
-    assert np.allclose(U @ U.conj().T, np.eye(2**n)), f"Result is not unitary: {U, U @ U.conj().T}"
+    assert np.allclose(U @ U.conj().T, I_(n)), f"Result is not unitary: {U, U @ U.conj().T}"
 
     return U
 
