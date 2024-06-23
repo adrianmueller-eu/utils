@@ -172,7 +172,7 @@ try:
     # Other useful imports
     from qiskit.quantum_info import Statevector
     from qiskit.visualization import plot_histogram
-    #from qiskit.circuit.library import *
+    from qiskit.circuit.library import UnitaryGate
 
     def run(circuit, shots=1, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4), title=""):
         if shots > 10:
