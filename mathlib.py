@@ -1,9 +1,9 @@
-import sys
+import sys, warnings
 import numpy as np
 from math import factorial, sqrt, ceil
 from itertools import combinations, chain
 import scipy.sparse as sp
-from random import randint
+from numpy.random import randint
 from .models import Polynomial
 
 sage_loaded = False
@@ -1262,9 +1262,11 @@ def _test_sequence():
 
     # a nice fractal to test the matrix version
     x,y = np.meshgrid(np.linspace(-0.7,1.7,200), np.linspace(-1.1,1.1,200))
+    warnings.filterwarnings("ignore")  # ignore overflow warnings
     res = sequence(lambda i,x: (0.3+1j)*x*(1-x), start_value=x+1j*y, max_iter=200)
+    warnings.filterwarnings("default")
     res[np.isnan(res)] = np.inf
-    np.allclose(np.mean(np.isinf(res)), 0.78815)
+    assert np.allclose(np.mean(np.isinf(res)), 0.78815)
 
 def _test_normalize():
     a = random_vec(5, complex=True)
@@ -1395,7 +1397,7 @@ def _test_SO():
         assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} does not have determinant 1! ({random_angle})"
 
 def _test_su():
-    n = np.random.randint(2**1, 2**3)
+    n = randint(2**1, 2**3)
     sun = su(n)
 
     # check the number of generators
