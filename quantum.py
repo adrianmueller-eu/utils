@@ -576,10 +576,15 @@ def unket(state, as_dict=False):
     for i in range(2**n):
         if state[i] != 0:
             weight = state[i]
+            pre = ''
             # Find a close value in weights
             for w in weights:
-                if np.allclose(w, weight):
+                if np.isclose(w, weight):
                     weight = w
+                    break
+                if np.isclose(w, -weight):
+                    weight = w
+                    pre = '-'
                     break
             else:
                 # remove imaginary part if it's zero
@@ -588,7 +593,7 @@ def unket(state, as_dict=False):
                 # create new weight
                 weights[weight] = []
             # add state to weight
-            weights[weight].append(binstr_from_int(i, n))
+            weights[weight].append(pre + binstr_from_int(i, n))
 
     # convert to string
     res = []
