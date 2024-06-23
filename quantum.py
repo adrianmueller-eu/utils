@@ -460,14 +460,23 @@ def random_dm(n=1, pure=False):
         kets = normalize(random_vec((2**n, 2**n), complex=True))
         return kets @ np.diag(probs) @ kets.conj().T
 
-def ket(specification):
+def ket_from_int(d, n=None):
+    n = n or int(np.ceil(np.log2(d+1))) or 1
+    # return np.array(bincoll_from_int(2**d, 2**n)[::-1], dtype=float)
+    res = np.zeros(2**n)
+    res[d] = 1
+    return res
+
+def ket(specification, n=None):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
-        n = int(np.log2(len(specification)))
+        n = n or int(np.log2(len(specification))) or 1
         assert len(specification) == 2**n, f"State vector has wrong length: {len(specification)} is not a power of 2!"
         return normalize(specification)
-    elif type(specification) == str:
+    if isinstance(specification, int):
+        return ket_from_int(specification, n)
+    if type(specification) == str:
         # handle some special cases: |+>, |->, |i>, |-i>
         if specification == "+":
             return normalize(np.array([1,1], dtype=complex))
@@ -477,15 +486,10 @@ def ket(specification):
             return normalize(np.array([1,1j], dtype=complex))
         elif specification == "-i":
             return normalize(np.array([1,-1j], dtype=complex))
-        elif specification.isdigit() and len(specification.replace('0', '').replace('1', '')) > 0:
-            a = int(specification)
-            n = int(np.ceil(np.log2(a+1)))
-            return normalize(bincoll_from_int(2**a, 2**n))
 
         # remove whitespace
         specification = specification.replace(" ", "")
         specification_dict = dict()
-        n = None
 
         # Parse the specification into the dictionary, where the keys are the strings '00', '01', '10', '11', etc. and the values are the weights
         # The following cases have to be considered:
@@ -513,10 +517,10 @@ def ket(specification):
                 else:
                     weight = 1
                     state = term
-                if n is not None:
-                    assert len(state) == n, f"Part of the specification has wrong length: len('{state}') != {n}"
-                else:
+                if n is None:
                     n = len(state)
+                else:
+                    assert len(state) == n, f"Part of the specification has wrong length: len('{state}') != {n}"
                 if state in specification_dict:
                     specification_dict[state] += weight
                 else:
@@ -582,7 +586,7 @@ def unket(state, as_dict=False):
 
 def op(specification1, specification2=None):
     # If it's already a matrix, ensure it's a density matrix and return it
-    if type(specification1) != str:
+    if isinstance(specification1, (list, np.ndarray)):
         specification1 = np.array(specification1, copy=False)
         if len(specification1.shape) > 1:
             sp1_trace = np.trace(specification1)
