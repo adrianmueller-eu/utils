@@ -637,7 +637,7 @@ def entropy_von_Neumann(state):
     # return np.max(S.real, 0)  # fix rounding errors
     eigs = np.linalg.eigvalsh(state)
     assert np.allclose(np.sum(eigs), 1), f"Density matrix is not normalized! {np.sum(eigs)}"
-    assert np.all(eigs >= -sys.float_info.epsilon), f"Density matrix is not positive semidefinite! {eigs}"
+    assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite! {eigs}"
     return entropy(eigs)
 
 def entropy_entanglement(state, subsystem_qubits):
