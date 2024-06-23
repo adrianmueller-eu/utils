@@ -119,13 +119,25 @@ def shape_it(a, progress=True):
 
 def allclose_set(a, b):
     """ Check if for each item in a there is a corresponding item in b that is close to it and vice versa. """
-    matched_b_indices = []
-    for item_a in a:
-        for i, item_b in enumerate(b):
-            if i not in matched_b_indices and np.isclose(item_a, item_b):
-                matched_b_indices.append(i)
-                break
-    return len(matched_b_indices) == len(a)
+    # matched_b_indices = []
+    # for item_a in a:
+    #     for i, item_b in enumerate(b):
+    #         if i not in matched_b_indices and np.isclose(item_a, item_b):
+    #             matched_b_indices.append(i)
+    #             break
+    # return len(matched_b_indices) == len(a)
+    # convert to numpy arrays if they are not
+    if isinstance(a, set):
+        a = list(a)
+    a = np.sort(np.array(a).flatten())
+    if isinstance(b, set):
+        b = list(b)
+    b = np.sort(np.array(b).flatten())
+    # check if they have the same length
+    if len(a) != len(b):
+        return False
+    # check if they are close
+    return np.allclose(a, b)
 
 class ConvergenceCondition:
     """ Convergence condition for iterative algorithms.
