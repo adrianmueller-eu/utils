@@ -1638,19 +1638,25 @@ QC = QuantumComputer
 def test_quantum_all():
     tests = [
         _test_constants,
-        _test_is_dm,
-        _test_random_ket,
-        _test_random_dm,
-        _test_random_ham,
+        _test_fourier_matrix,
+        _test_parse_unitary,
+        _test_ph,  # required by _test_random_ham
+        _test_random_ham,  # required by _test_exp_i
+        _test_exp_i,
         _test_get_H_energies_eq_get_pe_energies,
-        _test_ph,
-        _test_ground_state,
+        _test_QuantumComputer,
+        _test_random_ket,  # required _test_reverse_qubit_order
+        _test_random_dm,   # required by _test_partial_trace
         _test_reverse_qubit_order,
         _test_partial_trace,
+        _test_ket_unket,
+        _test_op_dm,
         _test_entropy_von_Neumann,
         _test_entropy_entanglement,
+        _test_is_dm,
         _test_fidelity,
         _test_Schmidt_decomposition,
+        _test_ground_state,
         _test_ising,
         _test_pauli_basis,
         _test_pauli_decompose
@@ -1677,29 +1683,42 @@ def _test_constants():
     assert np.allclose(Ry(2*np.pi), -I)
     assert np.allclose(Rz(2*np.pi), -I)
 
-def _test_is_dm():
-    assert is_dm(np.eye(2**2)/2**2)
-    # random Bloch vectors
-    for _ in range(100):
-        v = np.random.uniform(-1, 1, 3)
-        if np.linalg.norm(v) > 1:
-            v = normalize(v)
-        # create dm from Bloch vector
-        rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
-        assert is_dm(rho)
+def _test_fourier_matrix():
+    # TODO
+    pass
 
-def _test_random_ket():
-    for _ in range(100):
-        n_qubits = np.random.randint(1, 10)
-        psi = random_ket(n_qubits)
-        assert psi.shape == (2**n_qubits,)
-        assert np.allclose(np.linalg.norm(psi), 1)
+def _test_parse_unitary():
+    assert np.allclose(parse_unitary('I'), I)
+    assert np.allclose(parse_unitary('X'), X)
+    assert np.allclose(parse_unitary('Y'), Y)
+    assert np.allclose(parse_unitary('Z'), Z)
+    assert np.allclose(parse_unitary('T'), T_gate)
+    assert np.allclose(parse_unitary('t'), T_gate.T.conj())
+    assert np.allclose(parse_unitary('S'), S)
+    assert np.allclose(parse_unitary('s'), S.T.conj())
 
-def _test_random_dm():
-    for _ in range(100):
-        n_qubits = np.random.randint(1, 5)
-        rho = random_dm(n_qubits)
-        assert is_dm(rho)
+    assert np.allclose(parse_unitary('CX'), CX)
+    assert np.allclose(parse_unitary('XC'), reverse_qubit_order(CX))
+    assert np.allclose(parse_unitary('CCX'), Toffoli)
+    assert np.allclose(parse_unitary('XCC'), reverse_qubit_order(Toffoli))
+    assert np.allclose(parse_unitary('CX @ XC @ CX'), SWAP)
+    assert np.allclose(parse_unitary('SS @ HI @ CX @ XC @ IH'), iSWAP)
+    assert np.allclose(parse_unitary('IIII @ IIII'), I_(4))
+
+    assert is_unitary(parse_unitary('XCX'))
+    assert is_unitary(parse_unitary('CXC'))
+    assert is_unitary(parse_unitary('XCXC'))
+    assert is_unitary(parse_unitary('XCXCX @ CZCZC'))
+
+    assert np.sum(np.where((parse_unitary('XXX') - I_(3)) != 0)) == 112
+    assert np.sum(np.where((parse_unitary('CXX') - I_(3)) != 0)) == 88
+    assert np.sum(np.where((parse_unitary('XCX') - I_(3)) != 0)) == 72
+    assert np.sum(np.where((parse_unitary('XXC') - I_(3)) != 0)) == 64
+    assert np.sum(np.where((parse_unitary('CCX') - I_(3)) != 0)) == 52
+    assert np.sum(np.where((parse_unitary('CXC') - I_(3)) != 0)) == 48
+    assert np.sum(np.where((parse_unitary('XCC') - I_(3)) != 0)) == 40
+    assert np.sum(np.where((parse_unitary('CCC') - I_(3)) != 0)) == 0
+    pass
 
 def _test_ph():
     H = parse_hamiltonian('0.5*(II + ZI - ZX + IX)')
@@ -1738,17 +1757,26 @@ def _test_random_ham():
         assert np.allclose(np.trace(H), 0)
         assert is_hermitian(H)
 
-def _test_ground_state():
-    H = parse_hamiltonian('ZZII + IZZI + IIZZ', dtype=float)
-    ge, gs = -3, ket('0101')
+def _test_exp_i():
+    n = randint(1,6)
+    n_terms = randint(1, 2**(n+1))
+    H_str = random_ham(n, n_terms)
+    H = ph(H_str)
+    U_expect = matexp(1j*H)
+    U_actual = get_unitary(exp_i(H))
+    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    U_actual = exp_i(H).get_unitary()
+    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
 
-    res_exact = ground_state_exact(H)
-    assert np.allclose(res_exact[0], ge)
-    assert np.allclose(res_exact[1], gs)
-
-    res_ITE = ground_state_ITE(H)
-    assert np.allclose(res_ITE[0], ge)
-    # assert np.allclose(res_ITE[1], gs) # might be complex due to random state initialization
+    U_expect = matexp(1j*3*H)
+    U_actual = get_unitary(exp_i(H)**3)
+    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    U_actual = (exp_i(H)**3).get_unitary()
+    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    U_actual = exp_i(H).get_unitary(3)
+    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    U_actual = exp_i(H, k=3).get_unitary()
+    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
 
 def _test_get_H_energies_eq_get_pe_energies():
     n_qubits = np.random.randint(1, 5)
@@ -1761,12 +1789,35 @@ def _test_get_H_energies_eq_get_pe_energies():
     B = np.sort(get_H_energies(H, expi=True))
     assert np.allclose(A, B), f"{A} ≠ {B}"
 
+def _test_QuantumComputer():
+    H = ph(f'{1/8}*(IZ + ZI + II)')
+    U = exp_i(2*np.pi*H)
+    assert np.isclose(np.trace(H @ op('00')), float_from_binstr('.011'))  # 00 is eigenstate with energy 0.375 = '011'
+    qc = QuantumComputer(U.n + 3)
+    state_qubits, E_qubits = list(range(U.n)), list(range(U.n, qc.n))
+    qc.pe(U, state_qubits, E_qubits)
+    res = unket(qc.measure(E_qubits))
+    assert res == '011', f"measurement result was {res} ≠ '011'"
+
+def _test_random_ket():
+    for _ in range(100):
+        n_qubits = np.random.randint(1, 10)
+        psi = random_ket(n_qubits)
+        assert psi.shape == (2**n_qubits,)
+        assert np.allclose(np.linalg.norm(psi), 1)
+
+def _test_random_dm():
+    for _ in range(100):
+        n_qubits = np.random.randint(1, 5)
+        rho = random_dm(n_qubits)
+        assert is_dm(rho)
+
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
     psi = np.kron(np.kron([1,1], [0,1]), [1,-1])
-    psi_rev = np.kron(np.kron([1,-1], [0,1]), [1,1])
+    psi_rev1 = np.kron(np.kron([1,-1], [0,1]), [1,1])
     psi_rev2 = reverse_qubit_order(psi)
-    assert np.allclose(psi_rev, psi_rev2)
+    assert np.allclose(psi_rev1, psi_rev2)
 
     # same as above, but with n random qubits
     n = 10
@@ -1774,31 +1825,31 @@ def _test_reverse_qubit_order():
     psi = psis[0]
     for i in range(1,n):
         psi = np.kron(psi, psis[i])
-    psi_rev = psis[-1]
+    psi_rev1 = psis[-1]
     for i in range(1,n):
-        psi_rev = np.kron(psi_rev, psis[-i-1])
+        psi_rev1 = np.kron(psi_rev1, psis[-i-1])
 
     psi_rev2 = reverse_qubit_order(psi)
-    assert np.allclose(psi_rev, psi_rev2)
+    assert np.allclose(psi_rev1, psi_rev2)
 
     # general hamiltonian
     H = parse_hamiltonian('IIIXX')
-    H_rev = parse_hamiltonian('XXIII')
+    H_rev1 = parse_hamiltonian('XXIII')
     H_rev2 = reverse_qubit_order(H)
-    assert np.allclose(H_rev, H_rev2)
+    assert np.allclose(H_rev1, H_rev2)
 
     H = parse_hamiltonian('XI + YI')
-    H_rev = parse_hamiltonian('IX + IY')
+    H_rev1 = parse_hamiltonian('IX + IY')
     H_rev2 = reverse_qubit_order(H)
-    assert np.allclose(H_rev, H_rev2), f"{H_rev} \n≠\n {H_rev2}"
+    assert np.allclose(H_rev1, H_rev2), f"{H_rev1} \n≠\n {H_rev2}"
 
     # pure density matrix
     psi = np.kron(np.kron([1,1], [0,1]), [1,-1])
     rho = np.outer(psi, psi)
-    psi_rev = np.kron(np.kron([1,-1], [0,1]), [1,1])
-    rho_rev = np.outer(psi_rev, psi_rev)
+    psi_rev1 = np.kron(np.kron([1,-1], [0,1]), [1,1])
+    rho_rev1 = np.outer(psi_rev1, psi_rev1)
     rho_rev2 = reverse_qubit_order(rho)
-    assert np.allclose(rho_rev, rho_rev2)
+    assert np.allclose(rho_rev1, rho_rev2)
 
     # draw n times 2 random 1-qubit states and a probability distribution over all n pairs
     n = 10
@@ -1809,35 +1860,35 @@ def _test_reverse_qubit_order():
     for i in range(n):
         psi += p[i]*np.kron(psis[i][0], psis[i][1])
     # compute the average state with reversed qubit order
-    psi_rev = np.zeros((2**2, 2**2), dtype=complex)
+    psi_rev1 = np.zeros((2**2, 2**2), dtype=complex)
     for i in range(n):
-        psi_rev += p[i]*np.kron(psis[i][1], psis[i][0])
+        psi_rev1 += p[i]*np.kron(psis[i][1], psis[i][0])
 
     psi_rev2 = reverse_qubit_order(psi)
-    assert np.allclose(psi_rev, psi_rev2), f"psi_rev = {psi_rev}\npsi_rev2 = {psi_rev2}"
+    assert np.allclose(psi_rev1, psi_rev2), f"psi_rev1 = {psi_rev1}\npsi_rev2 = {psi_rev2}"
 
 def _test_partial_trace():
     # known 4x4 matrix
     rho = np.arange(16).reshape(4,4)
-    rhoA_expected = np.array([[ 5, 9], [21, 25]])
-    rhoA_actual   = partial_trace(rho, 0)
-    assert np.allclose(rhoA_expected, rhoA_actual), f"rho_expected = {rhoA_expected}\nrho_actual = {rhoA_actual}"
+    rhoA_expect = np.array([[ 5, 9], [21, 25]])
+    rhoA_actual = partial_trace(rho, 0)
+    assert np.allclose(rhoA_expect, rhoA_actual), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
 
     # two separable density matrices
     rhoA = random_dm(2)
     rhoB = random_dm(3)
     rho = np.kron(rhoA, rhoB)
-    rhoA_expected = rhoA
-    rhoA_actual   = partial_trace(rho, [0,1])
-    assert np.allclose(rhoA_expected, rhoA_actual), f"rho_expected = {rhoA_expected}\nrho_actual = {rhoA_actual}"
+    rhoA_expect = rhoA
+    rhoA_actual = partial_trace(rho, [0,1])
+    assert np.allclose(rhoA_expect, rhoA_actual), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
 
     # two separable state vectors
     psiA = random_ket(2)
     psiB = random_ket(3)
     psi = np.kron(psiA, psiB)
-    psiA_expected = np.outer(psiA, psiA.conj())
-    psiA_actual   = partial_trace(psi, [0,1])
-    assert np.allclose(psiA_expected, psiA_actual), f"psi_expected = {psiA_expected}\npsi_actual = {psiA_actual}"
+    psiA_expect = np.outer(psiA, psiA.conj())
+    psiA_actual = partial_trace(psi, [0,1])
+    assert np.allclose(psiA_expect, psiA_actual), f"psi_expect = {psiA_expect}\npsi_actual = {psiA_actual}"
 
     # total trace
     st = random_ket(3)
@@ -1845,18 +1896,26 @@ def _test_partial_trace():
     assert np.allclose(np.array([[1]]), st_tr), f"st_tr = {st_tr} ≠ 1"
     rho = random_dm(3)
     rho_tr = partial_trace(rho, [])
-    assert np.allclose(np.array([[1]]), rho_tr), f"rho_expected = {rhoA_expected}\nrho_actual = {rhoA_actual}"
+    assert np.allclose(np.array([[1]]), rho_tr), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
 
     # retain all qubits
     st = random_ket(3)
     st_tr = partial_trace(st, [0,1,2])
-    st_expected = np.outer(st, st.conj())
-    assert st_expected.shape == st_tr.shape, f"st_expected.shape = {st_expected.shape} ≠ st_tr.shape = {st_tr.shape}"
-    assert np.allclose(st_expected, st_tr), f"st_expected = {st_expected} ≠ st_tr = {st_tr}"
+    st_expect = np.outer(st, st.conj())
+    assert st_expect.shape == st_tr.shape, f"st_expect.shape = {st_expect.shape} ≠ st_tr.shape = {st_tr.shape}"
+    assert np.allclose(st_expect, st_tr), f"st_expect = {st_expect} ≠ st_tr = {st_tr}"
     rho = random_dm(2)
     rho_tr = partial_trace(rho, [0,1])
     assert rho.shape == rho_tr.shape, f"rho.shape = {rho.shape} ≠ rho_tr.shape = {rho_tr.shape}"
-    assert np.allclose(rho, rho_tr), f"rho_expected = {rhoA_expected}\nrho_actual = {rhoA_actual}"
+    assert np.allclose(rho, rho_tr), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
+
+def _test_ket_unket():
+    # TODO
+    pass
+
+def _test_op_dm():
+    # TODO
+    pass
 
 def _test_entropy_von_Neumann():
     rho = random_dm(2, pure=True)
@@ -1879,6 +1938,17 @@ def _test_entropy_entanglement():
     rho = np.kron(rhoA, rhoB)
     S = entropy_entanglement(rho, [0,1])
     assert np.allclose(S, 0), f"S = {S} ≠ 0"
+
+def _test_is_dm():
+    assert is_dm(np.eye(2**2)/2**2)
+    # random Bloch vectors
+    for _ in range(100):
+        v = np.random.uniform(-1, 1, 3)
+        if np.linalg.norm(v) > 1:
+            v = normalize(v)
+        # create dm from Bloch vector
+        rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
+        assert is_dm(rho)
 
 def _test_fidelity():
     # same state
@@ -1934,79 +2004,91 @@ def _test_Schmidt_decomposition():
     assert np.allclose(np.sum(l**2), 1), f"sum(l**2) = {np.sum(l**2)} ≠ 1"
 
     # check RDM for subsystem A
-    rho_expected = partial_trace(np.outer(psi, psi.conj()), subsystem)
+    rho_expect = partial_trace(np.outer(psi, psi.conj()), subsystem)
     rho_actual = np.sum([l_i**2 * np.outer(A_i, A_i.conj()) for l_i, A_i in zip(l, A)], axis=0)
-    assert np.allclose(rho_expected, rho_actual), f"rho_expected - rho_actual = {rho_expected - rho_actual}"
+    assert np.allclose(rho_expect, rho_actual), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
 
     # check RDM for subsystem B
-    rho_expected = partial_trace(np.outer(psi, psi.conj()), [i for i in range(n) if i not in subsystem])
+    rho_expect = partial_trace(np.outer(psi, psi.conj()), [i for i in range(n) if i not in subsystem])
     rho_actual = np.sum([l_i**2 * np.outer(B_i, B_i.conj()) for l_i, B_i in zip(l, B)], axis=0)
-    assert np.allclose(rho_expected, rho_actual), f"rho_expected - rho_actual = {rho_expected - rho_actual}"
+    assert np.allclose(rho_expect, rho_actual), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
 
     # check entanglement entropy
-    S_expected = entropy_entanglement(psi, subsystem)
+    S_expect = entropy_entanglement(psi, subsystem)
     S_actual = -np.sum([l_i**2 * np.log2(l_i**2) for l_i in l])
-    assert np.allclose(S_expected, S_actual), f"S_expected = {S_expected} ≠ S_actual = {S_actual}"
+    assert np.allclose(S_expect, S_actual), f"S_expect = {S_expect} ≠ S_actual = {S_actual}"
+
+def _test_ground_state():
+    H = parse_hamiltonian('ZZII + IZZI + IIZZ', dtype=float)
+    ge, gs = -3, ket('0101')
+
+    res_exact = ground_state_exact(H)
+    assert np.allclose(res_exact[0], ge)
+    assert np.allclose(res_exact[1], gs)
+
+    res_ITE = ground_state_ITE(H)
+    assert np.allclose(res_ITE[0], ge)
+    # assert np.allclose(res_ITE[1], gs) # might be complex due to random state initialization
 
 
 def _test_ising():
     # 1d
     H_str = ising(5, J=1.5, h=0, g=0, offset=0, kind='1d', circular=False)
-    expected = "1.5*(ZZIII + IZZII + IIZZI + IIIZZ)"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.5*(ZZIII + IZZII + IIZZI + IIIZZ)"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising(3, J=0, h=3, g=2)
-    expected = '3*(ZII + IZI + IIZ) + 2*(XII + IXI + IIX)'
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = '3*(ZII + IZI + IIZ) + 2*(XII + IXI + IIX)'
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising(5, J=1.5, h=1.1, g=0.5, offset=0.5, kind='1d', circular=True)
-    expected = "1.5*(ZZIII + IZZII + IIZZI + IIIZZ + ZIIIZ) + 1.1*(ZIIII + IZIII + IIZII + IIIZI + IIIIZ) + 0.5*(XIIII + IXIII + IIXII + IIIXI + IIIIX) + 0.5"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.5*(ZZIII + IZZII + IIZZI + IIIZZ + ZIIIZ) + 1.1*(ZIIII + IZIII + IIZII + IIIZI + IIIIZ) + 0.5*(XIIII + IXIII + IIXII + IIIXI + IIIIX) + 0.5"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising(3, J=[0.6,0.7,0.8], h=[0.1,0.2,0.7], g=[0.6,0.1,1.5], offset=0.5, kind='1d', circular=True)
-    expected = "0.6*ZZI + 0.7*IZZ + 0.8*ZIZ + 0.1*ZII + 0.2*IZI + 0.7*IIZ + 0.6*XII + 0.1*IXI + 1.5*IIX + 0.5"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "0.6*ZZI + 0.7*IZZ + 0.8*ZIZ + 0.1*ZII + 0.2*IZI + 0.7*IIZ + 0.6*XII + 0.1*IXI + 1.5*IIX + 0.5"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising(3, J=[0,1], h=[1,2], g=[2,5], offset=0.5, kind='1d', circular=True)
     # random, but count terms in H_str instead
     n_terms = len(H_str.split('+'))
-    assert n_terms == 10, f"n_terms = {n_terms}\nexpected = 10"
+    assert n_terms == 10, f"n_terms = {n_terms}\nexpect = 10"
 
     # 2d
     H_str = ising((2,2), J=1.5, h=0, g=0, offset=0, kind='2d', circular=False)
-    expected = "1.5*(ZIZI + ZZII + IZIZ + IIZZ)"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.5*(ZIZI + ZZII + IZIZ + IIZZ)"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising((3,3), J=1.5, h=1.1, g=0.5, offset=0.5, kind='2d', circular=True)
-    expected = "1.5*(ZIIZIIIII + ZZIIIIIII + IZIIZIIII + IZZIIIIII + IIZIIZIII + ZIZIIIIII + IIIZIIZII + IIIZZIIII + IIIIZIIZI + IIIIZZIII + IIIIIZIIZ + IIIZIZIII + IIIIIIZZI + ZIIIIIZII + IIIIIIIZZ + IZIIIIIZI + IIZIIIIIZ + IIIIIIZIZ) + 1.1*(ZIIIIIIII + IZIIIIIII + IIZIIIIII + IIIZIIIII + IIIIZIIII + IIIIIZIII + IIIIIIZII + IIIIIIIZI + IIIIIIIIZ) + 0.5*(XIIIIIIII + IXIIIIIII + IIXIIIIII + IIIXIIIII + IIIIXIIII + IIIIIXIII + IIIIIIXII + IIIIIIIXI + IIIIIIIIX) + 0.5"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.5*(ZIIZIIIII + ZZIIIIIII + IZIIZIIII + IZZIIIIII + IIZIIZIII + ZIZIIIIII + IIIZIIZII + IIIZZIIII + IIIIZIIZI + IIIIZZIII + IIIIIZIIZ + IIIZIZIII + IIIIIIZZI + ZIIIIIZII + IIIIIIIZZ + IZIIIIIZI + IIZIIIIIZ + IIIIIIZIZ) + 1.1*(ZIIIIIIII + IZIIIIIII + IIZIIIIII + IIIZIIIII + IIIIZIIII + IIIIIZIII + IIIIIIZII + IIIIIIIZI + IIIIIIIIZ) + 0.5*(XIIIIIIII + IXIIIIIII + IIXIIIIII + IIIXIIIII + IIIIXIIII + IIIIIXIII + IIIIIIXII + IIIIIIIXI + IIIIIIIIX) + 0.5"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     # 3d
     H_str = ising((2,2,3), kind='3d', J=1.8, h=0, g=0, offset=0, circular=False)
-    expected = "1.8*(ZIIIIIZIIIII + ZIIZIIIIIIII + ZZIIIIIIIIII + IZIIIIIZIIII + IZIIZIIIIIII + IZZIIIIIIIII + IIZIIIIIZIII + IIZIIZIIIIII + IIIZIIIIIZII + IIIZZIIIIIII + IIIIZIIIIIZI + IIIIZZIIIIII + IIIIIZIIIIIZ + IIIIIIZIIZII + IIIIIIZZIIII + IIIIIIIZIIZI + IIIIIIIZZIII + IIIIIIIIZIIZ + IIIIIIIIIZZI + IIIIIIIIIIZZ)"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.8*(ZIIIIIZIIIII + ZIIZIIIIIIII + ZZIIIIIIIIII + IZIIIIIZIIII + IZIIZIIIIIII + IZZIIIIIIIII + IIZIIIIIZIII + IIZIIZIIIIII + IIIZIIIIIZII + IIIZZIIIIIII + IIIIZIIIIIZI + IIIIZZIIIIII + IIIIIZIIIIIZ + IIIIIIZIIZII + IIIIIIZZIIII + IIIIIIIZIIZI + IIIIIIIZZIII + IIIIIIIIZIIZ + IIIIIIIIIZZI + IIIIIIIIIIZZ)"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising((2,2,3), kind='3d', J=1.2, h=1.5, g=2, offset=0, circular=True)
-    expected = "1.2*(ZIIIIIZIIIII + ZIIZIIIIIIII + ZZIIIIIIIIII + IZIIIIIZIIII + IZIIZIIIIIII + IZZIIIIIIIII + IIZIIIIIZIII + IIZIIZIIIIII + ZIZIIIIIIIII + IIIZIIIIIZII + IIIZZIIIIIII + IIIIZIIIIIZI + IIIIZZIIIIII + IIIIIZIIIIIZ + IIIZIZIIIIII + IIIIIIZIIZII + IIIIIIZZIIII + IIIIIIIZIIZI + IIIIIIIZZIII + IIIIIIIIZIIZ + IIIIIIZIZIII + IIIIIIIIIZZI + IIIIIIIIIIZZ + IIIIIIIIIZIZ) + 1.5*(ZIIIIIIIIIII + IZIIIIIIIIII + IIZIIIIIIIII + IIIZIIIIIIII + IIIIZIIIIIII + IIIIIZIIIIII + IIIIIIZIIIII + IIIIIIIZIIII + IIIIIIIIZIII + IIIIIIIIIZII + IIIIIIIIIIZI + IIIIIIIIIIIZ) + 2*(XIIIIIIIIIII + IXIIIIIIIIII + IIXIIIIIIIII + IIIXIIIIIIII + IIIIXIIIIIII + IIIIIXIIIIII + IIIIIIXIIIII + IIIIIIIXIIII + IIIIIIIIXIII + IIIIIIIIIXII + IIIIIIIIIIXI + IIIIIIIIIIIX)"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.2*(ZIIIIIZIIIII + ZIIZIIIIIIII + ZZIIIIIIIIII + IZIIIIIZIIII + IZIIZIIIIIII + IZZIIIIIIIII + IIZIIIIIZIII + IIZIIZIIIIII + ZIZIIIIIIIII + IIIZIIIIIZII + IIIZZIIIIIII + IIIIZIIIIIZI + IIIIZZIIIIII + IIIIIZIIIIIZ + IIIZIZIIIIII + IIIIIIZIIZII + IIIIIIZZIIII + IIIIIIIZIIZI + IIIIIIIZZIII + IIIIIIIIZIIZ + IIIIIIZIZIII + IIIIIIIIIZZI + IIIIIIIIIIZZ + IIIIIIIIIZIZ) + 1.5*(ZIIIIIIIIIII + IZIIIIIIIIII + IIZIIIIIIIII + IIIZIIIIIIII + IIIIZIIIIIII + IIIIIZIIIIII + IIIIIIZIIIII + IIIIIIIZIIII + IIIIIIIIZIII + IIIIIIIIIZII + IIIIIIIIIIZI + IIIIIIIIIIIZ) + 2*(XIIIIIIIIIII + IXIIIIIIIIII + IIXIIIIIIIII + IIIXIIIIIIII + IIIIXIIIIIII + IIIIIXIIIIII + IIIIIIXIIIII + IIIIIIIXIIII + IIIIIIIIXIII + IIIIIIIIIXII + IIIIIIIIIIXI + IIIIIIIIIIIX)"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising((3,3,3), kind='3d', J=1.5, h=0, g=0, offset=0, circular=True)
-    expected = "1.5*(ZIIIIIIIIZIIIIIIIIIIIIIIIII + ZIIZIIIIIIIIIIIIIIIIIIIIIII + ZZIIIIIIIIIIIIIIIIIIIIIIIII + IZIIIIIIIIZIIIIIIIIIIIIIIII + IZIIZIIIIIIIIIIIIIIIIIIIIII + IZZIIIIIIIIIIIIIIIIIIIIIIII + IIZIIIIIIIIZIIIIIIIIIIIIIII + IIZIIZIIIIIIIIIIIIIIIIIIIII + ZIZIIIIIIIIIIIIIIIIIIIIIIII + IIIZIIIIIIIIZIIIIIIIIIIIIII + IIIZIIZIIIIIIIIIIIIIIIIIIII + IIIZZIIIIIIIIIIIIIIIIIIIIII + IIIIZIIIIIIIIZIIIIIIIIIIIII + IIIIZIIZIIIIIIIIIIIIIIIIIII + IIIIZZIIIIIIIIIIIIIIIIIIIII + IIIIIZIIIIIIIIZIIIIIIIIIIII + IIIIIZIIZIIIIIIIIIIIIIIIIII + IIIZIZIIIIIIIIIIIIIIIIIIIII + IIIIIIZIIIIIIIIZIIIIIIIIIII + IIIIIIZZIIIIIIIIIIIIIIIIIII + ZIIIIIZIIIIIIIIIIIIIIIIIIII + IIIIIIIZIIIIIIIIZIIIIIIIIII + IIIIIIIZZIIIIIIIIIIIIIIIIII + IZIIIIIZIIIIIIIIIIIIIIIIIII + IIIIIIIIZIIIIIIIIZIIIIIIIII + IIZIIIIIZIIIIIIIIIIIIIIIIII + IIIIIIZIZIIIIIIIIIIIIIIIIII + IIIIIIIIIZIIIIIIIIZIIIIIIII + IIIIIIIIIZIIZIIIIIIIIIIIIII + IIIIIIIIIZZIIIIIIIIIIIIIIII + IIIIIIIIIIZIIIIIIIIZIIIIIII + IIIIIIIIIIZIIZIIIIIIIIIIIII + IIIIIIIIIIZZIIIIIIIIIIIIIII + IIIIIIIIIIIZIIIIIIIIZIIIIII + IIIIIIIIIIIZIIZIIIIIIIIIIII + IIIIIIIIIZIZIIIIIIIIIIIIIII + IIIIIIIIIIIIZIIIIIIIIZIIIII + IIIIIIIIIIIIZIIZIIIIIIIIIII + IIIIIIIIIIIIZZIIIIIIIIIIIII + IIIIIIIIIIIIIZIIIIIIIIZIIII + IIIIIIIIIIIIIZIIZIIIIIIIIII + IIIIIIIIIIIIIZZIIIIIIIIIIII + IIIIIIIIIIIIIIZIIIIIIIIZIII + IIIIIIIIIIIIIIZIIZIIIIIIIII + IIIIIIIIIIIIZIZIIIIIIIIIIII + IIIIIIIIIIIIIIIZIIIIIIIIZII + IIIIIIIIIIIIIIIZZIIIIIIIIII + IIIIIIIIIZIIIIIZIIIIIIIIIII + IIIIIIIIIIIIIIIIZIIIIIIIIZI + IIIIIIIIIIIIIIIIZZIIIIIIIII + IIIIIIIIIIZIIIIIZIIIIIIIIII + IIIIIIIIIIIIIIIIIZIIIIIIIIZ + IIIIIIIIIIIZIIIIIZIIIIIIIII + IIIIIIIIIIIIIIIZIZIIIIIIIII + IIIIIIIIIIIIIIIIIIZIIZIIIII + IIIIIIIIIIIIIIIIIIZZIIIIIII + ZIIIIIIIIIIIIIIIIIZIIIIIIII + IIIIIIIIIIIIIIIIIIIZIIZIIII + IIIIIIIIIIIIIIIIIIIZZIIIIII + IZIIIIIIIIIIIIIIIIIZIIIIIII + IIIIIIIIIIIIIIIIIIIIZIIZIII + IIZIIIIIIIIIIIIIIIIIZIIIIII + IIIIIIIIIIIIIIIIIIZIZIIIIII + IIIIIIIIIIIIIIIIIIIIIZIIZII + IIIIIIIIIIIIIIIIIIIIIZZIIII + IIIZIIIIIIIIIIIIIIIIIZIIIII + IIIIIIIIIIIIIIIIIIIIIIZIIZI + IIIIIIIIIIIIIIIIIIIIIIZZIII + IIIIZIIIIIIIIIIIIIIIIIZIIII + IIIIIIIIIIIIIIIIIIIIIIIZIIZ + IIIIIZIIIIIIIIIIIIIIIIIZIII + IIIIIIIIIIIIIIIIIIIIIZIZIII + IIIIIIIIIIIIIIIIIIIIIIIIZZI + IIIIIIZIIIIIIIIIIIIIIIIIZII + IIIIIIIIIIIIIIIIIIZIIIIIZII + IIIIIIIIIIIIIIIIIIIIIIIIIZZ + IIIIIIIZIIIIIIIIIIIIIIIIIZI + IIIIIIIIIIIIIIIIIIIZIIIIIZI + IIIIIIIIZIIIIIIIIIIIIIIIIIZ + IIIIIIIIIIIIIIIIIIIIZIIIIIZ + IIIIIIIIIIIIIIIIIIIIIIIIZIZ)"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.5*(ZIIIIIIIIZIIIIIIIIIIIIIIIII + ZIIZIIIIIIIIIIIIIIIIIIIIIII + ZZIIIIIIIIIIIIIIIIIIIIIIIII + IZIIIIIIIIZIIIIIIIIIIIIIIII + IZIIZIIIIIIIIIIIIIIIIIIIIII + IZZIIIIIIIIIIIIIIIIIIIIIIII + IIZIIIIIIIIZIIIIIIIIIIIIIII + IIZIIZIIIIIIIIIIIIIIIIIIIII + ZIZIIIIIIIIIIIIIIIIIIIIIIII + IIIZIIIIIIIIZIIIIIIIIIIIIII + IIIZIIZIIIIIIIIIIIIIIIIIIII + IIIZZIIIIIIIIIIIIIIIIIIIIII + IIIIZIIIIIIIIZIIIIIIIIIIIII + IIIIZIIZIIIIIIIIIIIIIIIIIII + IIIIZZIIIIIIIIIIIIIIIIIIIII + IIIIIZIIIIIIIIZIIIIIIIIIIII + IIIIIZIIZIIIIIIIIIIIIIIIIII + IIIZIZIIIIIIIIIIIIIIIIIIIII + IIIIIIZIIIIIIIIZIIIIIIIIIII + IIIIIIZZIIIIIIIIIIIIIIIIIII + ZIIIIIZIIIIIIIIIIIIIIIIIIII + IIIIIIIZIIIIIIIIZIIIIIIIIII + IIIIIIIZZIIIIIIIIIIIIIIIIII + IZIIIIIZIIIIIIIIIIIIIIIIIII + IIIIIIIIZIIIIIIIIZIIIIIIIII + IIZIIIIIZIIIIIIIIIIIIIIIIII + IIIIIIZIZIIIIIIIIIIIIIIIIII + IIIIIIIIIZIIIIIIIIZIIIIIIII + IIIIIIIIIZIIZIIIIIIIIIIIIII + IIIIIIIIIZZIIIIIIIIIIIIIIII + IIIIIIIIIIZIIIIIIIIZIIIIIII + IIIIIIIIIIZIIZIIIIIIIIIIIII + IIIIIIIIIIZZIIIIIIIIIIIIIII + IIIIIIIIIIIZIIIIIIIIZIIIIII + IIIIIIIIIIIZIIZIIIIIIIIIIII + IIIIIIIIIZIZIIIIIIIIIIIIIII + IIIIIIIIIIIIZIIIIIIIIZIIIII + IIIIIIIIIIIIZIIZIIIIIIIIIII + IIIIIIIIIIIIZZIIIIIIIIIIIII + IIIIIIIIIIIIIZIIIIIIIIZIIII + IIIIIIIIIIIIIZIIZIIIIIIIIII + IIIIIIIIIIIIIZZIIIIIIIIIIII + IIIIIIIIIIIIIIZIIIIIIIIZIII + IIIIIIIIIIIIIIZIIZIIIIIIIII + IIIIIIIIIIIIZIZIIIIIIIIIIII + IIIIIIIIIIIIIIIZIIIIIIIIZII + IIIIIIIIIIIIIIIZZIIIIIIIIII + IIIIIIIIIZIIIIIZIIIIIIIIIII + IIIIIIIIIIIIIIIIZIIIIIIIIZI + IIIIIIIIIIIIIIIIZZIIIIIIIII + IIIIIIIIIIZIIIIIZIIIIIIIIII + IIIIIIIIIIIIIIIIIZIIIIIIIIZ + IIIIIIIIIIIZIIIIIZIIIIIIIII + IIIIIIIIIIIIIIIZIZIIIIIIIII + IIIIIIIIIIIIIIIIIIZIIZIIIII + IIIIIIIIIIIIIIIIIIZZIIIIIII + ZIIIIIIIIIIIIIIIIIZIIIIIIII + IIIIIIIIIIIIIIIIIIIZIIZIIII + IIIIIIIIIIIIIIIIIIIZZIIIIII + IZIIIIIIIIIIIIIIIIIZIIIIIII + IIIIIIIIIIIIIIIIIIIIZIIZIII + IIZIIIIIIIIIIIIIIIIIZIIIIII + IIIIIIIIIIIIIIIIIIZIZIIIIII + IIIIIIIIIIIIIIIIIIIIIZIIZII + IIIIIIIIIIIIIIIIIIIIIZZIIII + IIIZIIIIIIIIIIIIIIIIIZIIIII + IIIIIIIIIIIIIIIIIIIIIIZIIZI + IIIIIIIIIIIIIIIIIIIIIIZZIII + IIIIZIIIIIIIIIIIIIIIIIZIIII + IIIIIIIIIIIIIIIIIIIIIIIZIIZ + IIIIIZIIIIIIIIIIIIIIIIIZIII + IIIIIIIIIIIIIIIIIIIIIZIZIII + IIIIIIIIIIIIIIIIIIIIIIIIZZI + IIIIIIZIIIIIIIIIIIIIIIIIZII + IIIIIIIIIIIIIIIIIIZIIIIIZII + IIIIIIIIIIIIIIIIIIIIIIIIIZZ + IIIIIIIZIIIIIIIIIIIIIIIIIZI + IIIIIIIIIIIIIIIIIIIZIIIIIZI + IIIIIIIIZIIIIIIIIIIIIIIIIIZ + IIIIIIIIIIIIIIIIIIIIZIIIIIZ + IIIIIIIIIIIIIIIIIIIIIIIIZIZ)"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     # pairwise
     H_str = ising(4, J=-.5, h=.4, g=.7, offset=1, kind='pairwise')
-    expected = "-0.5*(ZZII + ZIZI + ZIIZ + IZZI + IZIZ + IIZZ) + 0.4*(ZIII + IZII + IIZI + IIIZ) + 0.7*(XIII + IXII + IIXI + IIIX) + 1"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "-0.5*(ZZII + ZIZI + ZIIZ + IZZI + IZIZ + IIZZ) + 0.4*(ZIII + IZII + IIZI + IIIZ) + 0.7*(XIII + IXII + IIXI + IIIX) + 1"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     # full
     H_str = ising(3, J=1.5, h=.4, g=.7, offset=1, kind='all')
-    expected = "1.5*(ZZI + ZIZ + IZZ + ZZZ) + 0.4*(ZII + IZI + IIZ) + 0.7*(XII + IXI + IIX) + 1"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.5*(ZZI + ZIZ + IZZ + ZZZ) + 0.4*(ZII + IZI + IIZ) + 0.7*(XII + IXI + IIX) + 1"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     H_str = ising(3, kind='all', J={(0,1): 2, (0,1,2): 3, (1,2):0}, g=0, h=1.35)
-    expected = "2*ZZI + 3*ZZZ + 1.35*(ZII + IZI + IIZ)"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "2*ZZI + 3*ZZZ + 1.35*(ZII + IZI + IIZ)"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
     J_dict = {
         (0,1): 1.5,
@@ -2016,16 +2098,16 @@ def _test_ising():
         (0,1,2,3): 0.5
     }
     H_str = ising(4, J=J_dict, h=.3, g=.5, offset=1.2, kind='all')
-    expected = "1.5*ZZII + 2*ZIZI + 0.5*IZZI + 3*ZZZI + 0.5*ZZZZ + 0.3*(ZIII + IZII + IIZI + IIIZ) + 0.5*(XIII + IXII + IIXI + IIIX) + 1.2"
-    assert H_str == expected, f"\nH_str    = {H_str}\nexpected = {expected}"
+    expect = "1.5*ZZII + 2*ZIZI + 0.5*IZZI + 3*ZZZI + 0.5*ZZZZ + 0.3*(ZIII + IZII + IIZI + IIIZ) + 0.5*(XIII + IXII + IIXI + IIIX) + 1.2"
+    assert H_str == expect, f"\nH_str    = {H_str}\nexpect = {expect}"
 
 def _test_pauli_basis():
     n = np.random.randint(1,4)
     pauli_n = pauli_basis(n)
 
     # check the number of generators
-    n_expected = 2**(2*n)
-    assert len(pauli_n) == n_expected, f"Number of generators is {len(pauli_n)}, but should be {n_expected}!"
+    n_expect = 2**(2*n)
+    assert len(pauli_n) == n_expect, f"Number of generators is {len(pauli_n)}, but should be {n_expect}!"
 
     # check if no two generators are the same
     for i, (A,B) in enumerate(itertools.combinations(pauli_n,2)):
@@ -2094,6 +2176,6 @@ def _test_pauli_decompose():
     # check if `include_zero` returns the whole basis
     n = 4
     coeff, basis = pauli_decompose(np.eye(2**n), include_zero=True)
-    n_expected = 2**(2*n)  # == len(pauli_basis(n))
-    assert len(coeff) == n_expected, f"len(coeff) = {len(coeff)} ≠ {n_expected}"
-    assert len(basis) == n_expected, f"len(basis) = {len(basis)} ≠ {n_expected}"
+    n_expect = 2**(2*n)  # == len(pauli_basis(n))
+    assert len(coeff) == n_expect, f"len(coeff) = {len(coeff)} ≠ {n_expect}"
+    assert len(basis) == n_expect, f"len(basis) = {len(basis)} ≠ {n_expect}"
