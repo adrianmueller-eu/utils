@@ -199,19 +199,36 @@ try:
             return result
 
     class exp_i(QuantumCircuit):
-        def __init__(self, H):
-            self.H = H
-            self.n = int(np.log2(len(self.H)))
-            super().__init__(self.n)       # circuit on n qubits
-            u = matexp(1j*self.H)          # create unitary from hamiltonian
+        def __init__(self, H, k=1):
+            """
+            Represents a quantum circuit for $e^{iH}$ for a given hamiltonian (hermitian matrix) $H \\in \\mathbb C^{d\\times d}$.
+            Note that it
+            - calculates full diagonalization
+            - stores two dxd matrices (+ one dx1 vector)
+            """
+            # diagonalize, if necessary
+            if isinstance(H, tuple):
+                self.D, self.U = H
+            else:
+                self.D, self.U = np.linalg.eigh(H)
+            # auxiliary variables
+            self.n = int(np.log2(len(self.D)))
+            self.k = k
+            name = "exp^iH" if k == 1 else f"exp^i{k}H"
+            super().__init__(self.n, name=name)       # circuit on n qubits
             self.all_qubits = list(range(self.n))
-            self.unitary(Operator(u), self.all_qubits, label="exp^iH") # add unitary to circuit
+            # calculate and add unitary
+            u = self.get_unitary()
+            self.unitary(Operator(u), self.all_qubits, label=self.name)
 
         def power(self, k):
-            q_k = QuantumCircuit(self.n, name=f"exp({k}iH)")
-            u = matexp(1j*k*self.H)
-            q_k.unitary(Operator(u), self.all_qubits, label=f"exp^{k}iH")
-            return q_k
+            return exp_i((self.D, self.U), k=self.k*k)  # the tuple only stores the references
+
+        def __pow__(self, k):
+            return self.power(k)
+
+        def get_unitary(self, k=1):
+            return self.U @ np.diag(np.exp(self.k*k*1j*self.D)) @ self.U.T.conj()
 
     def get_unitary(circ, decimals=None):
         sim = Aer.get_backend('unitary_simulator')
