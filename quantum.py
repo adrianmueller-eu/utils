@@ -266,6 +266,184 @@ except ModuleNotFoundError:
     print("Warning: qiskit not installed! Use `pip install qiskit qiskit_aer pylatexenc`.")
     pass
 
+class QuantumComputer:
+    """
+    A naive simulation of a quantum computer.
+    """
+    def __init__(self, n, state=None):
+        self.n = n
+        state = state or '0'*n
+        self.initialize(state)
+
+    def initialize(self, state):
+        self.state = ket(state)
+        assert len(self.state) == 2**self.n, f"Invalid state size: {len(self.state)} != 2^{self.n}"
+
+    def random(self):
+        self.initialize(random_ket(self.n))
+
+    def reset(self):
+        self.initialize('0'*self.n)
+
+    def _check_qubit_arguments(self, qubits):
+        if isinstance(qubits, str) and qubits == 'all':
+            qubits = range(self.n)
+        if not hasattr(qubits, '__len__'):
+            qubits = [qubits]
+        for q in qubits:
+            assert isinstance(q, int) and 0 <= q < self.n, f"Invalid qubit: {q}"
+        assert len(set(qubits)) == len(qubits), f"Qubits should not appear multiple times, but was {qubits}"
+        return qubits
+
+    def _parse_unitary(self, U):
+        if isinstance(U, (list, np.ndarray)):
+            U = np.array(U)
+        elif isinstance(U, str):
+            U = parse_unitary(U)
+        elif hasattr(U, 'get_unitary'):
+            U = U.get_unitary()
+        elif sp.issparse(U):
+            U = U.toarray()
+        else:
+            try:
+                # qiskit might not be loaded
+                U = get_unitary(U)
+            except:
+                raise ValueError(f"Can't process unitary of type {type(U)}: {U}")
+        return U
+
+    def __call__(self, U, qubits):
+        qubits = self._check_qubit_arguments(qubits)
+        U = self._parse_unitary(U)
+        if U.shape == (2,2) and len(qubits) > 1:
+            U_ = U
+            for _ in qubits[1:]:
+                U = np.kron(U, U_)
+        assert U.shape == (2**len(qubits), 2**len(qubits)), f"Invalid unitary shape for {len(qubits)} qubits: {U.shape} != {2**len(qubits),2**len(qubits)}"
+        # special cases
+        if len(qubits) == 0:
+            return
+        if len(qubits) == self.n:
+            self.state = U @ self.state
+            return
+        # rotate axes of state vector to have the `qubits` first
+        self.state = self.state.reshape([2]*self.n)
+        axes_new = qubits + [a for a in range(self.n) if a not in qubits]
+        self.state = np.transpose(self.state, axes_new)
+        self.state = self.state.reshape([2**len(qubits), 2**(self.n-len(qubits))])
+        # apply U: (q x q) x (q x (n-q)) -> q x (n-q)
+        self.state = U @ self.state
+        # rotate qubits back
+        self.state = self.state.reshape([2]*self.n)
+        axes_rev = [axes_new.index(a) for a in range(self.n)]
+        self.state = np.transpose(self.state, axes_rev).flatten()
+
+    def measure(self, qubits):
+        qubits = self._check_qubit_arguments(qubits)
+        # special case
+        if len(qubits) == self.n:
+            probs = np.abs(self.state)**2
+            choice = np.random.choice(2**self.n, p=probs)
+            self.state = np.zeros_like(self.state)
+            self.state[choice] = 1
+            return ket(choice, self.n)
+        # rotate axes of state vector to have the qubits first
+        self.state = self.state.reshape([2]*self.n)
+        axes_new = qubits + [a for a in range(self.n) if a not in qubits]
+        self.state = np.transpose(self.state, axes_new).flatten()
+        # play God
+        probs = np.abs(self.state)**2
+        probs = np.sum(probs.reshape([2**len(qubits), -1]), axis=1)
+        choice = np.random.choice(2**len(qubits), p=probs)
+        # collapse
+        rest = 2**(self.n-len(qubits))
+        for i in range(2**len(qubits)):
+            if i != choice:
+                self.state[i*rest:(i+1)*rest] = 0
+        self.state = normalize(self.state)
+        # rotate back
+        axes_rev = [axes_new.index(a) for a in range(self.n)]
+        self.state = np.transpose(self.state.reshape([2]*self.n), axes_rev).flatten()
+        return ket(choice, len(qubits))
+
+    def plot(self, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
+        plotQ(self.state, showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize, title=title)
+
+    def x(self, q):
+        self(X, q)
+
+    def y(self, q):
+        self(Y, q)
+
+    def z(self, q):
+        self(Z, q)
+
+    def h(self, q='all'):
+        self(H_gate, q)
+
+    def t(self, q):
+        self(T_gate, q)
+
+    def t_dg(self, q):
+        self(T_gate.T.conj(), q)
+
+    def s(self, q):
+        self(S, q)
+
+    def cx(self, control, target):
+        self(CX, [control, target])
+
+    def ccx(self, control1, control2, target):
+        self(Toffoli, [control1, control2, target])
+
+    def c(self, U, control, target):
+        if not hasattr(control, '__len__'):
+            control = [control]
+        if not hasattr(target, '__len__'):
+            target = [target]
+        U = self._parse_unitary(U)
+        for _ in control:
+            U = C_(U)
+        self(U, control + target)
+
+    def swap(self, qubit1, qubit2):
+        self(SWAP, [qubit1, qubit2])
+
+    def rx(self, angle, q):
+        self(Rx(angle), q)
+
+    def ry(self, angle, q):
+        self(Ry(angle), q)
+
+    def rz(self, angle, q):
+        self(Rz(angle), q)
+
+    def qft(self, qubits):
+        QFT = Fourier_matrix(n=len(qubits), n_is_qubits=True)
+        self(QFT, qubits)
+
+    def iqft(self, qubits):
+        QFT = Fourier_matrix(n=len(qubits), n_is_qubits=True)
+        QFT_inv = QFT.T.conj()  # unitary!
+        self(QFT_inv, qubits)
+
+    def pe(self, U, state, energy):
+        # 1. Hadamard on energy register
+        self.h(energy)
+
+        # 2. Unitary condition
+        for j, q in enumerate(energy[::-1]):  # [::-1] for big entian convention
+            self.c(U**(2**j), q, state)
+
+        # 3. IQFT on energy register
+        self.iqft(energy)
+
+    def __str__(self):
+        return str(self.state)
+
+    def __repr__(self):
+        return str(self.state)
+
 #############
 ### State ###
 #############
@@ -1451,6 +1629,7 @@ def pauli_decompose(H, include_zero=False):
 
 ph = parse_hamiltonian
 pu = parse_unitary
+QC = QuantumComputer
 
 #############
 ### Tests ###
