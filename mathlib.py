@@ -1047,6 +1047,79 @@ def BBP_formula(s, b, m, a, N=100, verbose=False):
 
     return series(P, start_value=0, start_index=-1, max_iter=N+1, verbose=verbose)
 
+def log_(x, base=np.e):
+    """
+    Calculating the logarithm by foot: Use that $\\ln(1+x) = \\int_0^x \\frac 1{1+t} dt = \\sum_{n=0}^\\infty (-1)^n \\frac{x^{n+1}}{n+1}$. 
+    However, this series converges only for $|x| < 1$ and quickly only for $|x| < 1/2$. So, divide x by e until 0.5 < x' < 1.5.
+    Then use that ln(e^k*x') = k + ln(x').
+    Speedup by using 2 instead of e (easier divison / multiplication), and that $ln(1+x) - ln(1-x)$ only contains terms with even powers (faster convergence).
+    """
+    if base != np.e:
+        return log_(x)/log_(base)
+    if x < 0:
+        return np.nan
+    if x == 0:
+        return -np.inf
+    k = 0
+    ln2 = np.log(2)
+    if x > 0.5:
+        while np.abs(x - 1) >= 0.5:
+            x /= 2
+            k += 1
+    else:
+        while np.abs(x - 1) >= 0.5:
+            x *= 2
+            k -= 1
+    # x_ = x - 1
+    # lnx_ = series(lambda n, _: (-1)**n * x_**(n+1)/(n+1), start_index=-1)
+    x_ = (x-1)/(x+1)
+    lnx_ = series(lambda n, _: 2/(2*n+1) * x_**(2*n+1), start_index=-1)
+    return k*ln2 + lnx_
+
+log_table, log_table_keys = None, None
+def log_2(x, base=np.e):
+    """
+    Calculating the logarithm using Feynman's algorithm. Performance gets close (~ factor 5) to np.log.
+    """
+    if base != np.e:
+        return log_2(x)/log_2(base)
+    if x < 0:
+        return np.nan
+    if x == 0:
+        return -np.inf
+
+    global log_table, log_table_keys
+    if log_table is None:
+        log_table, log_table_keys = [], []
+        # build the table
+        for k in range(52+1):  # 52-bit precision in 64-bit float
+            k2k = 1 + 2**(-k)
+            log_table_keys.append(k2k)
+            log2k = np.log(k2k)
+            log_table.append(log2k)
+
+    # bring x in range 1 <= x < 2
+    k = 0
+    if x > 1:
+        while x >= 2:
+            x /= 2
+            k += 1
+    else:
+        while x < 1:
+            x *= 2
+            k -= 1
+
+    # calculate ln(x) by composing x as factors 1 + 2^{-k}
+    x_ = 1
+    lnx_ = 0
+    for j in range(1,53):
+        x__ = x_ * log_table_keys[j]
+        if x__ < x:
+            x_ = x__
+            lnx_ += log_table[j]
+
+    return k*log_table[0] + lnx_
+
 ### more
 
 def sqrt_brain_compatible(x, correction_term=False, n_max = 20):
@@ -1128,7 +1201,8 @@ def test_mathlib_all():
         _test_bincoll_from_int,
         _test_softmax,
         _test_Fibonacci,
-        _test_calc_pi
+        _test_calc_pi,
+        _test_log_
     ]
     if sage_loaded:
         tests += [
@@ -1665,3 +1739,20 @@ def _test_calc_pi():
     assert np.allclose(float(calc_pi4()), np.pi)
     assert np.allclose(BBP_formula(1, 16, 8, [4, 0, 0, -2, -1, -1]), np.pi)
     assert np.allclose(1/2*BBP_formula(1, 2, 1, [1]), np.log(2))
+
+def _test_log_():
+    assert np.isclose(log_(42), np.log(42))
+    assert np.isclose(log_(1234567890), np.log(1234567890))
+    assert np.isclose(log_(2), np.log(2))
+    assert np.isclose(log_(.000001), np.log(.000001))
+    assert np.isclose(log_(np.e), 1)
+    assert np.isclose(log_(1), 0)
+    assert np.isclose(log_(0), -np.inf)
+
+    assert np.isclose(log_2(42), np.log(42))
+    assert np.isclose(log_2(1234567890), np.log(1234567890))
+    assert np.isclose(log_2(2), np.log(2))
+    assert np.isclose(log_2(.000001), np.log(.000001))
+    assert np.isclose(log_2(np.e), 1)
+    assert np.isclose(log_2(1), 0)
+    assert np.isclose(log_2(0), -np.inf)
