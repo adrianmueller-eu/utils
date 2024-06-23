@@ -140,17 +140,19 @@ class ConvergenceCondition:
         pbar (tqdm.tqdm):     Progress bar object.
     """
 
-    def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False):
+    def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_value=None, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False, verbose=True):
         """ Convergence condition for iterative algorithms.
 
         Parameters
-            max_iter (int):              Maximum number of iterations. If `None`, no maximum is set.
-            eps (float):                 Maximum error. If `None`, no error is calculated.
+            max_iter (int):              Maximum number of iterations.
+            eps (float):                 Minimum error (i.e. terminates if error `eps` is reached. See also `skip_converged`.) If `None`, no error is calculated.
+            max_value (float):           Maximum value in the sequence (useful to check for divergence)
             max_time (float):            Maximum time in seconds. If `None`, no maximum is set.
             period (int):                Number of previous iterations to check for convergence (useful for oscillating sequences)
             skip_initial (int):          Number of iterations to let pass in the beggining before checking for convergence
             skip_converged (int):        Number of successivee iterations the error must be below `eps`
             use_tqdm (bool | tqdm.tqdm): Set `True` to show a `tqdm` progress bar. Give a `tqdm.tqdm` object to use a custom `tqdm` progress bar.
+            verbose (bool):              Set `True` to print the reason for termination.
 
         Example:
 
@@ -167,10 +169,12 @@ class ConvergenceCondition:
         """
         self.max_iter = int(max_iter) if max_iter is not None else None
         self.eps = eps
+        self.max_value = max_value
         self.max_time = max_time
         self.period = period
         self.skip_initial = skip_initial
         self.skip_converged = skip_converged
+        self.verbose = verbose
 
         self.x_prev = None
         self.error = None
@@ -226,18 +230,30 @@ class ConvergenceCondition:
                     self.skipped += 1
                     return False
                 else:
+                    if self.verbose:
+                        print(f"Converged at iteration {self.iter} with error {self.error}")
                     self.close()
                     return True
             else:
                 self.skipped = 0
         if self.max_iter is not None:
             if self.iter >= self.max_iter:
+                if self.verbose:
+                    print(f"Reached maximum number of iterations {self.max_iter}")
+                self.close()
+                return True
+        if self.max_value is not None:
+            if np.max(np.abs(x)) >= self.max_value:
+                if self.verbose:
+                    print(f"Maximum value {self.max_value} (index {np.argmax(abs(x))}) at iteration {self.iter}")
                 self.close()
                 return True
         if self.max_time is not None:
             if self.start_time is None:
                 self.start_time = time.time()
             if time.time() - self.start_time > self.max_time:
+                if self.verbose:
+                    print(f"Time limit reached at iteration {self.iter}")
                 self.close()
                 return True
 
