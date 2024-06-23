@@ -400,6 +400,10 @@ def imshow(a, figsize=None, title="", cmap="hot", xticks=None, yticks=None, xtic
                     fig.colorbar(img, fraction=0.04 * a.shape[0] / a.shape[1], pad=0.01)
                 else:
                     fig.colorbar(img, fraction=0.02, pad=0.01)
+    elif len(a.shape) == 3 and a.shape[2] == 3:
+        plt.imshow(a, **pltargs)
+        if colorbar == True:
+            print("Warning: colorbar not supported for RGB images.")
     else:
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
 
