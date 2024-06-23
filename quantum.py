@@ -1,6 +1,6 @@
 import psutil
 import numpy as np
-from itertools import combinations, product
+import itertools
 from functools import reduce
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
@@ -48,7 +48,7 @@ def R_(gate, theta):
 Rx = lambda theta: R_(X, theta)
 Ry = lambda theta: R_(Y, theta)
 Rz = lambda theta: R_(Z, theta)
-II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ = [np.kron(g1, g2) for g1, g2 in product([I,X,Y,Z], repeat=2)]
+II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ = [np.kron(g1, g2) for g1, g2 in itertools.product([I,X,Y,Z], repeat=2)]
 
 def C_(A):
     if not hasattr(A, 'shape'):
@@ -1224,7 +1224,7 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
             if n_qubits > 20:
                 raise ValueError("Printing out all interactions for n_qubits > 20 is not recommended. Please use a dict instead.")
             for i in range(2, n_qubits+1):
-                for membership in combinations(range(n_qubits), i):
+                for membership in itertools.combinations(range(n_qubits), i):
                     H_str += ''.join(['Z' if j in membership else 'I' for j in range(n_qubits)]) + ' + '
         else: # J is a dict of tuples of qubit indices to interaction strengths
             for membership, strength in J.items():
@@ -1371,13 +1371,13 @@ def pauli_basis(n, kind='np', normalize=False):
             return reduce(f, l)
 
     if kind == 'np':
-        return [reduce_norm(np.kron, i, normalize) for i in product([I,X,Y,Z], repeat=n)]
+        return [reduce_norm(np.kron, i, normalize) for i in itertools.product([I,X,Y,Z], repeat=n)]
     elif kind == 'sp':
         basis = [sp.csr_array(b) for b in [I,X,Y,Z]]
-        return [reduce_norm(sp.kron, i, normalize) for i in product(basis, repeat=n)]
+        return [reduce_norm(sp.kron, i, normalize) for i in itertools.product(basis, repeat=n)]
     elif kind == 'str':
         norm_str = f"{1/np.sqrt(2**n)}*" if normalize else ""
-        return [norm_str + ''.join(i) for i in product(['I', 'X', 'Y', 'Z'], repeat=n)]
+        return [norm_str + ''.join(i) for i in itertools.product(['I', 'X', 'Y', 'Z'], repeat=n)]
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
@@ -1824,7 +1824,7 @@ def _test_pauli_basis():
     assert len(pauli_n) == n_expected, f"Number of generators is {len(pauli_n)}, but should be {n_expected}!"
 
     # check if no two generators are the same
-    for i, (A,B) in enumerate(combinations(pauli_n,2)):
+    for i, (A,B) in enumerate(itertools.combinations(pauli_n,2)):
         assert not np.allclose(A, B), f"Pair {i} is not different!"
 
     # check if all generators except of the identity are traceless
@@ -1837,7 +1837,7 @@ def _test_pauli_basis():
         assert is_hermitian(A), f"Generator {i} is not Hermitian!"
 
     # check if all generators are orthogonal
-    for i, (A,B) in enumerate(combinations(pauli_n,2)):
+    for i, (A,B) in enumerate(itertools.combinations(pauli_n,2)):
         assert np.allclose(np.trace(A.conj().T @ B), 0), f"Pair {i} is not orthogonal!"
 
     # check normalization
