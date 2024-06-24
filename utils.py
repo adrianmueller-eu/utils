@@ -1,4 +1,4 @@
-import os, time, sys
+import os, time, sys, numbers
 import numpy as np
 from warnings import warn
 from collections.abc import Iterable
@@ -52,7 +52,7 @@ def tqmapl(func, *iterables, iterator=list, **kwargs):
     return iterator(tqmap(func, *iterables, **kwargs))
 
 def tqt(iterable, **kwargs):
-    if not isinstance(iterable, Iterable):
+    if not is_iterable(iterable):
         raise TypeError(f"tqt expected an iterable, not {type(iterable)}")
     if len(iterable) == 0:
         raise ValueError("tqt expected a non-empty iterable")
@@ -81,7 +81,7 @@ def nbytes(n):
     elif isinstance(n, str):
         return len(n)
     # list, tuple, set, dict, etc.
-    elif isinstance(n, Iterable):
+    elif is_iterable(n):
         return sum([nbytes(i) for i in n])
     else:
         raise TypeError(f"Can't get the size of an object of type {type(n)}")
@@ -94,9 +94,9 @@ def duh(n, precision=3):
         n (int | object): The number of bytes or an object the size of which to use (e.g. list, dict, numpy array, pandas dataframe, pytorch tensor)
         precision (int): The number of decimals to use
     """
-    if not isinstance(n, int):
+    if not is_int(n):
         n = nbytes(n)
-    if not isinstance(n, int) or n < 0:
+    if not is_int(n) or n < 0:
         raise ValueError(f"n must be a positive integer, not {n}")
 
     for unit in ['B','KB','MB','GB','TB','PB','EB','ZB']:
@@ -116,6 +116,21 @@ def shape_it(a, progress=True):
     for n in tq(product(*[list(range(s)) for s in a.shape]),
                         disable=not progress, total=np.prod(a.shape)):
         yield n
+
+def is_int(x):
+    # https://stackoverflow.com/questions/3501382/checking-whether-a-variable-is-an-integer-or-not
+    try:
+        return int(x) == x
+    except:
+        if isinstance(x, complex):
+            return int(x.real) == x.real and x.imag == 0
+        return False
+
+def is_numeric(x):
+    return isinstance(x, numbers.Number)
+
+def is_iterable(x):
+    return isinstance(x, Iterable)
 
 def allclose_set(a, b):
     """ Check if for each item in a there is a corresponding item in b that is close to it and vice versa. """

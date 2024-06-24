@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import scipy.sparse as sp
 from .mathlib import *
 from .plot import colorize_complex
-from .utils import duh
+from .utils import duh, is_int
 from .prob import entropy
 
 #################
@@ -465,7 +465,7 @@ def partial_trace(rho, retain_qubits):
     n = int(np.log2(rho.shape[0])) # number of qubits
 
     # pre-process retain_qubits
-    if isinstance(retain_qubits, int):
+    if is_int(retain_qubits):
         retain_qubits = [retain_qubits]
     dim_r = 2**len(retain_qubits)
 
@@ -668,7 +668,7 @@ def ket(specification, n=None):
         n = n or int(np.log2(len(specification))) or 1
         assert len(specification) == 2**n, f"State vector has wrong length: {len(specification)} is not a power of 2!"
         return normalize(specification)
-    if isinstance(specification, int):
+    if is_int(specification):
         return ket_from_int(specification, n)
     if type(specification) == str:
         # handle some special cases: |+>, |->, |i>, |-i>
