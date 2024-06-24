@@ -2031,11 +2031,25 @@ def _test_partial_trace():
     assert np.allclose(rho, rho_tr), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
 
 def _test_ket_unket():
-    # TODO
+    assert np.allclose(ket('0'), [1,0])
+    assert np.allclose(ket('1'), [0,1])
+    assert np.allclose(ket(0), [1,0])
+    assert np.allclose(ket(2), [0,0,1,0])
+    assert np.allclose(ket('00 + 11 + 01 + 10'), [.5,.5,.5,.5])
+    assert np.allclose(ket('00+ 11- 01 -10'), [.5,-.5,-.5,.5])
+    assert np.allclose(ket('00 + 11'), ket('2*00 + 2*11'))
+    # assert np.allclose(ket('00 - 11'), ket('2*(00 - 11)'))  # parentheses NYI
+    assert np.allclose(ket('3*00 + 4*01 + 5*11'), [sqrt(9/50), sqrt(16/50), 0, sqrt(25/50)])
+    assert unket(ket('1010')) == '1010'
+    assert unket(ket(10)) == '1010'
+    assert unket(ket(10, 5)) == '01010'
     pass
 
 def _test_op_dm():
-    # TODO
+    assert np.allclose(op(0),   [[1,0], [0,0]])
+    assert np.allclose(op(0,1), [[0,1], [0,0]])
+    assert np.allclose(op(1,0), [[0,0], [1,0]])
+    assert np.allclose(op(1),   [[0,0], [0,1]])
     pass
 
 def _test_entropy_von_Neumann():
