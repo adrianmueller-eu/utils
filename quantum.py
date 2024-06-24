@@ -270,28 +270,153 @@ class QuantumComputer:
     """
     A naive simulation of a quantum computer.
     """
-    def __init__(self, n, state=None):
-        self.n = n
-        state = state or '0'*n
-        self.initialize(state)
+    def __init__(self, qubits=None, state=None):
+        self.clear()
 
-    def initialize(self, state):
-        self.state = ket(state)
-        assert len(self.state) == 2**self.n, f"Invalid state size: {len(self.state)} != 2^{self.n}"
+        if is_int(qubits):
+            qubits = list(range(qubits))
+        if state is None:
+            self.reset(qubits)
+        else:
+            self.initialize(state, qubits)
 
-    def random(self):
-        self.initialize(random_ket(self.n))
+    @property
+    def n(self):
+        return len(self.qubits)
 
-    def reset(self):
-        self.initialize('0'*self.n)
+    def clear(self):
+        self.state = np.array([1.])
+        self.qubits = []
+        self.original_order = []
+        return self
 
-    def _check_qubit_arguments(self, qubits):
+    def __call__(self, U, qubits):
+        qubits = self._check_qubit_arguments(qubits, True)
+        U = self._parse_unitary(U)
+        if U.shape == (2,2) and len(qubits) > 1:
+            U_ = U
+            for _ in qubits[1:]:
+                U = np.kron(U, U_)
+        assert U.shape == (2**len(qubits), 2**len(qubits)), f"Invalid unitary shape for {len(qubits)} qubits: {U.shape} != {2**len(qubits),2**len(qubits)}"
+        # rotate axes of state vector to have the `qubits` first
+        self._reorder(qubits)
+        # apply U: (q x q) x (q x (n-q)) -> q x (n-q)
+        if len(qubits) < self.n:
+            self.state = self.state.reshape([2**len(qubits), -1])
+        else:
+            self.state = self.state.flatten()  # .reshape([2**len(qubits)])
+        self.state = U @ self.state
+        return self
+
+    def get_state(self, qubits='all'):
+        if not self.n:
+            return None
+        qubits = self._check_qubit_arguments(qubits, False)
+        self._reorder(qubits)
+        if len(qubits) < self.n:
+            return partial_trace(self.state.flatten(), qubits)
+        return self.state.flatten()
+
+    def measure(self, qubits='all'):
+        qubits = self._check_qubit_arguments(qubits, False)
+        # special case
+        if len(qubits) == self.n:
+            probs = np.abs(self.state)**2
+            choice = np.random.choice(2**self.n, p=probs)
+            self.state = np.zeros_like(self.state)
+            self.state[choice] = 1
+            return ket(choice, self.n)
+        # play God
+        probs = self._probs(qubits)
+        choice = np.random.choice(2**len(qubits), p=probs)
+        # collapse
+        keep = self.state[choice]
+        keep = normalize(keep)
+        self.state = np.zeros_like(self.state)
+        self.state[choice] = keep
+        return ket(choice, len(qubits))
+
+    def probs(self, qubits='all'):
+        qubits = self._check_qubit_arguments(qubits, False)
+        return self._probs(qubits)
+
+    def _probs(self, qubits='all'):
+        self._reorder(qubits)
+        self.state = self.state.reshape([2**len(qubits), -1])
+        probs = np.abs(self.state)**2
+        probs = np.sum(probs, axis=1)
+        if len(qubits) == self.n:
+            self.state = self.state.reshape([2]*self.n)
+        return probs
+
+    def initialize(self, state, qubits=None):
+        if qubits is None:
+            if self.n == 0:  # infer `qubits` from `state`
+                self.state = ket(state)
+                n = int(np.log2(len(self.state)))
+                self.qubits = list(range(n))
+                return self
+            qubits = self.qubits
+        else:
+            qubits = self._check_qubit_arguments(qubits, True)
+
+        new_state = ket(state, len(qubits))
+        if len(qubits) < self.n:
+            choice = self.measure(qubits)
+            rest = self.state[np.where(choice == 1)[0]]
+            self.state = np.kron(new_state, rest)
+        else:
+            self.state = new_state
+        return self
+
+    def reset(self, qubits=None):
+        if qubits:
+            self.initialize(0, qubits)
+        elif self.n:
+            self.initialize(0)
+        # else: pass
+        return self
+
+    def random(self, n=None):
+        n = n or self.n
+        assert n, 'No qubits has been allocated yet'
+        self.initialize(random_ket(n))
+        return self
+
+    def _alloc_qubit(self, q, update_state=True):
+        if len(self.state)*16*2 > psutil.virtual_memory().available:
+            print(f"Warning: RAM almost full ({self.n} qubits)")
+
+        self.qubits.append(q)
+        self.original_order.append(q)
+        if update_state:
+            self.state = np.kron(self.state.flatten(), [1,0]).reshape([2]*self.n)
+
+    def remove(self, qubits):
+        qubits = self._check_qubit_arguments(qubits, False)
+        if len(qubits) == self.n:
+            return self.clear()
+        choice = self.measure(qubits)
+        self.state = self.state[np.where(choice == 1)[0]]
+        if len(qubits) == self.n - 1:
+            self.state = self.state.reshape([2])
+        self.qubits = [q for q in self.qubits if q not in qubits]
+        self.original_order = [q for q in self.original_order if q not in qubits]
+        return self
+
+    def _check_qubit_arguments(self, qubits, allow_new, update_state=True):
         if isinstance(qubits, str) and qubits == 'all':
-            qubits = range(self.n)
-        if not hasattr(qubits, '__len__'):
+            qubits = self.original_order
+        if not isinstance(qubits, (list, np.ndarray)):
             qubits = [qubits]
+        qubits = list(qubits)
+        assert len(qubits) > 0, "No qubits provided"
         for q in qubits:
-            assert isinstance(q, int) and 0 <= q < self.n, f"Invalid qubit: {q}"
+            if q not in self.qubits:
+                if allow_new:
+                    self._alloc_qubit(q, update_state=update_state)
+                else:
+                    raise ValueError(f"Invalid qubit: {q}")
         assert len(set(qubits)) == len(qubits), f"Qubits should not appear multiple times, but was {qubits}"
         return qubits
 
@@ -312,120 +437,80 @@ class QuantumComputer:
                 raise ValueError(f"Can't process unitary of type {type(U)}: {U}")
         return U
 
-    def __call__(self, U, qubits):
-        qubits = self._check_qubit_arguments(qubits)
-        U = self._parse_unitary(U)
-        if U.shape == (2,2) and len(qubits) > 1:
-            U_ = U
-            for _ in qubits[1:]:
-                U = np.kron(U, U_)
-        assert U.shape == (2**len(qubits), 2**len(qubits)), f"Invalid unitary shape for {len(qubits)} qubits: {U.shape} != {2**len(qubits),2**len(qubits)}"
-        # special cases
-        if len(qubits) == 0:
-            return
-        if len(qubits) == self.n:
-            self.state = U @ self.state
-            return
-        # rotate axes of state vector to have the `qubits` first
-        self.state = self.state.reshape([2]*self.n)
-        axes_new = qubits + [a for a in range(self.n) if a not in qubits]
+    def _reorder(self, new_order):
+        new_order = new_order + [q for q in self.qubits if q not in new_order]
+        axes_new = [self.qubits.index(q) for q in new_order]
+        self.qubits = new_order # update index dictionary with new locations
+        if any(s > 2 for s in self.state.shape):
+            self.state = self.state.reshape([2]*self.n)
         self.state = np.transpose(self.state, axes_new)
-        self.state = self.state.reshape([2**len(qubits), 2**(self.n-len(qubits))])
-        # apply U: (q x q) x (q x (n-q)) -> q x (n-q)
-        self.state = U @ self.state
-        # rotate qubits back
-        self.state = self.state.reshape([2]*self.n)
-        axes_rev = [axes_new.index(a) for a in range(self.n)]
-        self.state = np.transpose(self.state, axes_rev).flatten()
-
-    def measure(self, qubits):
-        qubits = self._check_qubit_arguments(qubits)
-        # special case
-        if len(qubits) == self.n:
-            probs = np.abs(self.state)**2
-            choice = np.random.choice(2**self.n, p=probs)
-            self.state = np.zeros_like(self.state)
-            self.state[choice] = 1
-            return ket(choice, self.n)
-        # rotate axes of state vector to have the qubits first
-        self.state = self.state.reshape([2]*self.n)
-        axes_new = qubits + [a for a in range(self.n) if a not in qubits]
-        self.state = np.transpose(self.state, axes_new).flatten()
-        # play God
-        probs = np.abs(self.state)**2
-        probs = np.sum(probs.reshape([2**len(qubits), -1]), axis=1)
-        choice = np.random.choice(2**len(qubits), p=probs)
-        # collapse
-        rest = 2**(self.n-len(qubits))
-        for i in range(2**len(qubits)):
-            if i != choice:
-                self.state[i*rest:(i+1)*rest] = 0
-        self.state = normalize(self.state)
-        # rotate back
-        axes_rev = [axes_new.index(a) for a in range(self.n)]
-        self.state = np.transpose(self.state.reshape([2]*self.n), axes_rev).flatten()
-        return ket(choice, len(qubits))
 
     def plot(self, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
-        plotQ(self.state, showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize, title=title)
+        self._reorder(self.original_order)
+        if showqubits is not None:
+            self._check_qubit_arguments(showqubits, False)
+            showqubits = [self.qubits.index(q) for q in showqubits]
+        return plotQ(self.state.flatten(), showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize, title=title)
 
     def x(self, q):
-        self(X, q)
+        return self(X, q)
 
     def y(self, q):
-        self(Y, q)
+        return self(Y, q)
 
     def z(self, q):
-        self(Z, q)
+       return self(Z, q)
 
     def h(self, q='all'):
-        self(H_gate, q)
+        return self(H_gate, q)
 
     def t(self, q):
-        self(T_gate, q)
+        return self(T_gate, q)
 
     def t_dg(self, q):
-        self(T_gate.T.conj(), q)
+        return self(T_gate.T.conj(), q)
 
     def s(self, q):
-        self(S, q)
+        return self(S, q)
 
     def cx(self, control, target):
-        self(CX, [control, target])
+        return self(CX, [control, target])
 
     def ccx(self, control1, control2, target):
-        self(Toffoli, [control1, control2, target])
+        return self(Toffoli, [control1, control2, target])
 
     def c(self, U, control, target):
-        if not hasattr(control, '__len__'):
+        if not isinstance(control, (list, np.ndarray)):
             control = [control]
-        if not hasattr(target, '__len__'):
+        control = list(control)
+        if not isinstance(target, (list, np.ndarray)):
             target = [target]
+        target = list(target)
         U = self._parse_unitary(U)
         for _ in control:
             U = C_(U)
-        self(U, control + target)
+        return self(U, control + target)
 
     def swap(self, qubit1, qubit2):
-        self(SWAP, [qubit1, qubit2])
+        return self(SWAP, [qubit1, qubit2])
 
     def rx(self, angle, q):
-        self(Rx(angle), q)
+        return self(Rx(angle), q)
 
     def ry(self, angle, q):
-        self(Ry(angle), q)
+        return self(Ry(angle), q)
 
     def rz(self, angle, q):
-        self(Rz(angle), q)
+        return self(Rz(angle), q)
 
     def qft(self, qubits):
         QFT = Fourier_matrix(n=len(qubits), n_is_qubits=True)
-        self(QFT, qubits)
+        return self(QFT, qubits)
 
     def iqft(self, qubits):
         QFT = Fourier_matrix(n=len(qubits), n_is_qubits=True)
         QFT_inv = QFT.T.conj()  # unitary!
-        self(QFT_inv, qubits)
+        return self(QFT_inv, qubits)
 
     def pe(self, U, state, energy):
         # 1. Hadamard on energy register
@@ -437,12 +522,16 @@ class QuantumComputer:
 
         # 3. IQFT on energy register
         self.iqft(energy)
+        return self
 
     def __str__(self):
-        return str(self.state)
+        state = self.get_state()
+        if state is not None:
+            state = unket(state)
+        return f"qubits {self.original_order} in state '{state}'"
 
     def __repr__(self):
-        return str(self.state)
+        return self.__str__()
 
 #############
 ### State ###
