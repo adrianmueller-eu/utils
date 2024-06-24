@@ -1879,14 +1879,46 @@ def _test_get_H_energies_eq_get_pe_energies():
     assert np.allclose(A, B), f"{A} ≠ {B}"
 
 def _test_QuantumComputer():
+    qc = QuantumComputer()
+    qc.x(0)
+    assert unket(qc.get_state()) == '1'
+    qc.cx(0, 1)
+    assert unket(qc.get_state()) == '11'
+    qc.reset()
+    assert unket(qc.get_state()) == '00'
+    qc.h()
+    qc.x(2)
+    qc.initialize(2, [0,1])
+    assert unket(qc.get_state()) == '101'
+    qc.z([0,2])  # noop
+    qc.swap(1,2)
+    assert unket(qc.get_state()) == '110'
+    qc.reset(1)
+    assert unket(qc.get_state()) == '100'
+    qc.remove([0,2])
+    assert unket(qc.get_state()) == '0'
+
+    qc = QuantumComputer(15)
+    U = parse_unitary('XYZCZYX')
+    qc(U, choice(qc.qubits, 7, False))
+    qc.remove([5,7,6,10,2])
+    U = random_unitary(2**5)
+    qc(U, choice(qc.qubits, 5, False))
+    assert qc.n == 10
+
     H = ph(f'{1/8}*(IZ + ZI + II)')
     U = exp_i(2*np.pi*H)
     assert np.isclose(np.trace(H @ op('00')), float_from_binstr('.011'))  # 00 is eigenstate with energy 0.375 = '011'
-    qc = QuantumComputer(U.n + 3)
-    state_qubits, E_qubits = list(range(U.n)), list(range(U.n, qc.n))
+    state_qubits = ['s0', 's1']
+    qc = QuantumComputer(state_qubits)
+    E_qubits = ['e0', 'e1', 'e2']
     qc.pe(U, state_qubits, E_qubits)
     res = unket(qc.measure(E_qubits))
     assert res == '011', f"measurement result was {res} ≠ '011'"
+
+    qc.remove('s0')
+    assert np.allclose(qc.get_state(), ket('0011'))
+    qc.remove('all')
 
 def _test_random_ket():
     for _ in range(100):
