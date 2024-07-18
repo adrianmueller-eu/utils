@@ -1471,6 +1471,10 @@ def _test_roots():
         coeffs = random_vec(degree+1, (-10, 10), complex=True)
         assert np.allclose(np.polyval(coeffs, roots(coeffs)), 0), f"{coeffs}: {roots(coeffs)}"
 
+    p = Polynomial([-4, 3.5, 2.5, 0, 0])
+    for c in p.roots:
+        assert np.isclose(p(c), 0)
+
 def _test_SO():
     n = 4
     SOn = SO(n)

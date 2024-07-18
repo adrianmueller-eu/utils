@@ -263,7 +263,13 @@ class Polynomial(Function):
     @property
     def roots(self):
         if self._roots is None:
-            self._roots = list(polyroots(self.coeffs))
+            # remove highest terms that are 0
+            coeffs_red = list(self.coeffs)
+            while np.isclose(coeffs_red[-1], 0):
+                coeffs_red.pop()
+                if len(coeffs_red) == 0:
+                    raise ValueError("The zero polynomial has roots everywhere!")
+            self._roots = list(polyroots(coeffs_red))
         return self._roots
 
     def variety(self, precision=None):
