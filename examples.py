@@ -2,9 +2,11 @@ from .utils import moving_avg
 from .prob import smooth
 from .systems import fractal
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 def climateHockey():
     import pandas as pd
-    import matplotlib.pyplot as plt
 
     # download the data from https://ourworldindata.org/explorers/climate-change
     # get data
@@ -32,12 +34,22 @@ def climateHockey():
     plt.show()
 
 def fractal_heart():
-    import numpy as np
     import warnings; warnings.filterwarnings("ignore")
 
     phi = np.exp(1j*1/4*2*np.pi)
     f = lambda it, z, z0: z**2 + 0.7 + z0*phi if it > 1 else (z*phi)**2 + 0.7 + z0*phi
-    fractal(f, 100, 2000, (-1, 1), (-0.2, 1.8), save_fig='fractal_heart')
+    fractal(f, 100, 2000, (-1, 1), (-0.2, 1.8), show='open', save_fig='fractal_heart')
 
     f = lambda it, z, z0: z**2 + 0.7 + z0
-    fractal(f, 4000, 2000, (-0.79804, -0.79682), (-0.65403, -0.65281), save_fig='fractal_heart_zoomed')
+    fractal(f, 4000, 2000, (-0.79804, -0.79682), (-0.65403, -0.65281), show='open', save_fig='fractal_heart_zoomed')
+
+def mandelbrot(res=2000, iters=120, xlim=(-2, 1), ylim=(-1.5, 1.5), cmap='default'):
+    if cmap == 'default':
+        from matplotlib.colors import LinearSegmentedColormap
+        xlim, ylim = (-2, 1), (-1.5, 1.5)
+        colors = ["black", "black", "blue", "lightblue", "white", "yellow", "red", "black"]
+        nodes = [0.0, 0.02, 0.25, 0.35, 0.4, 0.7, 0.9, 1.0]
+        cmap = LinearSegmentedColormap.from_list("mycmap", list(zip(nodes, colors)))
+    import warnings; warnings.filterwarnings("ignore")
+    f = lambda it, z, z0: z**2 + z0
+    fractal(f, iters, res, xlim, ylim, show='open', save_fig='mandelbrot', cmap=cmap)
