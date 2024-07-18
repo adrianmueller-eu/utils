@@ -212,8 +212,9 @@ try:
                 self.D, self.U = np.linalg.eigh(H)
             # auxiliary variables
             self.n = int(np.log2(len(self.D)))
-            self.k = k
-            name = "exp^iH" if k == 1 else f"exp^i{k}H"
+            self.k = int(k) if is_int(k) else k
+            name = "exp^-i" if k < 0 else "exp^i"
+            name += "H" if abs(k) == 1 else f"{abs(k)}H"
             super().__init__(self.n, name=name)       # circuit on n qubits
             self.all_qubits = list(range(self.n))
             # calculate and add unitary
@@ -225,6 +226,9 @@ try:
 
         def __pow__(self, k):
             return self.power(k)
+
+        def inverse(self):
+            return exp_i((self.D, self.U), k=-self.k)
 
         def get_unitary(self, k=1):
             return self.U @ np.diag(np.exp(self.k*k*1j*self.D)) @ self.U.T.conj()
