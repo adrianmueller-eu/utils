@@ -304,7 +304,7 @@ class QuantumComputer:
         if len(qubits) < self.n:
             self.state = self.state.reshape([2**len(qubits), -1])
         else:
-            self.state = self.state.flatten()  # .reshape([2**len(qubits)])
+            self.state = self.state.reshape(-1)  # .reshape([2**len(qubits)])
         self.state = U @ self.state
         return self
 
@@ -314,8 +314,8 @@ class QuantumComputer:
         qubits = self._check_qubit_arguments(qubits, False)
         self._reorder(qubits)
         if len(qubits) < self.n:
-            return partial_trace(self.state.flatten(), qubits)
-        return self.state.flatten()
+            return partial_trace(self.state.reshape(-1), qubits)
+        return self.state.reshape(-1)
 
     def measure(self, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
@@ -390,7 +390,7 @@ class QuantumComputer:
         self.qubits.append(q)
         self.original_order.append(q)
         if update_state:
-            self.state = np.kron(self.state.flatten(), [1,0]).reshape([2]*self.n)
+            self.state = np.kron(self.state.reshape(-1), [1,0]).reshape([2]*self.n)
 
     def remove(self, qubits):
         qubits = self._check_qubit_arguments(qubits, False)
@@ -443,14 +443,14 @@ class QuantumComputer:
         self.qubits = new_order # update index dictionary with new locations
         if any(s > 2 for s in self.state.shape):
             self.state = self.state.reshape([2]*self.n)
-        self.state = np.transpose(self.state, axes_new)
+        self.state = self.state.transpose(axes_new)
 
     def plot(self, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
         self._reorder(self.original_order)
         if showqubits is not None:
             self._check_qubit_arguments(showqubits, False)
             showqubits = [self.qubits.index(q) for q in showqubits]
-        return plotQ(self.state.flatten(), showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize, title=title)
+        return plotQ(self.state.reshape(-1), showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize, title=title)
 
     def x(self, q):
         return self(X, q)
@@ -544,7 +544,7 @@ def reverse_qubit_order(state):
 
     # if vector, just reshape
     if len(state.shape) == 1 or state.shape[0] != state.shape[1]:
-        return state.reshape([2]*n).T.flatten()
+        return state.reshape([2]*n).T.reshape(-1)
     elif state.shape[0] == state.shape[1]:
         return state.reshape([2,2]*n).T.reshape(2**n, 2**n).conj()
 
@@ -613,10 +613,10 @@ def state_trace(state, retain_qubits):
         else:
             cur += 1
 
-    state = state.flatten()
+    state = state.reshape(-1)
     state = normalize(state) # renormalize
 
-    probs = probs.flatten()
+    probs = probs.reshape(-1)
     assert np.abs(np.sum(probs) - 1) < 1e-5, np.sum(probs) # sanity check
 
     return state, probs
@@ -943,7 +943,7 @@ def Schmidt_decomposition(state, subsystem_qubits):
     # reorder the qubits so that the subsystem qubits are at the beginning
     subsystem_qubits = list(subsystem_qubits)
     other_qubits = sorted(set(range(n)) - set(subsystem_qubits))
-    state = state.reshape([2]*n).transpose(subsystem_qubits + other_qubits).flatten()
+    state = state.reshape([2]*n).transpose(subsystem_qubits + other_qubits).reshape(-1)
 
     # calculate the Schmidt coefficients and basis using SVD
     a_jk = state.reshape([2**len(subsystem_qubits), 2**len(other_qubits)])

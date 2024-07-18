@@ -144,10 +144,10 @@ def allclose_set(a, b):
     # convert to numpy arrays if they are not
     if isinstance(a, set):
         a = list(a)
-    a = np.sort(np.array(a).flatten())
+    a = np.sort(np.reshape(a, -1))
     if isinstance(b, set):
         b = list(b)
-    b = np.sort(np.array(b).flatten())
+    b = np.sort(np.reshape(a, -1))
     # check if they have the same length
     if len(a) != len(b):
         return False

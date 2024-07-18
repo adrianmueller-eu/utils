@@ -295,8 +295,8 @@ def scatter1d(data, figsize=None, xticks=None, alpha=.5, s=500, marker="|", xlim
             figsize[1] += 0.2
         fig = plt.figure(figsize=figsize)
     ax = fig.gca()
-    size = np.array(data).flatten().shape
-    plt.scatter(data, np.zeros(*size), alpha=alpha, marker=marker, s=s, **pltargs)
+    size = np.prod(np.array(data, copy=False).shape)
+    plt.scatter(data, np.zeros(size), alpha=alpha, marker=marker, s=s, **pltargs)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
@@ -353,13 +353,12 @@ def imshow(a, figsize=None, title="", cmap="hot", xticks=None, yticks=None, xtic
         None
     """
 
-    a = np.array(a)
+    a = np.array(a, copy=False)
     is_vector = np.prod(a.shape) == np.max(a.shape)
 
     # magic reshape
     if magic_reshape and is_vector and max(a.shape) >= 100:
-        a = a.flatten()
-        best_divisor = int_sqrt(a.shape[0])
+        best_divisor = int_sqrt(np.prod(a.shape))
         a = a.reshape(best_divisor, -1)
         is_vector = False
     if len(a.shape) == 1:
