@@ -44,15 +44,13 @@ def expm(x, y=None, plot=True, scaling_factor=True):
 
 # helper methods
 def _to_str_coeff_1(c, precision=3):
-    if np.iscomplex(c):
-        if np.isclose(c.imag, 0):
-            return f"%.{precision}f" % c.real
-        elif np.isclose(c.real, 0):
-            return f"%.{precision}fj" % c.imag
-        return f"(%.{precision}f%+.{precision}fj)" % (c.real, c.imag)
-    return f"%.{precision}f" % c.real
+    if np.iscomplex(c) and not np.isclose(c.imag, 0):
+        if np.isclose(c.real, 0):
+            return f"{c.imag:.{precision}g}j"
+        return f"({c.real:.{precision}g}{c.imag:+.{precision}g}j)"
+    return f"{c.real:.{precision}g}"
 
-def _generate_poly_label(coeffs, precision=3):
+def _generate_poly_label(coeffs, precision):
     def _to_str(i):
         c = coeffs[i]
         if np.isclose(c, int(c.real)):
@@ -119,7 +117,7 @@ class Function(ABC):
 
     def label(self, precision=3, show_error=True):
         if show_error and hasattr(self, "error"):
-            return self.__str__(precision) + f" (MSE: {self.error:.{precision}f})"
+            return self.__str__(precision) + f" (MSE: {self.error:.{precision}g})"
         return self.__str__(precision)
 
     def plot(self, x, ax=None, precision=3):
