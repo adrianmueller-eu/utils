@@ -357,6 +357,7 @@ class QuantumComputer:
                 self.state = ket(state)
                 n = int(np.log2(len(self.state)))
                 self.qubits = list(range(n))
+                self.original_order = list(range(n))
                 return self
             qubits = self.qubits
         else:
