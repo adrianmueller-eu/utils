@@ -1,7 +1,6 @@
 import numpy as np
 from numpy.polynomial.polynomial import polyfit, polyval, polyroots, polyadd, polysub, polyder, polyint, polymul
 from abc import ABC, abstractmethod
-from scipy.optimize import curve_fit
 
 # convenience functions
 def pm(x, y=None, deg=1, plot=True):
@@ -28,11 +27,11 @@ def lm(x, y=None, plot=True):
     return pm(x, y, 1, plot)
 
 # expm
-def expm(x, y=None, plot=True):
+def expm(x, y=None, plot=True, scaling_factor=True):
     if y is None:
         y = x
         x = np.arange(1, len(y)+1)
-    exp = Exponential.fit(x, y)
+    exp = Exponential.fit(x, y, scaling_factor=scaling_factor)
     if plot:
         x_ = np.linspace(min(x), max(x), 200)
         ax = exp.plot(x_)
@@ -361,24 +360,42 @@ class Exponential(Function):
 
     def __init__(self, coeffs):
         if len(coeffs) != 4:
-            raise ValueError("Exponential function needs exactly 4 coeffsicients")
+            raise ValueError("Exponential function needs exactly 4 coefficients: y = a*exp(b*(x-c)) + d")
         self.coeffs = coeffs
 
     @staticmethod
-    def fit(x, y):
+    def fit(x, y, scaling_factor=True):
+        from scipy.optimize import curve_fit
+
         x = np.array(list(x))
         y = np.array(list(y))
-        def func(x, a, b, c, d):
-            return a*np.exp(b*x+c) + d
-        coeffs, _ = curve_fit(func, x, y)
-        return Exponential(coeffs)
+        if scaling_factor:
+            def func(x, a, b, c, d):
+                return a*np.exp(b*(x-c)) + d
+            coeffs, _ = curve_fit(func, x, y)
+        else:
+            def func(x, b, c, d):
+                return np.exp(b*(x-c)) + d
+            coeffs, _ = curve_fit(func, x, y)
+            coeffs = [1]+list(coeffs)
+        f = Exponential(coeffs)
+        f.error = f.mse(x,y)
+        return f
 
     def __call__(self, x):
         return self.coeffs[0]*np.exp(self.coeffs[1]*(x-self.coeffs[2])) + self.coeffs[3]
 
-    def __str__(self, precision=3):
-        exponent = f"{self.coeffs[1]:.{precision}f}*(x-{self.coeffs[2]:.{precision}f})"
-        return f"{self.coeffs[0]:.{precision}f}*exp({exponent})+{self.coeffs[3]:.{precision}f}"
+    def __str__(self, precision=12):
+        b = f"{self.coeffs[1]:.{precision}g}"
+        if b != '1':
+            exponent = b + '*(' + f"x{-self.coeffs[2]:+.{precision}g}" + ')'
+        else:
+            exponent = f"x{-self.coeffs[2]:+.{precision}g}"
+        a = f"{self.coeffs[0]:.{precision}g}"
+        d = f"{self.coeffs[3]:+.{precision}g}"
+        pre  = a + '*' if a != '1' else ''
+        post = d if d[1:] != '0' else ''
+        return pre+f"exp({exponent})"+post
 
 # class Exponential(Function): # y = poly(exp(poly(x)))
 # class Logarithm(Function): # y = poly(log_b(poly(x)))
