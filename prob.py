@@ -3,18 +3,6 @@ from math import factorial
 
 from .utils import *
 
-def entropy(p): # e.g. H(1*[1/2] + 4*[1/8])
-    """Entropy!"""
-    if callable(p):
-        S = 0
-        for px in p():
-            if px > 0:
-                S -= px*np.log2(px)
-        return S
-    if abs(np.sum(p) - 1) > 1e-10:
-        raise ValueError("The overall probability must be 1!")
-    return -sum((p*np.log2(p) for p in p if p > 0))  # 0*log(0) = 0
-
 def smooth(y, smoothing=0.1):
     # https://scipy.github.io/old-wiki/pages/Cookbook/SavitzkyGolay
     def savitzky_golay(y, window_size, order, deriv=0, rate=1):
@@ -90,6 +78,52 @@ def resample(x, y, size=int(1e6)):
 def ste(ar):
     return np.std(ar, ddof=1) / np.sqrt(len(ar))
 
+##########################
+### Information Theory ###
+##########################
+
+def check_probability_distribution(p, eps=1e-12):
+    """`p` is a valid probability distribution if all $p_i \in [0,1]$ and $\sum_i p_i = 1$."""
+    p = np.array(p)
+    assert np.all(p >= -eps), f"Not a valid probability distribution: Negative values in {p}"
+    assert np.all(p <= 1+eps), f"Not a valid probability distribution: Values greater than 1 in {p}"
+    assert np.abs(np.sum(p) - 1) < eps, f"Not a valid probability distribution: Sum of {p} is {np.sum(p)} ≠ 1"
+    return p
+
+def entropy(p): # e.g. entropy(1*[1/2] + 4*[1/8])
+    """Entropy! $H(p) = -\\sum_i p_i \\log_2(p_i)$"""
+    if callable(p):
+        S = 0
+        for px in p():
+            if px > 0:
+                S -= px*np.log2(px)
+        return S
+    p = check_probability_distribution(p).ravel()
+    return -sum((p*np.log2(p) for p in p if p > 0))  # 0*log(0) = 0
+
+def cross_entropy(p, q):
+    """Cross entropy $H(p,q) = -\sum_i p_i \\log_2(q_i)$"""
+    p = check_probability_distribution(p)
+    q = check_probability_distribution(q)
+    assert len(p) == len(q), f"Length mismatch: {len(p)} ≠ {len(q)}"
+    return -sum((p*np.log2(q) for p,q in zip(p,q) if p > 0))
+
+def kl_divergence(p, q):
+    """Kullback-Leibler divergence $D_{KL}(p||q) = \\sum_i p_i \\log_2(p_i/q_i)$"""
+    p = check_probability_distribution(p)
+    q = check_probability_distribution(q)
+    assert len(p) == len(q), f"Length mismatch: {len(p)} ≠ {len(q)}"
+    return sum((p*np.log2(p/q) for p,q in zip(p,q) if p > 0))
+
+relative_entropy = kl_divergence
+
+def mutual_information(pxy):
+    """Mutual information $I(X;Y) = \\sum_{x,y} p(x,y) \\log_2(p(x,y)/(p(x)p(y)))$"""
+    pxy = check_probability_distribution(pxy)
+    px = np.sum(pxy, axis=1)
+    py = np.sum(pxy, axis=0)
+    return sum((pxy*np.log2(pxy/(px[:,None]*py[None,:]))).ravel())
+    # return entropy(px) + entropy(py) - entropy(pxy)
 
 ###############
 ### P #########
