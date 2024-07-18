@@ -260,7 +260,7 @@ try:
             plotQ(eigvecs[:,i], figsize=(12,2), showrho=showrho)
         return eigvecs
 
-    def time_complexity(qc, decompose_iterations=4, isTranspiled=False):
+    def count_gates(qc, decompose_iterations=4, isTranspiled=False):
         if not isTranspiled:
             simulator = Aer.get_backend('aer_simulator')
             t_circuit = transpile(qc, simulator)
