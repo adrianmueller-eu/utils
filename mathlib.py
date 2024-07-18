@@ -230,6 +230,29 @@ except:
     def matsqrt(A, n=2):
         return matpow(A, 1/n)
 
+def trace_product(A, B):
+    """Hilbert-Schmidt product or trace inner product of two matrices."""
+    return np.trace(A.T.conj() @ B)
+
+hilbert_schmidt_product = trace_product
+
+# def polar(A, kind='left'):
+#     """Polar decomposition of a matrix into a unitary and a PSD matrix: $A = UJ$ or $A = KU$."""
+#     if kind == 'left':
+#         J = matsqrt(A.T.conj() @ A)
+#         U = A @ np.linalg.pinv(J)
+#         return U, J
+#     elif kind == 'right':
+#         K = matsqrt(A @ A.T.conj())
+#         U = np.linalg.pinv(K) @ A
+#         return K, U
+#     raise ValueError(f"Unknown kind '{kind}'.")
+
+# def svd(A):  # np.linalg.svd is faster
+#     S, J = polar(A, kind='left')
+#     D, T = np.linalg.eig(J)
+#     return S @ T, np.diag(D), T.conj().T
+
 ### rotation groups
 
 if not sage_loaded:
