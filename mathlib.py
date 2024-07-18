@@ -396,10 +396,14 @@ def roots(coeffs):
 
     def quadratic(a,b,c):
         """Solve a quadratic equation: ax^2 + bx + c = 0. """
+        if np.isclose(a, 0):
+            return roots([b,c])
         d = (b**2 - 4*a*c)**(1/2)
         return (-b + d)/(2*a), (-b - d)/(2*a)
 
     def cubic(a,b,c,d):
+        if np.isclose(a, 0):
+            return roots([b,c,d])
         """Solve a cubic equation: ax^3 + bx^2 + cx + d = 0. """
         del_0 = b**2 - 3*a*c
         del_1 = 2*(b**3) - 9*a*b*c + 27*(a**2)*d
@@ -414,6 +418,8 @@ def roots(coeffs):
 
     def quatric(a,b,c,d,e):
         """ Solve a quartic equation: ax^4 + bx^3 + cx^2 + dx + e = 0. """
+        if np.isclose(a, 0):
+            return roots([b,c,d,e])
         p = c/a - 3*(b**2)/(8*(a**2))
         q = b**3/(8*(a**3)) - b*c/(2*(a**2)) + d/a
         delta_0 = c**2 - 3*b*d + 12*a*e
@@ -440,6 +446,10 @@ def roots(coeffs):
     elif len(coeffs) == 5:
         return quatric(*coeffs)
     else:
+        while np.isclose(coeffs[0], 0):
+            coeffs.pop(0)
+            if len(coeffs) == 0:
+                raise ValueError("The zero polynomial has roots everywhere!")
         return np.roots(coeffs)
 
 if sage_loaded:
@@ -1455,6 +1465,7 @@ def _test_roots():
     assert np.allclose(roots([1,0,1]), (1j, -1j))
     assert np.allclose(roots([1, -2, -11, 12]), [-3, 1, 4])
     assert np.allclose(roots([1, -7, 5, 31, -30]), [-2, 1, 3, 5])
+    assert np.allclose(roots([0, -1, 2, 3]), (-1, 3))
 
     for degree in range(1, 6):
         coeffs = random_vec(degree+1, (-10, 10), complex=True)
