@@ -233,11 +233,16 @@ try:
         def get_unitary(self, k=1):
             return self.U @ np.diag(np.exp(self.k*k*1j*self.D)) @ self.U.T.conj()
 
-    def get_unitary(circ, decimals=None):
+    def get_unitary(circ, decimals=None, as_np=True):
+        if hasattr(circ, 'get_unitary'):
+            return circ.get_unitary()
         sim = Aer.get_backend('unitary_simulator')
         t_circuit = transpile(circ, sim)
         res = sim.run(t_circuit).result()
-        return res.get_unitary(decimals=decimals)
+        U   = res.get_unitary(decimals=decimals)
+        if as_np:
+            return np.array(U)
+        return U
 
     def get_pe_energies(U):
         if isinstance(U, QuantumCircuit):
