@@ -154,6 +154,15 @@ def allclose_set(a, b):
     # check if they are close
     return np.allclose(a, b)
 
+def startfile(filepath):
+    import subprocess, os, platform
+    if platform.system() == 'Darwin':       # macOS
+        return subprocess.call(('open', filepath))
+    elif platform.system() == 'Windows':    # Windows
+        return os.startfile(filepath)
+    else:                                   # linux variants
+        return subprocess.call(('xdg-open', filepath))
+
 class ConvergenceCondition:
     """ Convergence condition for iterative algorithms.
 
