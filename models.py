@@ -157,25 +157,28 @@ class Polynomial(Function):
     def __call__(self, x):
         return polyval(np.array(x), self.coeffs)
 
+    def print_factorized(self, precision=7):
+        variety = self.variety(precision)
+        variety = sorted(variety, key=lambda r: abs(r))
+        roots = self.roots
+        multiplicity = [roots.count(r) for r in variety]
+        factors = []
+        for r, m in zip(variety, multiplicity):
+            factor = ""
+            if np.isclose(r, 0):
+                factor = "x"
+            else:
+                r = _to_str_coeff_1(r, precision)
+                factor = f"(x-{r})"
+                factor = factor.replace("--", "+")
+            if m > 1:
+                factor += f"**{m}"
+            factors.append(factor)
+        return "*".join(factors)
+
     def __str__(self, precision=3):
         if Polynomial.PRINT_FACTORIZED:
-            variety = self.variety(precision)
-            variety = sorted(variety, key=lambda r: abs(r))
-            roots = self.roots
-            multiplicity = [roots.count(r) for r in variety]
-            factors = []
-            for r, m in zip(variety, multiplicity):
-                factor = ""
-                if np.isclose(r, 0):
-                    factor = "x"
-                else:
-                    r = _to_str_coeff_1(r, precision)
-                    factor = f"(x-{r})"
-                    factor = factor.replace("--", "+")
-                if m > 1:
-                    factor += f"**{m}"
-                factors.append(factor)
-            return "*".join(factors)
+            return self.print_factorized(precision=precision)
         return _generate_poly_label(self.coeffs, precision)
 
     def __add__(self, other):
