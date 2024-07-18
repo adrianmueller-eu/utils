@@ -823,8 +823,10 @@ def ket(specification, n=None):
         state[int(key, 2)] = specification[key]
     return normalize(state)
 
-def unket(state, as_dict=False):
+def unket(state, as_dict=False, prec=5):
     """ Reverse of above. The output is always guaranteed to be normalized.
+
+    `prec` serves as filter for states close to 0, and if `as_dict==False`, it also defines to which precision the values are rounded in the string.
 
     Example:
     >>> unket(ket('00+01+10+11'))
@@ -832,18 +834,21 @@ def unket(state, as_dict=False):
     >>> unket(ket('00+01+10+11'), as_dict=True)
     {'00': 0.5, '01': 0.5, '10': 0.5, '11': 0.5}
     """
+    eps = 10**(-prec) if prec is not None else 0
     state = normalize(state)
     n = int(np.log2(len(state)))
     if as_dict:
         # cast to float if imaginary part is zero
         if np.allclose(state.imag, 0):
             state = state.real
-        return {binstr_from_int(i, n): state[i] for i in range(2**n) if state[i] != 0}
+        return {binstr_from_int(i, n): state[i] for i in range(2**n) if np.abs(state[i]) > eps}
 
+    if prec is not None:
+        state = np.round(state, prec)
     # group by weight
     weights = {}
     for i in range(2**n):
-        if state[i] != 0:
+        if np.abs(state[i]) > eps:
             weight = state[i]
             pre = ''
             # Find a close value in weights
@@ -857,7 +862,7 @@ def unket(state, as_dict=False):
                     break
             else:
                 # remove imaginary part if it's zero
-                if np.abs(weight.imag) < 1e-15:
+                if np.abs(weight.imag) < eps:
                     weight = weight.real
                 # create new weight
                 weights[weight] = []
