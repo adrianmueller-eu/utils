@@ -328,13 +328,6 @@ class QuantumComputer:
 
     def measure(self, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
-        # special case
-        if len(qubits) == self.n:
-            probs = np.abs(self.state)**2
-            choice = np.random.choice(2**self.n, p=probs)
-            self.state = np.zeros_like(self.state)
-            self.state[choice] = 1
-            return ket(choice, self.n)
         # play God
         probs = self._probs(qubits)
         choice = np.random.choice(2**len(qubits), p=probs)
@@ -343,7 +336,7 @@ class QuantumComputer:
         keep = normalize(keep)
         self.state = np.zeros_like(self.state)
         self.state[choice] = keep
-        return ket(choice, len(qubits))
+        return binstr_from_int(choice, len(qubits))
 
     def probs(self, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
@@ -354,8 +347,8 @@ class QuantumComputer:
         self.state = self.state.reshape([2**len(qubits), -1])
         probs = np.abs(self.state)**2
         probs = np.sum(probs, axis=1)
-        if len(qubits) == self.n:
-            self.state = self.state.reshape([2]*self.n)
+        if len(qubits) == self.n:  # remove empty dimension
+            self.state = self.state.ravel()
         return probs
 
     def initialize(self, state, qubits=None):
@@ -372,7 +365,7 @@ class QuantumComputer:
         new_state = ket(state, len(qubits))
         if len(qubits) < self.n:
             choice = self.measure(qubits)
-            rest = self.state[np.where(choice == 1)[0]]
+            rest = self.state[int_from_binstr(choice)]
             self.state = np.kron(new_state, rest)
         else:
             self.state = new_state
@@ -406,7 +399,7 @@ class QuantumComputer:
         if len(qubits) == self.n:
             return self.clear()
         choice = self.measure(qubits)
-        self.state = self.state[np.where(choice == 1)[0]]
+        self.state = self.state[int_from_binstr(choice)]
         if len(qubits) == self.n - 1:
             self.state = self.state.reshape([2])
         self.qubits = [q for q in self.qubits if q not in qubits]
@@ -1888,6 +1881,7 @@ def _test_get_H_energies_eq_get_pe_energies():
     assert np.allclose(A, B), f"{A} ≠ {B}"
 
 def _test_QuantumComputer():
+    # test basic functionality
     qc = QuantumComputer()
     qc.x(0)
     assert unket(qc.get_state()) == '1'
@@ -1906,7 +1900,11 @@ def _test_QuantumComputer():
     assert unket(qc.get_state()) == '100'
     qc.remove([0,2])
     assert unket(qc.get_state()) == '0'
+    qc.x(2)
+    result = qc.measure('all')
+    assert result == '01'
 
+    # more complex test
     qc = QuantumComputer(15)
     U = parse_unitary('XYZCZYX')
     qc(U, choice(qc.qubits, 7, False))
@@ -1915,6 +1913,7 @@ def _test_QuantumComputer():
     qc(U, choice(qc.qubits, 5, False))
     assert qc.n == 10
 
+    # test phase estimation
     H = ph(f'{1/8}*(IZ + ZI + II)')
     U = exp_i(2*np.pi*H)
     assert np.isclose(np.trace(H @ op('00')), float_from_binstr('.011'))  # 00 is eigenstate with energy 0.375 = '011'
@@ -1922,7 +1921,7 @@ def _test_QuantumComputer():
     qc = QuantumComputer(state_qubits)
     E_qubits = ['e0', 'e1', 'e2']
     qc.pe(U, state_qubits, E_qubits)
-    res = unket(qc.measure(E_qubits))
+    res = qc.measure(E_qubits)
     assert res == '011', f"measurement result was {res} ≠ '011'"
 
     qc.remove('s0')
