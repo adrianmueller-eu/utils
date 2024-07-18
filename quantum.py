@@ -889,14 +889,15 @@ def op(specification1, specification2=None):
             # trace normalize it if it's not already
             if not np.allclose(sp1_trace, 1):
                 specification1 = specification1 / sp1_trace
-            assert is_dm(specification1), f"The given matrix is not a density matrix!"
             return specification1
     s1 = ket(specification1)
     s2 = s1 if specification2 is None else ket(specification2)
     return np.outer(s1, s2.conj())
 
 def dm(specification1, specification2=None):
-    return op(specification1, specification2)
+    rho = op(specification1, specification2)
+    assert is_dm(rho), f"The given matrix is not a density matrix!"
+    return rho
 
 def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
