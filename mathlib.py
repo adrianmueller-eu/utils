@@ -1365,6 +1365,8 @@ def _test_random_hermitian():
     assert is_hermitian(a)
 
 def _test_is_unitary():
+    assert is_unitary(np.eye(randint(20)))
+
     a, b = random_vec(2, complex=True)
     a, b = normalize([a, b])
     phi = np.random.rand()*2*np.pi
@@ -1373,6 +1375,11 @@ def _test_is_unitary():
         [-np.exp(1j*phi)*b.conjugate(), np.exp(1j*phi)*a.conjugate()]
     ])
     assert is_unitary(a)
+
+    A = random_square(randint(20), complex=True)
+    J = matsqrt(A.T.conj() @ A)
+    U = A @ np.linalg.pinv(J)
+    assert is_unitary(U)
 
     c = a + 1
     assert not is_unitary(c)
