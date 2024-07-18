@@ -899,6 +899,10 @@ def dm(specification1, specification2=None):
     assert is_dm(rho), f"The given matrix is not a density matrix!"
     return rho
 
+def ev(observable, psi):
+    # assert is_hermitian(observable)
+    return (psi.conj() @ observable @ psi).real
+
 def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
     return np.abs(state)**2
