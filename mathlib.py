@@ -105,6 +105,8 @@ def normalize(a, p=2, axis=0, remove_global_phase_if_1D=False):
         a = np.array(a, dtype=complex)
     else:
         a = np.array(a, dtype=float)
+    if a.shape == ():
+        return a
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
     if len(a.shape) == 1 and remove_global_phase_if_1D and is_complex(a):
         # this works only for a 1D array
