@@ -907,6 +907,31 @@ def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
     return np.abs(state)**2
 
+def is_dm(rho):
+    """Check if matrix `rho` is a density matrix."""
+    rho = np.array(rho)
+    return np.allclose(np.trace(rho), 1) and is_psd(rho)
+
+def is_pure_dm(rho):
+    """Check if matrix `rho` is a pure density matrix."""
+    if not is_dm(rho):
+        return False
+    # return np.linalg.matrix_rank(rho) == 1
+    return np.allclose(np.trace(rho @ rho), 1)
+
+def gibbs(H, beta=1):
+    """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
+    H = np.array(H)
+    assert is_hermitian(H), "Hamiltonian must be Hermitian!"
+    assert beta >= 0, "Inverse temperature must be positive!"
+    E, U = np.linalg.eigh(H)
+    E = softmax(E, -beta)
+    return U @ np.diag(E) @ U.conj().T
+
+##################################
+### Quantum information theory ###
+##################################
+
 def entropy_von_Neumann(state):
     """Calculate the von Neumann entropy of a given density matrix."""
     if not(isinstance(state, np.ndarray) and len(state.shape) == 2 and state.shape[0] == state.shape[1]):
@@ -923,10 +948,11 @@ def entropy_entanglement(state, subsystem_qubits):
     """Calculate the entanglement entropy of a quantum state (density matrix or vector) with respect to the given subsystem."""
     return entropy_von_Neumann(partial_trace(state, subsystem_qubits))
 
-def is_dm(rho):
-    """Check if matrix `rho` is a density matrix."""
-    rho = np.array(rho)
-    return np.allclose(np.trace(rho), 1) and is_psd(rho)
+def mutual_information_quantum(state, subsystem_qubits):
+    n = int(np.log2(len(state)))
+    rho_A = partial_trace(state, subsystem_qubits)
+    rho_B = partial_trace(state, [s for s in range(n) if s not in subsystem_qubits])
+    return entropy_von_Neumann(rho_A) + entropy_von_Neumann(rho_B) - entropy_von_Neumann(state)
 
 def fidelity(state1, state2):
     """Calculate the fidelity between two quantum states."""
@@ -963,14 +989,23 @@ def Schmidt_decomposition(state, subsystem_qubits):
     U, S, V = np.linalg.svd(a_jk)
     return S, U.T, V
 
-def gibbs(H, beta=1):
-    """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
-    H = np.array(H)
-    assert is_hermitian(H), "Hamiltonian must be Hermitian!"
-    assert beta >= 0, "Inverse temperature must be positive!"
-    E, U = np.linalg.eigh(H)
-    E = softmax(E, -beta)
-    return U @ np.diag(E) @ U.conj().T
+def correlation_quantum(state, observable_A, observable_B):
+    n_A = int(np.log2(len(observable_A)))
+    n_B = int(np.log2(len(observable_B)))
+    state = np.array(state)
+    if len(state.shape) == 1:
+        state = ket(state)
+        observable_AB = np.kron(observable_A, observable_B)
+        observable_AI = np.kron(observable_A, np.eye(2**n_B))
+        observable_IB = np.kron(np.eye(2**n_A), observable_B)
+        return ev(observable_AB, state) - ev(observable_AI, state)*ev(observable_IB, state)
+    else:
+        state = dm(state)
+        rho_A = partial_trace(state, list(range(n_A)))
+        rho_B = partial_trace(state, list(range(n_A, n_A + n_B)))
+        observable_AB = np.kron(observable_A, observable_B)
+        return np.trace(observable_AB @ (state - np.kron(rho_A, rho_B))).real
+
 
 ####################
 ### Ground state ###
@@ -1753,11 +1788,12 @@ def test_quantum_all():
         _test_partial_trace,
         _test_ket_unket,
         _test_op_dm,
+        _test_is_dm,
         _test_entropy_von_Neumann,
         _test_entropy_entanglement,
-        _test_is_dm,
         _test_fidelity,
         _test_Schmidt_decomposition,
+        _test_correlation_quantum,
         _test_ground_state,
         _test_ising,
         _test_pauli_basis,
@@ -2071,6 +2107,17 @@ def _test_op_dm():
     assert np.allclose(op(1),   [[0,0], [0,1]])
     pass
 
+def _test_is_dm():
+    assert is_dm(np.eye(2**2)/2**2)
+    # random Bloch vectors
+    for _ in range(100):
+        v = np.random.uniform(-1, 1, 3)
+        if np.linalg.norm(v) > 1:
+            v = normalize(v)
+        # create dm from Bloch vector
+        rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
+        assert is_dm(rho)
+
 def _test_entropy_von_Neumann():
     rho = random_dm(2, pure=True)
     S = entropy_von_Neumann(rho)
@@ -2092,17 +2139,6 @@ def _test_entropy_entanglement():
     rho = np.kron(rhoA, rhoB)
     S = entropy_entanglement(rho, [0,1])
     assert np.allclose(S, 0), f"S = {S} ≠ 0"
-
-def _test_is_dm():
-    assert is_dm(np.eye(2**2)/2**2)
-    # random Bloch vectors
-    for _ in range(100):
-        v = np.random.uniform(-1, 1, 3)
-        if np.linalg.norm(v) > 1:
-            v = normalize(v)
-        # create dm from Bloch vector
-        rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
-        assert is_dm(rho)
 
 def _test_fidelity():
     # same state
@@ -2171,6 +2207,14 @@ def _test_Schmidt_decomposition():
     S_expect = entropy_entanglement(psi, subsystem)
     S_actual = -np.sum([l_i**2 * np.log2(l_i**2) for l_i in l])
     assert np.allclose(S_expect, S_actual), f"S_expect = {S_expect} ≠ S_actual = {S_actual}"
+
+def _test_correlation_quantum():
+    assert np.isclose(correlation_quantum(ket('0101 + 0000'), ZZ, ZZ), 1)
+    assert np.isclose(correlation_quantum(ket('0101 + 0000'), XX, XX), 0)
+    assert np.isclose(correlation_quantum(ket('0101 + 1010'), XX, XX), 1)
+    assert np.isclose(correlation_quantum(ket('0101 + 1010'), ZZ, ZZ), 0)
+    assert np.isclose(correlation_quantum(ket('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
+    assert np.isclose(correlation_quantum(dm('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
 
 def _test_ground_state():
     H = parse_hamiltonian('ZZII + IZZI + IIZZ', dtype=float)
