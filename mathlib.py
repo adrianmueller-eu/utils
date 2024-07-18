@@ -195,6 +195,11 @@ def is_normal(a, rtol=1e-05, atol=1e-08):
         a @ a.conj().T, a.conj().T @ a
     ), rtol=rtol, atol=atol)
 
+def is_projection(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a @ a, a
+    ), rtol=rtol, atol=atol)
+
 ### matrix functions
 
 try:
@@ -341,10 +346,20 @@ def random_unitary(size):
     H = random_hermitian(size)
     return matexp(1j*H)
 
-def random_psd(size, limits=(0,1)):
+def random_psd(size, limits=(0,1), complex=True):
     limits = np.sqrt(limits)  # because we square it later
-    a = random_square(size, limits=limits, complex=True)
+    a = random_square(size, limits=limits, complex=complex)
     return a @ a.conj().T
+
+def random_normal(size, limits=(0,1), complex=True):
+    U = random_unitary(size)
+    D = np.diag(random_vec(U.shape[0], limits=limits, complex=complex))
+    return U @ D @ U.conj().T
+
+def random_projection_orthogonal(size):
+    U = random_unitary(size)
+    D = np.diag(randint(0, 2, U.shape[0]))
+    return U @ D @ U.conj().T
 
 ###################
 ### Polynomials ###
@@ -1183,6 +1198,10 @@ def test_mathlib_all():
         _test_random_unitary,
         _test_is_psd,
         _test_random_psd,
+        _test_is_normal,
+        _test_random_normal,
+        _test_is_projection,
+        _test_random_projection,
         _test_matexp,
         _test_matlog,
         _test_roots,
@@ -1358,6 +1377,37 @@ def _test_is_psd():
 def _test_random_psd():
     a = random_psd(randint(20))
     assert is_psd(a)
+
+def _test_is_normal():
+    H = random_hermitian(randint(20))
+    assert is_normal(H)
+    U = random_unitary(randint(20))
+    assert is_normal(U)
+    P = random_psd(randint(20))
+    assert is_normal(P)
+    A = random_square(randint(20))
+    assert not is_normal(A)  # a random matrix is not normal
+
+def _test_random_normal():
+    H = random_normal(5)
+    assert is_normal(H)
+
+def _test_is_projection():
+    # orthogonal projection
+    P = np.array([[1, 0], [0, 0]])
+    assert is_projection(P)
+    # oblique projection
+    P = np.array([[1, 0], [1, 0]])
+    assert is_projection(P)
+    P = np.array([[0, 0], [np.random.normal(), 1]])
+    assert is_projection(P)
+    # not a projection
+    P = np.array([[1, 1], [1, 1]])
+    assert not is_projection(P)
+
+def _test_random_projection():
+    P = random_projection_orthogonal(5)
+    assert is_projection(P)
 
 def _test_matexp():
     a = random_square(randint(20), complex=True)
