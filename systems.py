@@ -6,7 +6,7 @@ from itertools import product, combinations
 from tqdm.auto import tqdm as tq
 
 from .plot import colorize_complex
-from .utils import ConvergenceCondition
+from .utils import ConvergenceCondition, startfile
 from .mathlib import powerset, prime_factors
 
 ## This script contains functions to visualize and analyze dynamical systems
@@ -1316,7 +1316,7 @@ def fractal(f, max_iters=100, res=1000, xlim=(-2,2), ylim=(-2,2), eps=None, min_
         colorbar (bool): For the 'it' plot, whether to show the colorbar indicating the number of iterations until divergence.
         ticks (tuple):   Number of xticks and yticks to show. Set `None` to use the default and `0` to deactivate the axis.
         grid (bool):     Whether to show grid lines.
-        show (bool):     Whether to call `plt.show()`.
+        show (bool):     Whether to call `plt.show()`. If `save_fig` is set, you can also specify `'open'` to start the system's default image viewer.
         ppi (int):       The resolution of the plot in pixels per inch.
         **plt_kwargs:    Keyword arguments passed to `plt.imshow`.
 
@@ -1399,12 +1399,14 @@ def fractal(f, max_iters=100, res=1000, xlim=(-2,2), ylim=(-2,2), eps=None, min_
                 plt.yticks(np.linspace(0, y_res, ticks[1]), np.linspace(*ylim, ticks[1]))
         if grid:
             plt.grid()
-        if show:
+        if show == True:
             plt.show()
         if save_fig is not None:
             filename = save_fig + f'_{name}.png'
             plt.savefig(filename, bbox_inches='tight', pad_inches=0)
             print(f"Saved to {filename}")
+            if show == 'open':
+                startfile(filename)
 
     if kind == 'it' or kind == 'both':
         _plot(iters, 'it')
