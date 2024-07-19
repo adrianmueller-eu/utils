@@ -106,7 +106,7 @@ def normalize(a, p=2, axis=0, remove_global_phase_if_1D=False):
     else:
         a = np.array(a, dtype=float)
     if a.shape == ():
-        return a
+        return a/np.linalg.norm(a)
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
     if len(a.shape) == 1 and remove_global_phase_if_1D and is_complex(a):
         # this works only for a 1D array
@@ -1326,6 +1326,8 @@ def _test_normalize():
     a = random_vec(randint(20), complex=True)
     b = normalize(a)
     assert np.isclose(np.linalg.norm(b), 1)
+    a = np.array(3 - 4j)
+    assert np.isclose(normalize(a), a/5)
 
 def _test_rad():
     assert rad(180) == np.pi
