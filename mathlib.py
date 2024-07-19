@@ -1323,7 +1323,7 @@ def _test_sequence():
     assert np.allclose(np.mean(np.isinf(res)), 0.78815)
 
 def _test_normalize():
-    a = random_vec(randint(20), complex=True)
+    a = random_vec(randint(2,20), complex=True)
     b = normalize(a)
     assert np.isclose(np.linalg.norm(b), 1)
     a = np.array(3 - 4j)
@@ -1338,7 +1338,7 @@ def _test_deg():
     assert deg(0) == 0
 
 def _test_is_symmetric():
-    a = random_square(randint(20), complex=False)
+    a = random_square(randint(2,20), complex=False)
     b = a + a.T
     assert is_symmetric(b)
 
@@ -1346,7 +1346,7 @@ def _test_is_symmetric():
     assert not is_symmetric(c)
 
 def _test_random_symmetric():
-    a = random_symmetric(randint(20))
+    a = random_symmetric(randint(2,20))
     assert is_symmetric(a)
 
 def _test_is_orthogonal():
@@ -1362,11 +1362,11 @@ def _test_is_orthogonal():
     assert not is_orthogonal(c)
 
 def _test_random_orthogonal():
-    a = random_orthogonal(randint(20))
+    a = random_orthogonal(randint(2,20))
     assert is_orthogonal(a)
 
 def _test_is_hermitian():
-    a = random_square(randint(20), complex=True)
+    a = random_square(randint(2,20), complex=True)
     b = a + a.conj().T
     assert is_hermitian(b)
     c = a + 1
@@ -1377,7 +1377,7 @@ def _test_random_hermitian():
     assert is_hermitian(a)
 
 def _test_is_unitary():
-    assert is_unitary(np.eye(randint(20)))
+    assert is_unitary(np.eye(randint(2,20)))
 
     a, b = random_vec(2, complex=True)
     a, b = normalize([a, b])
@@ -1388,7 +1388,7 @@ def _test_is_unitary():
     ])
     assert is_unitary(a)
 
-    A = random_square(randint(20), complex=True)
+    A = random_square(randint(2,20), complex=True)
     J = matsqrt(A.T.conj() @ A)
     U = A @ np.linalg.pinv(J)
     assert is_unitary(U)
@@ -1397,12 +1397,12 @@ def _test_is_unitary():
     assert not is_unitary(c)
 
 def _test_random_unitary():
-    a = random_unitary(randint(20))
+    a = random_unitary(randint(2,20))
     assert is_unitary(a)
 
 def _test_is_psd():
     # A @ A^\dagger => PSD
-    a = random_square(randint(20), complex=True)
+    a = random_square(randint(2,20), complex=True)
     a = a @ a.conj().T
     assert is_psd(a)
 
@@ -1417,21 +1417,21 @@ def _test_is_psd():
     assert not is_psd(b)
 
 def _test_random_psd():
-    a = random_psd(randint(20))
+    a = random_psd(randint(2,20))
     assert is_psd(a)
 
 def _test_is_normal():
-    H = random_hermitian(randint(20))
+    H = random_hermitian(randint(2,20))
     assert is_normal(H)
-    U = random_unitary(randint(20))
+    U = random_unitary(randint(2,20))
     assert is_normal(U)
-    P = random_psd(randint(20))
+    P = random_psd(randint(2,20))
     assert is_normal(P)
-    A = random_square(randint(20))
+    A = random_square(randint(2,20))
     assert not is_normal(A)  # a random matrix is not normal
 
 def _test_random_normal():
-    H = random_normal(5)
+    H = random_normal(randint(2,20))
     assert is_normal(H)
 
 def _test_is_projection():
@@ -1452,7 +1452,7 @@ def _test_random_projection():
     assert is_projection(P)
 
 def _test_matexp():
-    a = random_square(randint(20), complex=True)
+    a = random_square(randint(2,20), complex=True)
     # check if det(matexp(A)) == exp(trace(A))
     assert np.isclose(np.linalg.det(matexp(a)), np.exp(np.trace(a)))
 
