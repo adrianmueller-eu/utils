@@ -147,7 +147,7 @@ def rad(deg):
 ### property checks
 
 def _sq_matrix_allclose(a, f, rtol=1e-05, atol=1e-08):
-    a = np.array(a)
+    a = np.array(a, copy=False)
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         return False
     a[np.isnan(a)] = 0
@@ -429,13 +429,13 @@ def roots(coeffs):
 
     def quadratic(a,b,c):
         """Solve a quadratic equation: ax^2 + bx + c = 0. """
-        if np.isclose(a, 0):
+        if abs(a) < 1e-10:
             return roots([b,c])
         d = (b**2 - 4*a*c)**(1/2)
         return (-b + d)/(2*a), (-b - d)/(2*a)
 
     def cubic(a,b,c,d):
-        if np.isclose(a, 0):
+        if abs(a) < 1e-10:
             return roots([b,c,d])
         """Solve a cubic equation: ax^3 + bx^2 + cx + d = 0. """
         del_0 = b**2 - 3*a*c
@@ -451,7 +451,7 @@ def roots(coeffs):
 
     def quatric(a,b,c,d,e):
         """ Solve a quartic equation: ax^4 + bx^3 + cx^2 + dx + e = 0. """
-        if np.isclose(a, 0):
+        if abs(a) < 1e-10:
             return roots([b,c,d,e])
         p = c/a - 3*(b**2)/(8*(a**2))
         q = b**3/(8*(a**3)) - b*c/(2*(a**2)) + d/a
@@ -479,7 +479,7 @@ def roots(coeffs):
     elif len(coeffs) == 5:
         return quatric(*coeffs)
     else:
-        while np.isclose(coeffs[0], 0):
+        while abs(coeffs[0]) < 1e-10:
             coeffs.pop(0)
             if len(coeffs) == 0:
                 raise ValueError("The zero polynomial has roots everywhere!")

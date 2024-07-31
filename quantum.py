@@ -170,7 +170,7 @@ def parse_unitary(unitary):
         # print("chunk", chunk, unitary, chunk_matrix)
         U = U @ chunk_matrix
 
-    assert np.allclose(U @ U.conj().T, I_(n)), f"Result is not unitary: {U, U @ U.conj().T}"
+    assert is_unitary(U), f"Result is not unitary: {U, U @ U.conj().T}"
 
     return U
 
@@ -916,10 +916,10 @@ def unket(state, as_dict=False, prec=5):
             pre = ''
             # Find a close value in weights
             for w in weights:
-                if np.isclose(w, weight):
+                if abs(w - weight) < eps:
                     weight = w
                     break
-                if np.isclose(w, -weight):
+                if abs(w + weight) < eps:
                     weight = w
                     pre = '-'
                     break
@@ -950,7 +950,7 @@ def op(specification1, specification2=None):
         if len(specification1.shape) > 1:
             sp1_trace = np.trace(specification1)
             # trace normalize it if it's not already
-            if not np.allclose(sp1_trace, 1):
+            if not abs(sp1_trace - 1) < 1e-8:
                 specification1 = specification1 / sp1_trace
             return specification1
     s1 = ket(specification1)
@@ -973,19 +973,19 @@ def probs(state):
 def is_dm(rho):
     """Check if matrix `rho` is a density matrix."""
     rho = np.array(rho)
-    return np.allclose(np.trace(rho), 1) and is_psd(rho)
+    return abs(np.trace(rho) - 1) < 1e-10 and is_psd(rho)
 
 def is_pure_dm(rho):
     """Check if matrix `rho` is a pure density matrix."""
     if not is_dm(rho):
         return False
     # return np.linalg.matrix_rank(rho) == 1
-    return np.allclose(np.trace(rho @ rho), 1)
+    return abs(np.trace(rho @ rho) - 1) < 1e-10
 
 def is_eigenstate(psi, H):
     psi = normalize(psi)
     psi2 = normalize(H @ psi)
-    return np.allclose(np.abs(psi2 @ psi), 1)
+    return abs(abs(psi2 @ psi) - 1) < 1e-10
 
 def gibbs(H, beta=1):
     """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
@@ -1031,7 +1031,7 @@ def entropy_von_Neumann(state):
     # assert np.allclose(S.imag, 0), f"WTF: Entropy is not real: {S}"
     # return np.max(S.real, 0)  # fix rounding errors
     eigs = np.linalg.eigvalsh(state)
-    assert np.allclose(np.sum(eigs), 1), f"Density matrix is not normalized! {np.sum(eigs)}"
+    assert abs(np.sum(eigs) - 1) < 1e-10, f"Density matrix is not normalized! {np.sum(eigs)}"
     assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite! {eigs}"
     return entropy(eigs)
 
@@ -1419,7 +1419,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
     if sparse:
         assert np.allclose(H.data, H.conj().T.data), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H.data}"
     else:
-        assert np.allclose(H, H.conj().T), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H}"
+        assert is_hermitian(H), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H}"
 
     return H
 
@@ -1829,14 +1829,13 @@ def pauli_decompose(H, include_zero=False):
     ([-1.0, -1.5, -0.5, -1.0, -1.5, -1.0, -0.5, 1.0, -0.5, -0.5],
      ['II', 'IX', 'IY', 'IZ', 'XI', 'XX', 'XZ', 'YY', 'ZX', 'ZY'])
     """
-    n = int(np.log2(len(H)))
+    n = count_qubits(H)
     N = 2**n
 
     if H.shape != (N, N):
-        raise ValueError(f"The matrix should have shape (2**n, 2**n), for any qubit number n>=1, but is {H.shape}")
+        raise ValueError(f"The matrix should have shape (2**n, 2**n), for a number of qubits n>=1, but is {H.shape}")
 
-    if not np.allclose(H, H.conj().T):
-        raise ValueError("The matrix is not Hermitian")
+    assert is_hermitian(H), f"The matrix is not Hermitian: {H}"
 
     obs_lst = []
     coeffs = []
