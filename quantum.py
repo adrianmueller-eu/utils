@@ -1818,12 +1818,12 @@ def pauli_basis(n, kind='np', normalize=False):
         raise ValueError(f"Unknown kind: {kind}")
 
 # from https://docs.pennylane.ai/en/stable/code/api/pennylane.pauli_decompose.html
-def pauli_decompose(H, include_zero=False):
+def pauli_decompose(H, eps=1e-5):
     r"""Decomposes a Hermitian matrix into a linear combination of Pauli operators.
 
     Parameters
-        H (ndarray): a Hermitian matrix of shape ``(2**n, 2**n)``
-        include_zero (bool): if True, include Pauli terms with zero coefficients in the decomposition
+        H (ndarray): Hermitian matrix of shape ``(2**n, 2**n)``
+        eps (float): Threshold to include a term in the decomposition. Set to 0 to include all terms.
 
     Returns
         tuple[list[float], list[str]]: the coefficients and the Pauli operator strings
@@ -1849,7 +1849,7 @@ def pauli_decompose(H, include_zero=False):
         coeff = np.trace(basis_matrix @ H) / N  # project H onto the basis matrix
         coeff = np.real_if_close(coeff).item()
 
-        if not np.allclose(coeff, 0) or include_zero:
+        if abs(coeff) >= eps:
             coeffs.append(coeff)
             obs_lst.append(term)
 
@@ -2504,7 +2504,7 @@ def _test_pauli_decompose():
 
     # check if `include_zero` returns the whole basis
     n = 4
-    coeff, basis = pauli_decompose(np.eye(2**n), include_zero=True)
+    coeff, basis = pauli_decompose(np.eye(2**n), eps=0)
     n_expect = 2**(2*n)  # == len(pauli_basis(n))
     assert len(coeff) == n_expect, f"len(coeff) = {len(coeff)} ≠ {n_expect}"
     assert len(basis) == n_expect, f"len(basis) = {len(basis)} ≠ {n_expect}"
