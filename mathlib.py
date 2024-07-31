@@ -1423,7 +1423,7 @@ def _test_is_unitary():
 
     A = random_square(randint(2,20), complex=True)
     J = matsqrt(A.T.conj() @ A)
-    U = A @ np.linalg.pinv(J)
+    U = A @ np.linalg.pinv(J)  # polar decomposition
     assert is_unitary(U)
 
     c = a + 1
