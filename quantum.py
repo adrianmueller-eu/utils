@@ -821,7 +821,7 @@ def ket(specification, n=None):
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
         n = n or int(np.log2(len(specification))) or 1
-        assert len(specification) == 2**n, f"State vector has wrong length: {len(specification)} is not a power of 2!"
+        assert len(specification) == 2**n, f"State vector has wrong length: {len(specification)} ≠ {2**n}!"
         return normalize(specification)
     if is_int(specification):
         return ket_from_int(specification, n)
