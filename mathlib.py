@@ -1598,15 +1598,17 @@ def _test_SU():
         random_angle = np.random.randn()
         assert is_unitary(A(random_angle)), f"Generator {i} is not unitary! ({random_angle})"
 
+    # check if all generators have determinant 1
+    warnings.filterwarnings("ignore")  # ignore numpy warnings (bug)
+    for i, A in enumerate(SUn):
+        random_angle = np.random.randn()
+        assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} is not in SU({n})! ({random_angle})"
+    warnings.filterwarnings("default")
+
     # check if no two generators are the same
     for i, (A,B) in enumerate(combinations(SUn,2)):
         random_angle = np.random.randn()
         assert not np.allclose(A(random_angle), B(random_angle)), f"Pair {i} is not different! ({random_angle})"
-
-    # check if all generators are determinant 1
-    for i, A in enumerate(SUn):
-        random_angle = np.random.randn()
-        assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} does not have determinant 1! ({random_angle})"
 
 def _test_lagrange_multipliers():
     tol = 1e-10
