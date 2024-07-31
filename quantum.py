@@ -1063,6 +1063,11 @@ def fidelity(state1, state2):
     else:
         raise ValueError(f"Can't calculate fidelity between {state1.shape} and {state2.shape}")
 
+def trace_distance(rho1, rho2):
+    """Calculate the trace distance between two density matrices."""
+    rho1, rho2 = op(rho1), op(rho2)
+    return 0.5 * trace_norm(rho1 - rho2)
+
 def Schmidt_decomposition(state, subsystem_qubits):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
     state = np.array(state)
@@ -1884,6 +1889,7 @@ def test_quantum_all():
         _test_entropy_von_Neumann,
         _test_entropy_entanglement,
         _test_fidelity,
+        _test_trace_distance,
         _test_Schmidt_decomposition,
         _test_correlation_quantum,
         _test_ground_state,
@@ -2292,6 +2298,19 @@ def _test_fidelity():
     assert np.allclose(fidelity(rho1, psi2), fidelity(psi2, rho1)), f"fidelity(rho1, psi2) = {fidelity(rho1, psi2)} ≠ {fidelity(psi2, rho1)}"
     assert 0 <= fidelity(psi1, rho2) <= 1, f"fidelity = {fidelity(psi1, rho2)} ∉ [0,1]"
     assert 0 <= fidelity(rho1, psi2) <= 1, f"fidelity = {fidelity(rho1, psi2)} ∉ [0,1]"
+
+def _test_trace_distance():
+    # same state
+    psi = random_ket(2)
+    assert np.isclose(trace_distance(psi, psi), 0), f"trace_distance = {trace_distance(psi, psi)} ≠ 0"
+    rho = random_dm(2)
+    assert np.isclose(trace_distance(rho, rho), 0), f"trace_distance = {trace_distance(rho, rho)} ≠ 0"
+    # orthogonal states
+    psi1, psi2 = '00', '11'
+    assert np.isclose(trace_distance(psi1, psi2), 1), f"trace_distance = {trace_distance(psi1, psi2)} ≠ 1"
+    # other values
+    psi1, psi2 = '0', '-'
+    assert np.isclose(trace_distance(psi1, psi2), fs(2)), f"trace_distance = {trace_distance(psi1, psi2)} ≠ 1/sqrt(2)"
 
 def _test_Schmidt_decomposition():
     n = 6
