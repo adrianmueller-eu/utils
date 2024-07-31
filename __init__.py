@@ -13,3 +13,12 @@ try:
     from .quantum import *
 except:
     pass
+
+
+def test_all():
+    print_header('mathlib.py')
+    test_mathlib_all()
+
+    print_header('quantum.py')
+    from .quantum import test_quantum_all  # quantum might not be imported yet
+    test_quantum_all()
