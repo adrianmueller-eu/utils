@@ -63,6 +63,13 @@ def tqt(iterable, **kwargs):
     chat_id = os.environ['TELEGRAM_CHAT_ID']
     return telegram.tqdm(iterable, token=token, chat_id=chat_id, **kwargs)
 
+def print_header(title, char='#'):
+    res = "\n"
+    res += char*(len(title) + 2*4) + "\n"
+    res += char*3 + f' {title} ' + char*3 + "\n"
+    res += char*(len(title) + 2*4)
+    print(res)
+
 def nbytes(n):
     """ Returns the number of bytes of some common objects. """
     # numpy array
