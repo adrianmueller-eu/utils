@@ -1282,7 +1282,7 @@ def test_mathlib_all():
     for test in tests:
         print("Running", test.__name__, "... ", end="")
         test()
-        print("Test succeed!")
+        print("Test succeeded!")
 
 def _test_series():
     res = series(lambda n, _: 1/factorial(2*n), 1) + series(lambda n, _: 1/factorial(2*n + 1), 1)

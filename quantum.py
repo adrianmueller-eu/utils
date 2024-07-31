@@ -1803,7 +1803,7 @@ def test_quantum_all():
     for test in tests:
         print("Running", test.__name__, "... ", end="", flush=True)
         test()
-        print("Test succeed!", flush=True)
+        print("Test succeeded!", flush=True)
 
 def _test_constants():
     global I, X, Y, Z, H_gate, S, T_gate, CNOT, SWAP
