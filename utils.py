@@ -65,9 +65,10 @@ def tqt(iterable, **kwargs):
 
 def print_header(title, char='#'):
     res = "\n"
-    res += char*(len(title) + 2*4) + "\n"
-    res += char*3 + f' {title} ' + char*3 + "\n"
-    res += char*(len(title) + 2*4)
+    charl = len(char)
+    res += char*(len(title)//charl + 2*4) + "\n"
+    res += char*3 + ' '*(charl - len(title) % charl) + title + ' '*charl + char*3 + "\n"
+    res += char*(len(title)//charl + 2*4)
     print(res)
 
 def nbytes(n):
