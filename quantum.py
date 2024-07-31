@@ -982,6 +982,11 @@ def is_pure_dm(rho):
     # return np.linalg.matrix_rank(rho) == 1
     return np.allclose(np.trace(rho @ rho), 1)
 
+def is_eigenstate(psi, H):
+    psi = normalize(psi)
+    psi2 = normalize(H @ psi)
+    return np.allclose(np.abs(psi2 @ psi), 1)
+
 def gibbs(H, beta=1):
     """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
     H = np.array(H)
@@ -1875,6 +1880,7 @@ def test_quantum_all():
         _test_ket_unket,
         _test_op_dm,
         _test_is_dm,
+        _test_is_eigenstate,
         _test_count_qubits,
         _test_entropy_von_Neumann,
         _test_entropy_entanglement,
@@ -2209,6 +2215,11 @@ def _test_is_dm():
         # create dm from Bloch vector
         rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
         assert is_dm(rho)
+
+def _test_is_eigenstate():
+    H = parse_hamiltonian('XX + YY + ZZ')
+    assert is_eigenstate(ket('00'), H)
+    assert not is_eigenstate(ket('01'), H)
 
 def _test_count_qubits():
     assert count_qubits(ising(20)) == 20
