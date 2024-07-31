@@ -424,9 +424,13 @@ def imshow(a, figsize=None, title="", cmap="hot", xticks=None, yticks=None, xtic
             ticks = np.linspace(0, shape-1, len(ticklabels))
         return ticks, ticklabels
 
+    if xticks == False:
+        xticks = []
     if xticks is not None:
         xticks, xticklabels = generate_ticks_and_labels(xticks, a.shape[1])
         plt.xticks(xticks, xticklabels, rotation=xticks_rot, ha='center')
+    if yticks == False:
+        yticks = []
     if yticks is not None:
         yticks, yticklabels = generate_ticks_and_labels(yticks, a.shape[0])
         plt.yticks(yticks, yticklabels)
