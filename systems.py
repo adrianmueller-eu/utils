@@ -1176,12 +1176,17 @@ def coweb(f, x0s, max_iter=1000, eps=1e-6, xlim=None, ylim=None, title=None, fig
         while not conv(xs[-1]):
             try:
                 x, x1 = xs[-1], f(x)
+                assert np.isfinite(x1)
             except:
+                x1 = np.nan
                 break
             xs.extend([x, x1])
             ys.extend([x1, x1])
         # print(conv)
-        plt.plot(xs, ys, linewidth=linewidth)
+        if not np.isfinite(x1):
+            print(f"Warning: x0 = {x0s[i]} diverged ({x1})")
+        else:
+            plt.plot(xs, ys, linewidth=linewidth)
 
     if xlim is not None:
         plt.xlim(*xlim)
