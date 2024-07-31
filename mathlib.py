@@ -239,6 +239,16 @@ def trace_product(A, B):
 
 hilbert_schmidt_product = trace_product
 
+def trace_norm(A):
+    """Trace norm or nuclear norm of a matrix."""
+    return np.linalg.norm(A, ord='nuc')
+    # return np.trace(matsqrt(A.T.conj() @ A))
+
+def frobenius_norm(A):
+    """Frobenius norm or Hilbert-Schmidt norm of a matrix."""
+    return np.linalg.norm(A, ord='fro')
+    # return np.sqrt(np.trace(A.T.conj() @ A))
+
 # def polar(A, kind='left'):
 #     """Polar decomposition of a matrix into a unitary and a PSD matrix: $A = UJ$ or $A = KU$."""
 #     if kind == 'left':
