@@ -171,18 +171,6 @@ def startfile(filepath):
         return subprocess.call(('xdg-open', filepath))
 
 class ConvergenceCondition:
-    """ Convergence condition for iterative algorithms.
-
-    Additional properties
-        has_converged (bool): Whether a convergence condition has been met.
-        iter (int):           Number of already performed iterations.
-        error (float):        Error of the last iteration.
-        x_prev (list):        List of previous x's for error calculation. At most `period` x's are stored.
-        start_time (float):   Clock time of the first iteration.
-        skipped (int):        Number of successive iterations the error was below `eps`.
-        pbar (tqdm.tqdm):     Progress bar object.
-    """
-
     def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_value=None, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False, verbose=True):
         """ Convergence condition for iterative algorithms.
 
@@ -193,9 +181,18 @@ class ConvergenceCondition:
             max_time (float):            Maximum time in seconds. If `None`, no maximum is set.
             period (int):                Number of previous iterations to check for convergence (useful for oscillating sequences)
             skip_initial (int):          Number of iterations to let pass in the beggining before checking for convergence
-            skip_converged (int):        Number of successivee iterations the error must be below `eps`
+            skip_converged (int):        Number of successive iterations the error must be below `eps`
             use_tqdm (bool | tqdm.tqdm): Set `True` to show a `tqdm` progress bar. Give a `tqdm.tqdm` object to use a custom `tqdm` progress bar.
             verbose (bool):              Set `True` to print the reason for termination.
+
+        Additional properties
+            has_converged (bool): Whether any convergence condition has been met.
+            iter (int):           Number of already performed iterations.
+            error (float):        Error of the last iteration.
+            x_prev (list):        List of previous x's for error calculation. At most `period` x's are stored.
+            start_time (float):   Clock time of the first iteration.
+            skipped (int):        Number of successive iterations the error was below `eps`.
+            pbar (tqdm.tqdm):     Progress bar object.
 
         Example:
 
@@ -242,8 +239,8 @@ class ConvergenceCondition:
             if use_tqdm:
                 warn("tqdm is not installed. Install it with `pip install tqdm` to use the progress bar.")
 
-        if max_iter is None and eps is None and max_time is None:
-            raise ValueError("You must specify at least one of max_iter, eps, and max_time.")
+        if max_iter is None and eps is None and max_value is None and max_time is None:
+            raise ValueError("You must specify at least one of `max_iter`, `eps`, `max_value`, and `max_time`.")
 
     def __call__(self, x, iteration=None):
         if self.has_converged:
