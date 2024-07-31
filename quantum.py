@@ -371,7 +371,7 @@ class QuantumComputer:
         if qubits is None:
             if self.n == 0:  # infer `qubits` from `state`
                 self.state = ket(state)
-                n = int(np.log2(len(self.state)))
+                n = count_qubits(self.state)
                 self.qubits = list(range(n))
                 self.original_order = list(range(n))
                 return self
@@ -559,7 +559,7 @@ class QuantumComputer:
 def reverse_qubit_order(state):
     """So the last will be first, and the first will be last. Works for both, state vectors and density matrices."""
     state = np.array(state)
-    n = int(np.log2(len(state)))
+    n = count_qubits(state)
 
     # if vector, just reshape
     if len(state.shape) == 1 or state.shape[0] != state.shape[1]:
@@ -570,7 +570,7 @@ def reverse_qubit_order(state):
 def partial_trace(rho, retain_qubits):
     """Trace out all qubits not specified in `retain_qubits`."""
     rho = np.array(rho)
-    n = int(np.log2(rho.shape[0])) # number of qubits
+    n = count_qubits(rho)
 
     # pre-process retain_qubits
     if is_int(retain_qubits):
@@ -609,7 +609,7 @@ def state_trace(state, retain_qubits):
     """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical meaning of its output, but it was at times helpful to visualize and interpret subsystems, especially when the density matrix was out of reach (or better: out of memory)."""
     state = np.array(state)
     state[np.isnan(state)] = 0
-    n = int(np.log2(len(state))) # nr of qubits
+    n = count_qubits(state)
 
     # sanity checks
     if not hasattr(retain_qubits, '__len__'):
@@ -647,7 +647,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
         return ("{0:0" + str(places) + "b}").format(n)
 
     def plotcoeff(ax, state):
-        n = int(np.log2(len(state))) # nr of qubits
+        n = count_qubits(state)
         if n < 6:
             basis = [tobin(i, n) for i in range(2**n)]
             #plot(basis, state, ".", figsize=(10,3))
@@ -667,7 +667,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
         ax.grid()
 
     def plotprobs(ax, state):
-        n = int(np.log2(len(state))) # nr of qubits
+        n = count_qubits(state)
         toshow = {}
         cumsum = 0
         for idx in probs.argsort()[-20:][::-1]: # only look at 20 largest
@@ -680,7 +680,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
         ax.pie(toshow.values(), labels=toshow.keys(), autopct=lambda x: f"%.1f%%" % x)
 
     def plotrho(ax, rho):
-        n = int(np.log2(len(state))) # nr of qubits
+        n = count_qubits(rho)
         rho = colorize_complex(rho)
         ax.imshow(rho)
         if n < 6:
@@ -693,7 +693,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
 
     # trace out unwanted qubits
     if showqubits is None:
-        n = int(np.log2(len(state))) # nr of qubits
+        n = count_qubits(state)
         showqubits = range(n)
 
     if showrho:
@@ -852,7 +852,7 @@ def unket(state, as_dict=False, prec=5):
     """
     eps = 10**(-prec) if prec is not None else 0
     state = normalize(state)
-    n = int(np.log2(len(state)))
+    n = count_qubits(state)
     if as_dict:
         # cast to float if imaginary part is zero
         if np.allclose(state.imag, 0):
@@ -944,6 +944,29 @@ def gibbs(H, beta=1):
     E = softmax(E, -beta)
     return U @ np.diag(E) @ U.conj().T
 
+def count_qubits(obj):
+    if hasattr(obj, '__len__') and not isinstance(obj, str):
+        return int(np.log2(len(obj)))
+    if isinstance(obj, str):
+        import re
+        obj = obj.replace(' ', '')  # remove spaces
+        if "+" in obj or "-" in obj:
+            if 'X' in obj or 'Y' in obj or 'Z' in obj or 'I' in obj:
+                # obj = parse_hamiltonian(obj)
+                return len(re.search('[XYZI]+', obj)[0])
+            else:
+                # obj = ket(obj)
+                return len(re.search('[01]+(?![.*01])', obj)[0])
+        else:
+            # obj = parse_unitary(obj)
+            obj = obj.split('@')[0]
+            return len(re.search('\\S+', obj)[0])
+    if hasattr(obj, 'n'):
+        return obj.n
+    if hasattr(obj, 'qubits'):
+        return len(obj.qubits)
+    raise ValueError(f'Unkown object: {obj}')
+
 ##################################
 ### Quantum information theory ###
 ##################################
@@ -965,7 +988,7 @@ def entropy_entanglement(state, subsystem_qubits):
     return entropy_von_Neumann(partial_trace(state, subsystem_qubits))
 
 def mutual_information_quantum(state, subsystem_qubits):
-    n = int(np.log2(len(state)))
+    n = count_qubits(state)
     rho_A = partial_trace(state, subsystem_qubits)
     rho_B = partial_trace(state, [s for s in range(n) if s not in subsystem_qubits])
     return entropy_von_Neumann(rho_A) + entropy_von_Neumann(rho_B) - entropy_von_Neumann(state)
@@ -1805,6 +1828,7 @@ def test_quantum_all():
         _test_ket_unket,
         _test_op_dm,
         _test_is_dm,
+        _test_count_qubits,
         _test_entropy_von_Neumann,
         _test_entropy_entanglement,
         _test_fidelity,
@@ -2133,6 +2157,16 @@ def _test_is_dm():
         # create dm from Bloch vector
         rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
         assert is_dm(rho)
+
+def _test_count_qubits():
+    assert count_qubits(ising(20)) == 20
+    assert count_qubits('CXC @ XCC') == 3
+    assert count_qubits(parse_unitary('CXC @ XCC')) == 3
+    assert count_qubits('0.001*01 - 0.101*11') == 2
+    assert count_qubits(ket('0.001*01 - 0.101*11')) == 2
+    qc = QuantumComputer(4)
+    qc.x(4)
+    assert count_qubits(qc) == 5
 
 def _test_entropy_von_Neumann():
     rho = random_dm(2, pure=True)
