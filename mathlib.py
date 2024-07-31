@@ -200,6 +200,9 @@ def is_projection(a, rtol=1e-05, atol=1e-08):
         a @ a, a
     ), rtol=rtol, atol=atol)
 
+def is_projection_orthogonal(a, rtol=1e-05, atol=1e-08):
+    return is_projection(a, rtol=rtol, atol=atol) and is_hermitian(a, rtol=rtol, atol=atol)
+
 ### matrix functions
 
 try:
@@ -379,10 +382,30 @@ def random_normal(size, limits=(0,1), complex=True):
     D = np.diag(random_vec(U.shape[0], limits=limits, complex=complex))
     return U @ D @ U.conj().T
 
-def random_projection_orthogonal(size):
-    U = random_unitary(size)
-    D = np.diag(randint(0, 2, U.shape[0]))
-    return U @ D @ U.conj().T
+def random_projection(size, rank=None, orthogonal=True, complex=True):
+    if rank is None:
+        rank = np.random.randint(1, size+1)
+    else:
+        rank = min(rank, size)
+
+    # if orthogonal:
+    #     # P^2 = P and P = P^H
+    #     U = random_unitary(size)
+    #     D = np.random.permutation([1]*rank + [0]*(size-rank))
+    #     return U @ np.diag(D) @ U.conj().T
+    # else:
+    #     # P^2 = P, but almost never P = P^H
+    #     A = random_square(size, complex=True)
+    #     D = np.random.permutation([1]*rank + [0]*(size-rank))
+    #     return A @ np.diag(D) @ np.linalg.pinv(A)
+
+    # much faster for rank << size
+    A = random_vec((size, rank), complex=complex)
+    if orthogonal:
+        B = A.conj().T
+    else:
+        B = random_vec((rank, size), complex=complex)
+    return A @ np.linalg.pinv(B @ A) @ B
 
 ###################
 ### Polynomials ###
@@ -1438,18 +1461,39 @@ def _test_is_projection():
     # orthogonal projection
     P = np.array([[1, 0], [0, 0]])
     assert is_projection(P)
+    assert is_projection_orthogonal(P)
     # oblique projection
     P = np.array([[1, 0], [1, 0]])
     assert is_projection(P)
+    assert not is_projection_orthogonal(P)
     P = np.array([[0, 0], [np.random.normal(), 1]])
     assert is_projection(P)
+    assert not is_projection_orthogonal(P)
     # not a projection
-    P = np.array([[1, 1], [1, 1]])
+    P = np.array([[1, 1], [1, 1]])  # evs 0 and 2
     assert not is_projection(P)
+    assert not is_projection_orthogonal(P)
 
 def _test_random_projection():
-    P = random_projection_orthogonal(5)
+    n = 15
+    P = random_projection(n, orthogonal=True)
     assert is_projection(P)
+    assert is_projection_orthogonal(P)
+    assert not is_orthogonal(P)  # just to be clear on that
+
+    rank = randint(1,n)
+    P = random_projection(n, rank=rank, orthogonal=True)
+    assert is_projection(P)
+    assert is_projection_orthogonal(P)
+    assert np.linalg.matrix_rank(P) == rank
+
+    P = random_projection(n, orthogonal=False)
+    assert is_projection(P)
+    assert not is_projection_orthogonal(P)  # can technically still be orthogonal
+
+    P = random_projection(n, rank=rank, orthogonal=False)
+    assert is_projection(P)
+    assert np.linalg.matrix_rank(P) == rank
 
 def _test_matexp():
     a = random_square(randint(2,20), complex=True)
