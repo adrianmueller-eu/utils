@@ -48,16 +48,31 @@ def R_(gate, theta):
 Rx = lambda theta: R_(X, theta)
 Ry = lambda theta: R_(Y, theta)
 Rz = lambda theta: R_(Z, theta)
-II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ = [np.kron(g1, g2) for g1, g2 in itertools.product([I,X,Y,Z], repeat=2)]
+for i in [2,3]:
+    for s, g in zip(itertools.product(['I','X','Y','Z'], repeat=i), itertools.product([I,X,Y,Z], repeat=i)):
+        globals()["".join(s)] = reduce(np.kron, g)  # II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ
 
-def C_(A):
+def C_(A, reverse=False, negative=False):
     if not hasattr(A, 'shape'):
         A = np.array(A, dtype=complex)
     n = int(np.log2(A.shape[0]))
-    return np.kron([[1,0],[0,0]], I_(n)) + np.kron([[0,0],[0,1]], A)
+    op0, op1 = [[1,0],[0,0]], [[0,0],[0,1]]
+    if negative:
+        op0, op1 = op1, op0
+    if reverse:
+        return np.kron(I_(n), op0) + np.kron(A, op1)
+    return np.kron(op0, I_(n)) + np.kron(op1, A)
 CNOT = CX = C_(X) # 0.5*(II + ZI - ZX + IX)
+CZ = C_(Z)
+CY = C_(Y)
+XC = C_(X, reverse=True)
+ZC = C_(Z, reverse=True)
+NX = C_(X, negative=True)
+XN = C_(X, negative=True, reverse=True)
+NZ = C_(Z, negative=True)
+ZN = C_(Z, negative=True, reverse=True)
 Toffoli = C_(C_(X))
-SWAP = np.array([ # 0.5*(XX + YY + ZZ + II), CNOT @ r(reverse_qubit_order(CNOT)) @ CNOT
+SWAP = np.array([ # 0.5*(XX + YY + ZZ + II), CX @ XC @ CX
     [1, 0, 0, 0],
     [0, 0, 1, 0],
     [0, 1, 0, 0],
@@ -69,6 +84,7 @@ iSWAP = np.array([ # 0.5*(1j*(XX + YY) + ZZ + II), R_(XX+YY, -pi/2)
     [0, 1j, 0, 0],
     [0, 0, 0, 1]
 ], dtype=complex)
+fSWAP = SWAP @ CZ
 
 def Fourier_matrix(n, n_is_qubits=True):
     """Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT)."""
