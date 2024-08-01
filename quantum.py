@@ -820,7 +820,7 @@ def ket(specification, n=None):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
-        n = n or int(np.log2(len(specification))) or 1
+        n = n or count_qubits(specification) or 1
         assert len(specification) == 2**n, f"State vector has wrong length: {len(specification)} ≠ {2**n}!"
         return normalize(specification)
     if is_int(specification):
@@ -2028,6 +2028,68 @@ def _test_get_H_energies_eq_get_pe_energies():
     B = np.sort(get_H_energies(H, expi=True))
     assert np.allclose(A, B), f"{A} ≠ {B}"
 
+def _test_ket_unket():
+    assert np.allclose(ket('0'), [1,0])
+    assert np.allclose(ket('1'), [0,1])
+    assert np.allclose(ket(0), [1,0])
+    assert np.allclose(ket(2), [0,0,1,0])
+    assert np.allclose(ket('00 + 11 + 01 + 10'), [.5,.5,.5,.5])
+    assert np.allclose(ket('00+ 11- 01 -10'), [.5,-.5,-.5,.5])
+    assert np.allclose(ket('00 + 11'), ket('2*00 + 2*11'))
+    # assert np.allclose(ket('00 - 11'), ket('2*(00 - 11)'))  # parentheses NYI
+    assert np.allclose(ket('3*00 + 4*01 + 5*11'), [sqrt(9/50), sqrt(16/50), 0, sqrt(25/50)])
+    assert unket(ket('1010')) == '1010'
+    assert unket(ket(10)) == '1010'
+    assert unket(ket(10, 5)) == '01010'
+    # ket should be fast enough to return already-kets 1000 times in negligible time
+    import time
+    psi = random_ket(2)
+    max_time = 0.02
+    start = time.time()
+    for _ in range(10):
+        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/5)"
+        for _ in range(100):
+            ket(psi)
+
+def _test_random_ket():
+    for _ in range(10):
+        n_qubits = np.random.randint(1, 10)
+        psi = random_ket(n_qubits)
+        assert psi.shape == (2**n_qubits,)
+        assert np.allclose(np.linalg.norm(psi), 1)
+
+def _test_op_dm():
+    assert np.allclose(op(0),   [[1,0], [0,0]])
+    assert np.allclose(op(0,1), [[0,1], [0,0]])
+    assert np.allclose(op(1,0), [[0,0], [1,0]])
+    assert np.allclose(op(1),   [[0,0], [0,1]])
+    # op should be fast enough to return already-density-matrices 1000 times in negligible time
+    import time
+    rho = random_dm(2)
+    max_time = 0.01
+    start = time.time()
+    for _ in range(10):
+        assert time.time() - start < max_time, f"op is too slow (iteration {_}/10)"
+        for _ in range(100):
+            op(rho)
+
+def _test_is_dm():
+    assert is_dm(np.eye(2**2)/2**2)
+    # random Bloch vectors
+    for _ in range(10):
+        v = np.random.uniform(-1, 1, 3)
+        if np.linalg.norm(v) > 1:
+            v = normalize(v)
+        # create dm from Bloch vector
+        rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
+        assert is_dm(rho)
+
+def _test_random_dm():
+    for _ in range(100):
+        n_qubits = np.random.randint(1, 5)
+        rho = random_dm(n_qubits)
+        assert is_dm(rho)
+
 def _test_QuantumComputer():
     # test basic functionality
     qc = QuantumComputer()
@@ -2080,19 +2142,6 @@ def _test_QuantumComputer():
     qc.remove('s0')
     assert np.allclose(qc.get_state(), ket('0011'))
     qc.remove('all')
-
-def _test_random_ket():
-    for _ in range(100):
-        n_qubits = np.random.randint(1, 10)
-        psi = random_ket(n_qubits)
-        assert psi.shape == (2**n_qubits,)
-        assert np.allclose(np.linalg.norm(psi), 1)
-
-def _test_random_dm():
-    for _ in range(100):
-        n_qubits = np.random.randint(1, 5)
-        rho = random_dm(n_qubits)
-        assert is_dm(rho)
 
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
@@ -2190,39 +2239,6 @@ def _test_partial_trace():
     rho_tr = partial_trace(rho, [0,1])
     assert rho.shape == rho_tr.shape, f"rho.shape = {rho.shape} ≠ rho_tr.shape = {rho_tr.shape}"
     assert np.allclose(rho, rho_tr), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
-
-def _test_ket_unket():
-    assert np.allclose(ket('0'), [1,0])
-    assert np.allclose(ket('1'), [0,1])
-    assert np.allclose(ket(0), [1,0])
-    assert np.allclose(ket(2), [0,0,1,0])
-    assert np.allclose(ket('00 + 11 + 01 + 10'), [.5,.5,.5,.5])
-    assert np.allclose(ket('00+ 11- 01 -10'), [.5,-.5,-.5,.5])
-    assert np.allclose(ket('00 + 11'), ket('2*00 + 2*11'))
-    # assert np.allclose(ket('00 - 11'), ket('2*(00 - 11)'))  # parentheses NYI
-    assert np.allclose(ket('3*00 + 4*01 + 5*11'), [sqrt(9/50), sqrt(16/50), 0, sqrt(25/50)])
-    assert unket(ket('1010')) == '1010'
-    assert unket(ket(10)) == '1010'
-    assert unket(ket(10, 5)) == '01010'
-    pass
-
-def _test_op_dm():
-    assert np.allclose(op(0),   [[1,0], [0,0]])
-    assert np.allclose(op(0,1), [[0,1], [0,0]])
-    assert np.allclose(op(1,0), [[0,0], [1,0]])
-    assert np.allclose(op(1),   [[0,0], [0,1]])
-    pass
-
-def _test_is_dm():
-    assert is_dm(np.eye(2**2)/2**2)
-    # random Bloch vectors
-    for _ in range(100):
-        v = np.random.uniform(-1, 1, 3)
-        if np.linalg.norm(v) > 1:
-            v = normalize(v)
-        # create dm from Bloch vector
-        rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
-        assert is_dm(rho)
 
 def _test_is_eigenstate():
     H = parse_hamiltonian('XX + YY + ZZ')
