@@ -181,6 +181,8 @@ def is_involutory(a, rtol=1e-05, atol=1e-08):
 
 def is_complex(a):
     if hasattr(a, 'dtype'):
+        if a.dtype == complex:
+            return True
         return np.issubdtype(a.dtype, complex)
     return np.iscomplex(a).any()
 
