@@ -83,7 +83,7 @@ def ste(ar):
 ##########################
 
 def check_probability_distribution(p, eps=1e-12):
-    """`p` is a valid probability distribution if all $p_i \in [0,1]$ and $\sum_i p_i = 1$."""
+    """`p` is a valid probability distribution if all $p_i \\in [0,1]$ and $\\sum_i p_i = 1$."""
     p = np.array(p)
     assert np.all(p >= -eps), f"Not a valid probability distribution: Negative values in {p}"
     assert np.all(p <= 1+eps), f"Not a valid probability distribution: Values greater than 1 in {p}"
@@ -102,7 +102,7 @@ def entropy(p): # e.g. entropy(1*[1/2] + 4*[1/8])
     return -sum((p*np.log2(p) for p in p if p > 0))  # 0*log(0) = 0
 
 def cross_entropy(p, q):
-    """Cross entropy $H(p,q) = -\sum_i p_i \\log_2(q_i)$"""
+    """Cross entropy $H(p,q) = -\\sum_i p_i \\log_2(q_i)$"""
     p = check_probability_distribution(p)
     q = check_probability_distribution(q)
     assert len(p) == len(q), f"Length mismatch: {len(p)} ≠ {len(q)}"
