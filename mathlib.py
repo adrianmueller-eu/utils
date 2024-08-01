@@ -396,7 +396,7 @@ def random_normal(size, limits=(0,1), complex=True):
 
 def random_projection(size, rank=None, orthogonal=True, complex=True):
     if rank is None:
-        rank = np.random.randint(1, size+1)
+        rank = np.random.randint(1, size+orthogonal)  # rank == n is always orthogonal (identity)
     else:
         rank = min(rank, size)
 
@@ -1493,7 +1493,7 @@ def _test_random_projection():
     assert is_projection_orthogonal(P)
     assert not is_orthogonal(P)  # just to be clear on that
 
-    rank = randint(1,n)
+    rank = randint(2,n)
     P = random_projection(n, rank=rank, orthogonal=True)
     assert is_projection(P)
     assert is_projection_orthogonal(P)
@@ -1505,6 +1505,7 @@ def _test_random_projection():
 
     P = random_projection(n, rank=rank, orthogonal=False)
     assert is_projection(P)
+    assert not is_projection_orthogonal(P)
     assert np.linalg.matrix_rank(P) == rank
 
 def _test_matexp():
