@@ -973,6 +973,9 @@ def probs(state):
 def is_dm(rho):
     """Check if matrix `rho` is a density matrix."""
     rho = np.array(rho)
+    n = count_qubits(rho)
+    if len(rho.shape) != 2 or rho.shape[0] != rho.shape[1] or rho.shape[0] != 2**n:
+        return False
     return abs(np.trace(rho) - 1) < 1e-10 and is_psd(rho)
 
 def is_pure_dm(rho):
