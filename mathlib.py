@@ -85,8 +85,7 @@ def sequence(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_it
             print(f"Iteration {i}:", current_term)
         # if it contains inf or nan, we assume divergence
         if np.isinf(current_term).all() or np.isnan(current_term).all():
-            if verbose:
-                print(f"Warning: Sequence diverged after {i} iterations!")
+            print(f"Warning: Sequence diverged after {i} iterations!")
             return current_term
         # if the difference between the last two terms is smaller than eps, we assume convergence
         error = np.sum(np.abs(current_term - last_term))
@@ -96,8 +95,7 @@ def sequence(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_it
             return current_term
         last_term = current_term
 
-    if verbose:
-        print(f"Warning: Sequence didn't converge after {max_iter} iterations! Error: {error}")
+    print(f"Warning: Sequence didn't converge after {max_iter} iterations! Error: {error}")
     return current_term
 
 def normalize(a, p=2, axis=0, remove_global_phase_if_1D=False):
