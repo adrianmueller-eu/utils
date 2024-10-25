@@ -168,6 +168,11 @@ def is_hermitian(a, rtol=1e-05, atol=1e-08):
         a, a.conj().T
     ), rtol=rtol, atol=atol)
 
+def is_antihermitian(a, rtol=1e-05, atol=1e-08):
+    return _sq_matrix_allclose(a, lambda a: (
+        a, -a.conj().T
+    ), rtol=rtol, atol=atol)
+
 def is_orthogonal(a, rtol=1e-05, atol=1e-08):
     return _sq_matrix_allclose(a, lambda a: (
         a @ a.T, np.eye(a.shape[0])
@@ -1408,8 +1413,10 @@ def _test_is_hermitian():
     a = random_square(randint(2,20), complex=True)
     b = a + a.conj().T
     assert is_hermitian(b)
+    assert is_antihermitian(1j*b)
     c = a + 1
     assert not is_hermitian(c)
+    assert not is_antihermitian(1j*c)
 
 def _test_random_hermitian():
     a = random_hermitian(5)
@@ -1521,6 +1528,9 @@ def _test_matlog():
     alpha = np.random.rand()*2*np.pi - np.pi
     A = np.array([[np.cos(alpha), -np.sin(alpha)],[np.sin(alpha), np.cos(alpha)]])
     assert np.allclose(matlog(A), alpha*np.array([[0, -1],[1, 0]])), f"Error for alpha = {alpha}! {matlog(A)} != {alpha*np.array([[0, -1],[1, 0]])}"
+
+    U = random_unitary(randint(2,20))  # any unitary is exp(-iH) for some hermitian H
+    assert is_antihermitian(matlog(U))
 
 def _test_roots():
     # Test cases
