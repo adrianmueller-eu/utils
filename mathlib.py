@@ -128,6 +128,12 @@ def arctan2(y, x):  # same as np.arctan2
     #         return np.arctan(y/x) + np.pi
     # return np.arctan(y/x)
 
+def is_odd(x):
+    return x % 2 == 1
+
+def is_even(x):
+    return x % 2 == 0
+
 #################
 ### Deg / rad ###
 #################
