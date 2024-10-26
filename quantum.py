@@ -2084,8 +2084,12 @@ def _test_constants():
     assert np.allclose(Rz(2*np.pi), -I)
 
 def _test_fourier_matrix():
-    # TODO
-    pass
+    assert np.allclose(Fourier_matrix(1), H)
+    n = randint(2,8)
+    F = Fourier_matrix(n)
+    assert is_unitary(F)
+    assert np.allclose(F @ ket('0'*n), normalize(np.ones(2**n)))  # Fourier creates a full superposition or ...
+    assert np.allclose(F[:,0], parse_unitary('H'*n)[:,0])  # ... in other words
 
 def _test_parse_unitary():
     assert np.allclose(parse_unitary('I'), I)
