@@ -430,9 +430,9 @@ class QuantumComputer:
         if obs is not None:
             obs = self.parse_hermitian(obs, len(qubits))
             D, U = np.linalg.eig(obs)
-            self(U, qubits)  # basis change
+            self(U.T.conj(), qubits)  # basis change
             probs = self._probs(qubits)
-            self(U.T.conj(), qubits)  # back to standard basis
+            self(U, qubits)  # back to standard basis
             return probs
         return self._probs(qubits)
 
@@ -2195,6 +2195,22 @@ def _test_QuantumComputer():
     qc = QuantumComputer(1)
     qc.init(random_ket(1))
     assert qc.std(X) * qc.std(Z) >= abs(qc.ev(1j*(X@Z - Z@X)))/2
+
+    # Bell basis
+    Bell = [
+        ket('00 + 11'),
+        ket('00 - 11'),
+        ket('01 + 10'),
+        ket('01 - 10')
+    ]
+    obs = sum(i*op(b) for i, b in zip(range(1,5), Bell))
+    qc = QuantumComputer(2)
+    qc.h(0)
+    qc.cx(0, 1)
+    p = qc.probs(obs=obs)
+    assert np.isclose(entropy(p), 0), f"p = {p}"
+    U_expected = pu('CX @ HI')
+    assert np.allclose(qc.U, U_expected), f"Incorrect unitary:\n{qc.U}\n ≠\n{U_expected}"
 
     # more complex test
     qc = QuantumComputer(15)
