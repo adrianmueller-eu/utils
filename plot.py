@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 import re
 from .mathlib import is_complex, is_symmetric, int_sqrt
 from .utils import *
 
-def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", xlog=False, ylog=False, grid=True, show=True, save_file=None, **pltargs):
+def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", xticks=None, yticks=None, xlog=False, ylog=False, grid=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
 
     # make it a bit intelligent
@@ -65,7 +66,17 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None)
         plt.xscale('log')
     if ylog:
         plt.yscale('log')
-    if grid:
+    if xticks is not None:
+        if len(xticks) == 2 and len(xticks[0]) == len(xticks[1]):
+            plt.xticks(xticks[0], xticks[1])
+        else:
+            plt.xticks(xticks)
+    if yticks is not None:
+        if len(yticks) == 2 and len(yticks[0]) == len(yticks[1]):
+            plt.yticks(yticks[0], yticks[1])
+        else:
+            plt.yticks(yticks)
+    if grid and (show or save_file is not None):
         plt.grid()
     if fmt == ".":
         if y is None:
