@@ -1160,6 +1160,8 @@ def count_qubits(obj):
             return len(re.search('\\S+', obj)[0])
     if hasattr(obj, 'n'):
         return obj.n
+    if hasattr(obj, 'num_qubits'):
+        return obj.num_qubits
     if hasattr(obj, 'qubits'):
         return len(obj.qubits)
     raise ValueError(f'Unkown object: {obj}')
