@@ -1101,6 +1101,16 @@ def choice(a, size=None, replace=True, p=None):
     else:
         return np.random.choice(a, size=size, replace=replace, p=p)
 
+def shuffle(a):
+    if hasattr(a, 'copy'):
+        a = a.copy()
+    if isinstance(a, str):
+        a = list(a)
+        np.random.shuffle(a)
+        return "".join(a)
+    np.random.shuffle(a)
+    return a
+
 if not sage_loaded:
     # https://docs.python.org/3/library/itertools.html
     def powerset(iterable):
