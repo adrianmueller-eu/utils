@@ -509,7 +509,7 @@ class QuantumComputer:
     def _check_qubit_arguments(self, qubits, allow_new):
         if isinstance(qubits, str) and qubits == 'all':
             qubits = self.original_order
-        if not isinstance(qubits, (list, np.ndarray)):
+        if not isinstance(qubits, (list, tuple, np.ndarray)):
             qubits = [qubits]
         qubits = list(qubits)
         assert len(qubits) > 0, "No qubits provided"
@@ -583,6 +583,24 @@ class QuantumComputer:
             if self._track_unitary:
                 self.U = self.U.reshape([2**n_front, 2**n_front])
             self.state = self.state.reshape(-1)
+
+    def __getitem__(self, qubits):
+        if isinstance(qubits, slice):
+            indices = range(self.n)[qubits]
+        else:
+            if not hasattr(qubits, '__len__') or isinstance(qubits, str):
+                qubits = [qubits]
+            indices = [self.qubits.index(q) for q in qubits]
+        return partial_trace(self.get_state(), indices)
+
+    def __delitem__(self, qubits):
+        if isinstance(qubits, slice):
+            indices = range(self.n)[qubits]
+            qubits = [self.qubits[idx] for idx in indices]
+        elif not hasattr(qubits, '__len__') or isinstance(qubits, str):
+            qubits = [qubits]
+        self.remove(qubits)
+        return self
 
     def plot(self, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
         self._reorder(self.original_order)
