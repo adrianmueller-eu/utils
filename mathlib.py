@@ -1120,10 +1120,10 @@ if not sage_loaded:
 
 ### special numbers
 
-Phi = (1 + np.sqrt(5))/2
+golden_ratio = (1 + np.sqrt(5))/2
 def Fibonacci(n):
-    Psi = 1 - Phi
-    return int(np.round((Phi**n - Psi**n)/(Phi - Psi))) # /np.sqrt(5)
+    Psi = 1 - golden_ratio
+    return int(np.round((golden_ratio**n - Psi**n)/(golden_ratio - Psi))) # /np.sqrt(5)
 
 def calc_pi1(prec=100):
     """ Calculate pi using the Gauss-Legendre algorithm. """
