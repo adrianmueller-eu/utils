@@ -960,6 +960,8 @@ def ket(specification, n=None):
     if is_int(specification):
         return ket_from_int(specification, n)
     if type(specification) == str:
+        if specification == "random" and n is not None:
+            return random_ket(n)
         # handle some special cases: |+>, |->, |i>, |-i>
         if specification == "+":
             return normalize(np.array([1,1], dtype=complex))
