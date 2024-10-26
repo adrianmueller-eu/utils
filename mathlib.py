@@ -771,6 +771,15 @@ if sage_loaded:
         # monomials = [prod([var^randint(0, q) for var in variables]) for _ in range(randint(1, n))]
         monomials = [prod([var^randint(0, max_degree) for var in variables]) for _ in range(1, n_terms)]
         return sum([randint(-100, 100)*m for m in monomials])
+else:
+    def random_polynomial(k=(1,10), c_range=(-1,1)):
+        if hasattr(k, '__len__'):
+            if len(k) == 2:
+                k = randint(*k)
+            else:
+                k = choice(k)
+        coeffs = np.random.random(k+1)*(c_range[1] - c_range[0]) + c_range[0]
+        return Polynomial(coeffs)
 
 #####################
 ### Number theory ###
