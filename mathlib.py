@@ -1556,7 +1556,8 @@ def _test_random_projection():
     P = random_projection(n, orthogonal=True)
     assert is_projection(P)
     assert is_projection_orthogonal(P)
-    assert not is_orthogonal(P)  # just to be clear on that
+    if not np.allclose(P, np.eye(n)):
+        assert not is_orthogonal(P)  # just to be clear on that
 
     rank = randint(2,n)
     P = random_projection(n, rank=rank, orthogonal=True)
