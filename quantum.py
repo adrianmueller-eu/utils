@@ -1141,7 +1141,9 @@ def gibbs(H, beta=1):
 
 def count_qubits(obj):
     if hasattr(obj, '__len__') and not isinstance(obj, str):
-        return int(np.log2(len(obj)))
+        n = int(np.log2(len(obj)))
+        assert len(obj) == 2**n, f"Dimension must be a power of 2, but was {len(obj)}"
+        return n
     if isinstance(obj, str):
         import re
         obj = obj.replace(' ', '')  # remove spaces
