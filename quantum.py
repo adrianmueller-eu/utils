@@ -1289,8 +1289,8 @@ def ground_state_ITE(H, tau=5, eps=1e-6):  # eps=1e-6 gives almost perfect preci
     ground_state_energy = (ground_state.conj().T @ H @ ground_state).real
     return ground_state_energy, ground_state
 
-def ceil_state(A, eps=1e-6):
-    """ Calculate the ground state using the power iteration algorithm. """
+def power_iteration(A, eps=1e-8):
+    """ Power iteration algorithm. If A has a real, positive, unique eigenvalue of largest magnitude, this outputs it and the associated eigenvector."""
     eigvec = sequence(
         lambda i, b: normalize(A @ b),
         start_value=random_vec(A.shape[1]),
