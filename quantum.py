@@ -696,20 +696,51 @@ class QuantumComputer:
     def __repr__(self):
         return self.__str__()
 
+qc = QuantumComputer()
+
+## TODO: Implement number factoring using QuantumComputer (Shor's algorithm)
+
+def evolve(state, U, checks=True):
+    if checks:
+        if not hasattr(state, 'shape'):
+            state = np.array(state)
+        n = count_qubits(state)
+        U = QuantumComputer.parse_unitary(U, n)
+    if len(state.shape) == 1:
+        if checks:
+            state = ket(state)
+        return U @ state
+    if checks:
+        state = dm(state)
+    return U @ state @ U.T.conj()
+
 #############
 ### State ###
 #############
 
-def reverse_qubit_order(state):
-    """So the last will be first, and the first will be last. Works for both, state vectors and density matrices."""
+def transpose_qubit_order(state, new_order):
     state = np.array(state)
     n = count_qubits(state)
+    if new_order == -1:
+        new_order = list(range(n)[::-1])
 
-    # if vector, just reshape
-    if len(state.shape) == 1 or state.shape[0] != state.shape[1]:
-        return state.reshape([2]*n).T.reshape(-1)
+    new_order_all = new_order + [q for q in range(n) if q not in new_order]
+    if len(state.shape) == 1:
+        state = state.reshape([2]*n)
+        state = state.transpose(new_order_all)
+        state = state.reshape(-1)
     elif state.shape[0] == state.shape[1]:
-        return state.reshape([2,2]*n).T.reshape(2**n, 2**n).conj()
+        state = state.reshape([2,2]*n)
+        new_order_all = new_order_all + [i + n for i in new_order_all]
+        state = state.transpose(new_order_all)
+        state = state.reshape([2**n, 2**n])
+    else:
+        raise ValueError(f"Not a valid shape: {state.shape}")
+    return state
+
+def reverse_qubit_order(state):
+    """So the last will be first, and the first will be last."""
+    return transpose_qubit_order(state, -1)
 
 def partial_trace(rho, retain_qubits):
     """Trace out all qubits not specified in `retain_qubits`."""
@@ -2043,6 +2074,7 @@ def _test_parse_unitary():
     assert np.allclose(parse_unitary('CX @ XC @ CX'), SWAP)
     assert np.allclose(parse_unitary('SS @ HI @ CX @ XC @ IH'), iSWAP)
     assert np.allclose(parse_unitary('IIII @ IIII'), I_(4))
+    assert np.allclose(transpose_qubit_order(pu('IXZ'), [0,2,1]), pu('IZX'))
 
     assert is_unitary(parse_unitary('XCX'))
     assert is_unitary(parse_unitary('CXC'))
