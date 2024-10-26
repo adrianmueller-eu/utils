@@ -1,4 +1,4 @@
-import psutil
+import psutil, warnings
 import numpy as np
 import itertools
 from functools import reduce
@@ -192,7 +192,7 @@ try:
         if generate_state:
             simulator = Aer.get_backend("statevector_simulator")
             if shots is None or shots == 0:
-                print("Warning: shots=0 is not supported for statevector_simulator. Using shots=1 instead.")
+                warnings.warn("shots=0 is not supported for statevector_simulator. Using shots=1 instead.")
                 shots = 1
         else:
             simulator = Aer.get_backend('aer_simulator')
@@ -482,10 +482,10 @@ class QuantumComputer:
     def _alloc_qubit(self, q):
         if self._track_unitary:
             if len(self.state)**2*16*2 > psutil.virtual_memory().available:
-                print(f"Warning: RAM almost full ({self.n}-qubit unitary)")
+                warnings.warn(f"RAM almost full ({self.n}-qubit unitary)")
         else:
             if len(self.state)*16*2 > psutil.virtual_memory().available:
-                print(f"Warning: RAM almost full ({self.n} qubit state)")
+                warnings.warn(f"RAM almost full ({self.n} qubit state)")
 
         self.qubits.append(q)
         self.original_order.append(q)
@@ -1501,7 +1501,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
                 n = len(c)
                 break
         if n == 0:
-            print("Warning: Hamiltonian is a scalar!")
+            warnings.warn("Hamiltonian is a scalar!")
 
     if not sparse and n > 10:
         # check if we would blow up the memory
@@ -1514,7 +1514,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
         H = sp.csr_array((2**n, 2**n), dtype=dtype)
     else:
         if n > 10:
-            print(f"Warning: Using a dense matrix for a {n}-qubit Hamiltonian is not recommended. Use sparse=True.")
+            warnings.warn(f"Using a dense matrix for a {n}-qubit Hamiltonian is not recommended. Use sparse=True.")
         H = np.zeros((2**n, 2**n), dtype=dtype)
 
     for chunk in chunks:
