@@ -781,7 +781,9 @@ def partial_trace(rho, retain_qubits):
     return rho.reshape(dim_r, dim_r)
 
 def state_trace(state, retain_qubits):
-    """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical meaning of its output, but it was at times helpful to visualize and interpret subsystems, especially when the density matrix was out of reach (or better: out of memory)."""
+    """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical 
+    meaning of its output, but it was at times helpful to visualize and interpret subsystems, especially when 
+    the density matrix was out of reach (or better: out of memory)."""
     state = np.array(state)
     state[np.isnan(state)] = 0
     n = count_qubits(state)
@@ -816,7 +818,10 @@ def state_trace(state, retain_qubits):
     return state, probs
 
 def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
-    """My best attempt so far to visualize a state vector. Control with `showqubits` which subsystem you're interested in (`None` will show the whole state). `showcoeff` utilitzes `state_trace`, `showprobs` shows a pie chart of the probabilities when measured in the standard basis, and `showrho` gives a plt.imshow view on the corresponding density matrix."""
+    """My best attempt so far to visualize a state vector. Control with `showqubits` which subsystem you're 
+    interested in (`None` will show the whole state). `showcoeff` utilitzes `state_trace`, `showprobs` shows 
+    a pie chart of the probabilities when measured in the standard basis, and `showrho` gives a plt.imshow view 
+    on the corresponding density matrix."""
 
     def tobin(n, places):
         return ("{0:0" + str(places) + "b}").format(n)
@@ -945,7 +950,8 @@ def ket_from_int(d, n=None):
     return res
 
 def ket(specification, n=None):
-    """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number or a combination of binary numbers and weights. The weights will be normalized to 1."""
+    """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number 
+    or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
         n = n or count_qubits(specification) or 1
@@ -1017,7 +1023,8 @@ def ket(specification, n=None):
 def unket(state, as_dict=False, prec=5):
     """ Reverse of above. The output is always guaranteed to be normalized.
 
-    `prec` serves as filter for states close to 0, and if `as_dict==False`, it also defines to which precision the values are rounded in the string.
+    `prec` serves as filter for states close to 0, and if `as_dict==False`, it also defines to which precision 
+    the values are rounded in the string.
 
     Example:
     >>> unket(ket('00+01+10+11'))
