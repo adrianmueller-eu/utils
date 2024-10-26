@@ -2033,7 +2033,7 @@ def test_quantum_all():
         _test_constants,
         _test_fourier_matrix,
         _test_parse_unitary,
-        _test_ph,  # required by _test_random_ham
+        _test_parse_hamiltonian,  # required by _test_random_ham
         _test_random_ham,  # required by _test_exp_i
         _test_exp_i,
         _test_get_H_energies_eq_get_pe_energies,
@@ -2125,7 +2125,7 @@ def _test_parse_unitary():
     assert np.sum(np.where((parse_unitary('CCC') - I_(3)) != 0)) == 0
     pass
 
-def _test_ph():
+def _test_parse_hamiltonian():
     H = parse_hamiltonian('0.5*(II + ZI - ZX + IX)')
     assert np.allclose(H, CNOT)
 
