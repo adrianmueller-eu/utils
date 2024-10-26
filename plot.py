@@ -344,19 +344,20 @@ def colorize_complex(z):
     c = np.array(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
     return c
 
-def imshow(a, figsize=None, title="", cmap="hot", xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', magic_reshape=True, show=True, save_file=None, **pltargs):
+def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty images from arrays.
 
     Parameters
         a (np.ndarray):       2D array to be plotted
         figsize (tuple):      Figure size
         title (str):          Title of the plot
-        cmap (str):           Colormap to use
-        xticks (tuple|list):  List of xticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the x-axis.
-        yticks (tuple|list):  List of yticks. If given as tuple, etiher (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the y-axis.
+        cmap (str):           Colormap to use. For non-complex arrays only.
+        xticks (tuple|list):  List of xticks. If given as tuple, either (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the x-axis.
+        yticks (tuple|list):  List of yticks. If given as tuple, either (start, stop) or (ticks, labels). If given as list, ticks are spaced evenly (so, ensure the first and last label are given!). Give an empty list to disable the y-axis.
         xticks_rot (float):   Rotation of the xticks
         xlabel (str):         Label for the x-axis
         ylabel (str):         Label for the y-axis
+        vmin / vmax (float):  Minimum and maximum value for the colorbar.
         colorbar (bool|str):  Whether to show the colorbar. If 'auto', show if the array is not complex.
         magic_reshape (bool): If True, automatically reshape long vectors if possible
         show (bool):          Whether to show the plot
@@ -388,26 +389,44 @@ def imshow(a, figsize=None, title="", cmap="hot", xticks=None, yticks=None, xtic
         figsize = (xdim, ydim)
     fig = plt.figure(figsize=figsize)
 
+    iscomplex = is_complex(a)
+    if iscomplex:
+        if colorbar == True:
+            print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
+        if cmap != 'hot':
+            print("Warning: Argument cmap is not used for complex arrays.")
+
+    if vmin is not None or vmax is not None:
+        if iscomplex:
+            print("Warning: vmin and vmax are not supported for complex arrays.")
+            norm = None
+        else:
+            if vmin is None:
+                vmin = np.min(a)
+            if vmax is None:
+                vmax = np.max(a)
+            if vmin > vmax:
+                print("Warning: vmin > vmax")
+            norm = colors.Normalize(vmin, vmax)
+    else:
+        norm = None
+
     if is_vector:
-        if is_complex(a):
+        if iscomplex:
             img = colorize_complex(a)
-            if colorbar == True:
-                print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, aspect=5/a.shape[0], **pltargs)
         else:
             a = a.real
-            img = plt.imshow(a, cmap=cmap, **pltargs)
+            img = plt.imshow(a, cmap=cmap, norm=norm, **pltargs)
             if colorbar:  # True or 'auto'
                 fig.colorbar(img, fraction=0.01, pad=0.01)
     elif len(a.shape) == 2:
-        if is_complex(a):
+        if iscomplex:
             img = colorize_complex(a)
-            if colorbar == True:
-                print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
             plt.imshow(img, **pltargs)
         else:
             a = a.real
-            img = plt.imshow(a, cmap=cmap, **pltargs)
+            img = plt.imshow(a, cmap=cmap, norm=norm, **pltargs)
             if colorbar:  # True or 'auto'
                 if 1 <= a.shape[1] / a.shape[0] < 2.5:
                     fig.colorbar(img, fraction=0.04 * a.shape[0] / a.shape[1], pad=0.01)
