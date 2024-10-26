@@ -1471,7 +1471,7 @@ def _test_is_hermitian():
     assert not is_antihermitian(1j*c)
 
 def _test_random_hermitian():
-    a = random_hermitian(5)
+    a = random_hermitian(randint(2,20))
     assert is_hermitian(a)
 
 def _test_is_unitary():
@@ -1505,8 +1505,9 @@ def _test_is_psd():
     assert is_psd(a)
 
     # unitarily diagonalizable (= normal) + positive eigenvalues <=> PSD
-    U = random_unitary(5)
-    p = np.random.rand(5)
+    d = randint(2,20)
+    U = random_unitary(d)
+    p = np.random.rand(d)
     a = U @ np.diag(p) @ U.conj().T
     assert is_psd(a)
 
