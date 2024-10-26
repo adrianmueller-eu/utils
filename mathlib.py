@@ -1,7 +1,7 @@
 import sys, warnings
 import numpy as np
 from math import factorial, sqrt, ceil
-from itertools import combinations, chain
+from itertools import combinations, chain, permutations
 import scipy.sparse as sp
 from numpy.random import randint
 from .models import Polynomial
@@ -243,6 +243,24 @@ except:
 
     def matsqrt(A, n=2):
         return matpow(A, 1/n)
+
+def permutation_sign(p, base):
+    if base == 1:
+        return 1
+    inversions = sum(i > j for i,j in combinations(p, 2))
+    return base**inversions
+
+def immanant(A, char):
+    """ Thanks for the cookies! """
+    r = range(A.shape[0])
+    return sum(permutation_sign(P, char) * np.prod(A[r, P]) for P in permutations(r))
+
+def permanent(A):
+    return immanant(A, 1)
+
+def determinant(A):
+    # np.prod(np.linalg.eigvals(A))  # O(n^3)
+    return immanant(A, -1)           # O(n!)
 
 def commutator(A, B):
     return A @ B - B @ A
@@ -1295,6 +1313,7 @@ def test_mathlib_all():
         _test_random_projection,
         _test_matexp,
         _test_matlog,
+        _test_immanant,
         _test_roots,
         _test_gcd,
         _test_is_coprime,
@@ -1546,6 +1565,13 @@ def _test_matlog():
 
     U = random_unitary(randint(2,20))  # any unitary is exp(-iH) for some hermitian H
     assert is_antihermitian(matlog(U))
+
+def _test_immanant():
+    A = np.array([[1, 2], [3, 4]])
+    assert np.isclose(determinant(A), -2), f"{determinant(A)} ≠ -2"
+    assert np.isclose(permanent(A), 10), f"{permanent(A)} ≠ 10"
+    A = random_square(randint(2,6))
+    assert np.isclose(determinant(A), np.linalg.det(A)), f"{determinant(A)} ≠ {np.linalg.det(A)}"
 
 def _test_roots():
     # Test cases
