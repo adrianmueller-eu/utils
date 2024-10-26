@@ -342,7 +342,7 @@ class QuantumComputer:
         if state is None:
             self.reset(qubits)
         else:
-            self.initialize(state, qubits)
+            self.init(state, qubits)
 
     @property
     def n(self):
@@ -443,7 +443,7 @@ class QuantumComputer:
             return probs
         return np.sum(probs, axis=1)
 
-    def initialize(self, state, qubits=None):
+    def init(self, state, qubits=None):
         if qubits is None:
             if self.n == 0:  # infer `qubits` from `state`
                 self.state = ket(state)
@@ -467,17 +467,17 @@ class QuantumComputer:
         return self
 
     def reset(self, qubits=None):
-        if qubits or is_int(qubits):
-            self.initialize(0, qubits)
+        if qubits is not None:
+            self.init(0, qubits)
         elif self.n:
-            self.initialize(0)
+            self.init(0)
         # else: pass
         return self
 
     def random(self, n=None):
         n = n or self.n
         assert n, 'No qubits has been allocated yet'
-        self.initialize(random_ket(n))
+        self.init(random_ket(n))
         return self
 
     def _alloc_qubit(self, q):
@@ -2178,7 +2178,7 @@ def _test_QuantumComputer():
     assert unket(qc.get_state()) == '00'
     qc.h()
     qc.x(2)
-    qc.initialize(2, [0,1])
+    qc.init(2, [0,1])
     assert unket(qc.get_state()) == '101'
     qc.z([0,2])  # noop
     qc.swap(1,2)
@@ -2193,7 +2193,7 @@ def _test_QuantumComputer():
 
     # Heisenberg uncertainty principle
     qc = QuantumComputer(1)
-    qc.initialize(random_ket(1))
+    qc.init(random_ket(1))
     assert qc.std(X) * qc.std(Z) >= abs(qc.ev(1j*(X@Z - Z@X)))/2
 
     # more complex test
