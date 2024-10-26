@@ -313,7 +313,10 @@ def scatter1d(data, figsize=None, xticks=None, alpha=.5, s=500, marker="|", xlim
     ax.spines["left"].set_visible(False)
     ax.set_yticks([])
     if xticks:
-        ax.set_xticks(xticks)
+        if len(xticks) == 2 and len(xticks[0]) == len(xticks[1]):
+            ax.set_xticks(xticks[0], xticks[1])
+        else:
+            ax.set_xticks(xticks)
     if title:
         ax.set_title(title)
     if xlim is not None:
