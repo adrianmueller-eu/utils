@@ -323,7 +323,6 @@ try:
             t_circuit = t_circuit.decompose()
         return len(t_circuit._data)
 
-
 except ModuleNotFoundError:
     print("Warning: qiskit not installed! Use `pip install qiskit qiskit_aer pylatexenc`.")
     pass
@@ -507,7 +506,7 @@ class QuantumComputer:
         self._reset_unitary()
         return self
 
-    def _check_qubit_arguments(self, qubits, allow_new, update_state=True):
+    def _check_qubit_arguments(self, qubits, allow_new):
         if isinstance(qubits, str) and qubits == 'all':
             qubits = self.original_order
         if not isinstance(qubits, (list, np.ndarray)):
@@ -517,10 +516,10 @@ class QuantumComputer:
         for q in qubits:
             if q not in self.qubits:
                 if allow_new:
-                    self._alloc_qubit(q, update_state=update_state)
+                    self._alloc_qubit(q)
                 else:
                     raise ValueError(f"Invalid qubit: {q}")
-        assert len(set(qubits)) == len(qubits), f"Qubits should not appear multiple times, but was {qubits}"
+        assert len(set(qubits)) == len(qubits), f"Qubits should not contain a qubit multiple times, but was {qubits}"
         return qubits
 
     def _reset_unitary(self):
