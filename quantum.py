@@ -633,20 +633,26 @@ class QuantumComputer:
     def cx(self, control, target):
         return self(CX, [control, target])
 
+    def nx(self, control, target):
+        return self(NX, [control, target])
+
     def ccx(self, control1, control2, target):
         return self(Toffoli, [control1, control2, target])
 
-    def c(self, U, control, target):
+    def c(self, U, control, target, negative=False):
         if not isinstance(control, (list, np.ndarray)):
             control = [control]
         control = list(control)
         if not isinstance(target, (list, np.ndarray)):
             target = [target]
         target = list(target)
-        U = self._parse_unitary(U)
+        U = self.parse_unitary(U, len(target))
         for _ in control:
-            U = C_(U)
+            U = C_(U, negative=negative)
         return self(U, control + target)
+
+    def cc(self, U, control1, control2, target):
+        return self.c(U, [control1, control2], target)
 
     def swap(self, qubit1, qubit2):
         return self(SWAP, [qubit1, qubit2])
