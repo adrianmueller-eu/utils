@@ -187,8 +187,8 @@ try:
 
     def run(circuit, shots=1, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4), title=""):
         if shots > 10:
-            tc = time_complexity(circuit)
-            print("TC: %d, expected running time: %.3fs" % (tc, tc * 0.01))
+            n_gates = count_gates(circuit)
+            print("#gates: %d, expected running time: %.3fs" % (n_gates, n_gates * 0.01))
         if generate_state:
             simulator = Aer.get_backend("statevector_simulator")
             if shots is None or shots == 0:
