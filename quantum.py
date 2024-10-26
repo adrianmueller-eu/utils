@@ -335,7 +335,9 @@ class QuantumComputer:
     """
     A naive simulation of a quantum computer.
     """
-    def __init__(self, qubits=None, state=None):
+    def __init__(self, qubits=None, state=None, track_unitary='auto'):
+        self.track_unitary = track_unitary
+        self.MAX_UNITARY = 8
         self.clear()
 
         if is_int(qubits):
@@ -349,15 +351,22 @@ class QuantumComputer:
     def n(self):
         return len(self.qubits)
 
+    @property
+    def _track_unitary(self):
+        return self.track_unitary and not (
+            self.track_unitary == 'auto' and self.n > self.MAX_UNITARY
+        )
+
     def clear(self):
         self.state = np.array([1.])
         self.qubits = []
         self.original_order = []
+        self._reset_unitary()
         return self
 
     def __call__(self, U, qubits):
         qubits = self._check_qubit_arguments(qubits, True)
-        U = self._parse_unitary(U)
+        U = self.parse_unitary(U)
         if U.shape == (2,2) and len(qubits) > 1:
             U_ = U
             for _ in qubits[1:]:
@@ -367,6 +376,8 @@ class QuantumComputer:
         self._reorder(qubits)
         # apply U: (q x q) x (q x (n-q)) -> q x (n-q)
         self.state = U @ self.state
+        if self._track_unitary:
+            self.U = np.tensordot(U, self.U, axes=1)
         return self
 
     def get_state(self, qubits='all'):
@@ -379,10 +390,11 @@ class QuantumComputer:
         return self.state
 
     def measure(self, qubits='all', obs=None):
+        self._reset_unitary()
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
-            obs = self._parse_hermitian(obs, qubits)
-            D, U = np.linalg.eig(obs)
+            obs = self.parse_hermitian(obs, len(qubits))
+            D, U = np.linalg.eig(obs)  # eig outputs a nicer basis than eigh
             self(U, qubits)  # basis change
         # play God
         probs = self._probs(qubits)
@@ -399,7 +411,7 @@ class QuantumComputer:
     def ev(self, obs, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
         self._reorder(qubits)
-        obs = self._parse_hermitian(obs, qubits)
+        obs = self.parse_hermitian(obs, len(qubits))
         ev = self.state.conj().T @ obs @ self.state
         if len(qubits) < self.n:
             ev = np.trace(ev)
@@ -419,7 +431,7 @@ class QuantumComputer:
     def probs(self, qubits='all', obs=None):
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
-            obs = self._parse_hermitian(obs, qubits)
+            obs = self.parse_hermitian(obs, len(qubits))
             D, U = np.linalg.eig(obs)
             self(U, qubits)  # basis change
             probs = self._probs(qubits)
@@ -441,6 +453,7 @@ class QuantumComputer:
                 n = count_qubits(self.state)
                 self.qubits = list(range(n))
                 self.original_order = list(range(n))
+                self._reset_unitary()
                 return self
             qubits = self.qubits
         else:
@@ -453,6 +466,7 @@ class QuantumComputer:
             self.state = np.kron(new_state, rest)
         else:
             self.state = new_state
+        self._reset_unitary()
         return self
 
     def reset(self, qubits=None):
@@ -469,14 +483,19 @@ class QuantumComputer:
         self.initialize(random_ket(n))
         return self
 
-    def _alloc_qubit(self, q, update_state=True):
-        if len(self.state)*16*2 > psutil.virtual_memory().available:
-            print(f"Warning: RAM almost full ({self.n} qubits)")
+    def _alloc_qubit(self, q):
+        if self._track_unitary:
+            if len(self.state)**2*16*2 > psutil.virtual_memory().available:
+                print(f"Warning: RAM almost full ({self.n}-qubit unitary)")
+        else:
+            if len(self.state)*16*2 > psutil.virtual_memory().available:
+                print(f"Warning: RAM almost full ({self.n} qubit state)")
 
         self.qubits.append(q)
         self.original_order.append(q)
-        if update_state:
-            self.state = np.kron(self.state.reshape(-1), [1,0]).reshape([2]*self.n)
+        self.state = np.kron(self.state.reshape(-1), [1,0]).reshape([2]*self.n)
+        if self._track_unitary:
+            self.U = np.kron(self.U, np.eye(2))
 
     def remove(self, qubits):
         qubits = self._check_qubit_arguments(qubits, False)
@@ -488,6 +507,7 @@ class QuantumComputer:
             self.state = self.state.reshape([2])
         self.qubits = [q for q in self.qubits if q not in qubits]
         self.original_order = [q for q in self.original_order if q not in qubits]
+        self._reset_unitary()
         return self
 
     def _check_qubit_arguments(self, qubits, allow_new, update_state=True):
@@ -506,13 +526,16 @@ class QuantumComputer:
         assert len(set(qubits)) == len(qubits), f"Qubits should not appear multiple times, but was {qubits}"
         return qubits
 
-    def _parse_unitary(self, U):
+    def _reset_unitary(self):
+        if self._track_unitary:
+            self.U = np.eye(2**self.n)
+
+    @staticmethod
+    def parse_unitary(U, n_qubits=None):
         if isinstance(U, (list, np.ndarray)):
             U = np.array(U)
         elif isinstance(U, str):
             U = parse_unitary(U)
-        elif hasattr(U, 'get_unitary'):
-            U = U.get_unitary()
         elif sp.issparse(U):
             U = U.toarray()
         else:
@@ -522,9 +545,13 @@ class QuantumComputer:
             except:
                 raise ValueError(f"Can't process unitary of type {type(U)}: {U}")
         assert is_unitary(U), f"Unitary is not unitary: {U}"
+        if n_qubits is not None:
+            n_obs = count_qubits(U)
+            assert n_obs == n_qubits, f"Unitary has {n_obs} qubits, but {n_qubits} qubits were provided"
         return U
 
-    def _parse_hermitian(self, H ,qubits):
+    @staticmethod
+    def parse_hermitian(H, n_qubits=None):
         if isinstance(H, (list, np.ndarray)):
             H = np.array(H)
         elif isinstance(H, str):
@@ -534,8 +561,9 @@ class QuantumComputer:
         else:
             raise ValueError(f"Can't process observable of type {type(H)}: {H}")
         assert is_hermitian(H), f"Observable is not hermitian: {H}"
-        n_obs = count_qubits(H)
-        assert n_obs == len(qubits), f"Observable has {n_obs} qubits, but {len(qubits)} were provided"
+        if n_qubits is not None:
+            n_obs = count_qubits(H)
+            assert n_obs == n_qubits, f"Observable has {n_obs} qubits, but {n_qubits} qubits were provided"
         return H
 
     def _reorder(self, new_order):
@@ -545,10 +573,19 @@ class QuantumComputer:
         if any(s > 2 for s in self.state.shape):
             self.state = self.state.reshape([2]*self.n)
         self.state = self.state.transpose(axes_new)
+        if self._track_unitary:
+            self.U = self.U.reshape([2,2]*self.n)
+            U_axes_new = axes_new + [i + self.n for i in axes_new]
+            self.U = self.U.transpose(U_axes_new)
         # collect
-        if len(new_order) < self.n:
-            self.state = self.state.reshape([2**len(new_order), -1])
+        n_front = len(new_order)
+        if n_front < self.n:
+            if self._track_unitary:
+                self.U = self.U.reshape([2**n_front, 2**n_front, -1])
+            self.state = self.state.reshape([2**n_front, -1])
         else:
+            if self._track_unitary:
+                self.U = self.U.reshape([2**n_front, 2**n_front])
             self.state = self.state.reshape(-1)
 
     def plot(self, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
