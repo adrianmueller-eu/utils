@@ -244,6 +244,20 @@ except:
     def matsqrt(A, n=2):
         return matpow(A, 1/n)
 
+def commutator(A, B):
+    return A @ B - B @ A
+
+def commute(A, B):
+    """ Check if two matrices commute. """
+    return np.allclose(commutator(A, B), 0)
+
+def anticommutator(A, B):
+    return A @ B + B @ A
+
+def anticommute(A, B):
+    """ Check if two matrices anticommute. """
+    return np.allclose(anticommutator(A, B), 0)
+
 def trace_product(A, B):
     """Hilbert-Schmidt product or trace inner product of two matrices."""
     return np.trace(A.T.conj() @ B)
@@ -1477,8 +1491,9 @@ def _test_is_normal():
     assert not is_normal(A)  # a random matrix is not normal
 
 def _test_random_normal():
-    H = random_normal(randint(2,20))
-    assert is_normal(H)
+    N = random_normal(randint(2,20))
+    assert is_normal(N)
+    assert commute(N, N.T.conj())
 
 def _test_is_projection():
     # orthogonal projection
