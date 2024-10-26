@@ -943,7 +943,10 @@ def random_dm(n=1, pure=False):
         return kets @ np.diag(probs) @ kets.conj().T
 
 def ket_from_int(d, n=None):
-    n = n or int(np.ceil(np.log2(d+1))) or 1
+    if not n:
+        n = int(np.ceil(np.log2(d+1))) or 1
+    elif d >= 2**n:
+        raise ValueError(f"A {n}-qubit state doesn't have basis state {d} (max is {2**n-1})")
     # return np.array(bincoll_from_int(2**d, 2**n)[::-1], dtype=float)
     res = np.zeros(2**n)
     res[d] = 1
@@ -1080,7 +1083,7 @@ def unket(state, as_dict=False, prec=5):
             res += [f"{weight}*({'+'.join(weights[weight])})"]
     return "+".join(res).replace("+-", "-")
 
-def op(specification1, specification2=None):
+def op(specification1, specification2=None, n=None):
     # If it's already a matrix, ensure it's a density matrix and return it
     if isinstance(specification1, (list, np.ndarray)):
         specification1 = np.array(specification1, copy=False)
@@ -1090,8 +1093,8 @@ def op(specification1, specification2=None):
             if not abs(sp1_trace - 1) < 1e-8:
                 specification1 = specification1 / sp1_trace
             return specification1
-    s1 = ket(specification1)
-    s2 = s1 if specification2 is None else ket(specification2)
+    s1 = ket(specification1, n)
+    s2 = s1 if specification2 is None else ket(specification2, count_qubits(s1))
     return np.outer(s1, s2.conj())
 
 def dm(specification1, specification2=None):
@@ -2204,6 +2207,8 @@ def _test_op_dm():
     assert np.allclose(op(0,1), [[0,1], [0,0]])
     assert np.allclose(op(1,0), [[0,0], [1,0]])
     assert np.allclose(op(1),   [[0,0], [0,1]])
+    O = op(0,3,n=2)
+    assert O.shape[0] == O.shape[1]
     # op should be fast enough to return already-density-matrices 1000 times in negligible time
     import time
     rho = random_dm(2)
