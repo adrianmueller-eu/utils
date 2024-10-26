@@ -213,39 +213,80 @@ try:
             return result
 
     class exp_i(QuantumCircuit):
-        def __init__(self, H, k=1):
+        def __init__(self, H, k=1, use_pauli=False, trotter_steps=3):
             """
             Represents a quantum circuit for $e^{iH}$ for a given hamiltonian (hermitian matrix) $H \\in \\mathbb C^{d\\times d}$.
-            Note that it
-            - calculates full diagonalization
-            - stores two dxd matrices (+ one dx1 vector)
+            If `use_pauli == False`, it calculates full diagonalization and stores two dxd matrices (+ one dx1 vector).
+            If `use_pauli == True`, `PauliEvolutionGate` is used, which has lower memory footprint if the Hamiltonian can be expressed
+            in a polynomial number of Pauli terms. If the system is large this also generates shorter (but only approximative) circuits.
             """
-            # diagonalize, if necessary
-            if isinstance(H, tuple):
-                self.D, self.U = H
+            from qiskit.synthesis.evolution import SuzukiTrotter
+            from qiskit.quantum_info import SparsePauliOp
+            from qiskit.circuit.library import PauliEvolutionGate
+            from qiskit.quantum_info.operators import Operator
+
+            self.use_pauli = use_pauli
+            if self.use_pauli:
+                k = -k  # PauliEvolutionGate uses exp(-iHt)
+                synth = SuzukiTrotter(2*trotter_steps)
+                if isinstance(H, PauliEvolutionGate):
+                    self.pauli_ev = H
+                elif isinstance(H, SparsePauliOp):
+                    self.pauli_ev = PauliEvolutionGate(H, k, synthesis=synth)
+                elif isinstance(H, dict):
+                    pauli = SparsePauliOp.from_list(H.items())
+                    self.pauli_ev = PauliEvolutionGate(pauli, k, synthesis=synth)
+                else:
+                    coeffs, obs = pauli_decompose(H)
+                    pauli = SparsePauliOp.from_list(zip(obs, coeffs))
+                    self.pauli_ev = PauliEvolutionGate(pauli, k, synthesis=synth)
+                self.n = self.pauli_ev.num_qubits
             else:
-                self.D, self.U = np.linalg.eigh(H)
+                if isinstance(H, tuple):
+                    self.D, self.U = H
+                    self.n = count_qubits(self.D)
+                else:
+                    self.n = count_qubits(H)
+                    # diagonalize, if necessary
+                    if self.n >= 12:
+                        warnings.warn(f"Diagonalizing a {self.n}-qubit matrix")
+                    self.D, self.U = np.linalg.eigh(H)
             # auxiliary variables
-            self.n = int(np.log2(len(self.D)))
-            self.k = int(k) if is_int(k) else k
+            try:
+                self.k = int(k)
+            except:
+                self.k = k
             name = "exp^-i" if k < 0 else "exp^i"
             name += "H" if abs(k) == 1 else f"{abs(k)}H"
             super().__init__(self.n, name=name)       # circuit on n qubits
             self.all_qubits = list(range(self.n))
             # calculate and add unitary
-            u = self.get_unitary()
-            self.unitary(Operator(u), self.all_qubits, label=self.name)
+            if use_pauli:
+                self.append(self.pauli_ev, self.all_qubits)
+            else:
+                u = self.get_unitary()
+                self.unitary(Operator(u), self.all_qubits, label=self.name)
 
         def power(self, k):
-            return exp_i((self.D, self.U), k=self.k*k)  # the tuple only stores the references
+            if self.use_pauli:
+                if k == -1:
+                    return self.pauli_ev.inverse()
+                return exp_i(self.pauli_ev, k=-self.k*k)
+            return exp_i((self.D, self.U), k=self.k*k, use_pauli=False)  # the tuple only stores the references
 
         def __pow__(self, k):
             return self.power(k)
 
         def inverse(self):
-            return exp_i((self.D, self.U), k=-self.k)
+            if self.use_pauli:
+                return self.pauli_ev.inverse()
+            return exp_i((self.D, self.U), k=-self.k, use_pauli=False)
 
         def get_unitary(self, k=1):
+            if self.use_pauli:
+                qc = QuantumCircuit(self.n)
+                qc.append(self, self.all_qubits)
+                return get_unitary(qc)
             return self.U @ np.diag(np.exp(self.k*k*1j*self.D)) @ self.U.T.conj()
 
     def get_unitary(circ, decimals=None, as_np=True):
