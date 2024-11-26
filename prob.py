@@ -75,6 +75,35 @@ def resample(x, y, size=int(1e6)):
     u = np.random.uniform(0, 1, size)
     return invcdf(u)
 
+##################
+### Statistics ###
+##################
+
+def expectation(x, p=None):
+    if p is None:
+        p = 1 / len(x)
+    return sum(p * x)
+
+def moment(x, n):
+    return expectation(x**n)
+
+def variance(x, y=None):
+    if y is None:
+        return moment(x, 2) - moment(x, 1)**2
+        y = x
+    a = np.array(list(zip(x, y)))
+    return expectation(a[:,0]*a[:,1]) - expectation(x) * expectation(y)
+    # return expectation((a[:,0] - expectation(x)) * (a[:,1] - expectation(y)))
+
+def z_transform(x):
+    return (x - np.mean(x)) / np.std(x)
+
+def correlation(x, y):
+    cov = np.cov(x, y)
+    return cov[1,0] / np.sqrt(cov[0,0] * cov[1,1])
+    return variance(x, y) / np.sqrt(variance(x) * variance(y))
+    return np.mean(z_transform(x) * z_transform(y))
+
 def ste(ar):
     return np.std(ar, ddof=1) / np.sqrt(len(ar))
 
@@ -100,6 +129,7 @@ def entropy(p): # e.g. entropy(1*[1/2] + 4*[1/8])
         return S
     p = check_probability_distribution(p).ravel()
     return -sum((p*np.log2(p) for p in p if p > 0))  # 0*log(0) = 0
+    return expectation(-np.log2(p), p)
 
 def cross_entropy(p, q):
     """Cross entropy $H(p,q) = -\\sum_i p_i \\log_2(q_i)$"""
