@@ -262,6 +262,11 @@ def determinant(A):
     # np.prod(np.linalg.eigvals(A))  # O(n^3)
     return immanant(A, -1)           # O(n!)
 
+def characteristic_polynomial(A):
+    D = np.linalg.eigvals(A)
+    p = Polynomial.from_roots(D)
+    return p
+
 def commutator(A, B):
     return A @ B - B @ A
 
