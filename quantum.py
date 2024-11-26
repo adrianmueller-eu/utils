@@ -5,7 +5,7 @@ from functools import reduce
 import matplotlib.pyplot as plt
 import scipy.sparse as sp
 from .mathlib import *
-from .plot import colorize_complex
+from .plot import colorize_complex, imshow
 from .utils import duh, is_int
 from .prob import entropy
 
@@ -370,55 +370,152 @@ class QuantumComputer:
         assert U.shape == (2**len(qubits), 2**len(qubits)), f"Invalid unitary shape for {len(qubits)} qubits: {U.shape} != {2**len(qubits),2**len(qubits)}"
         # rotate axes of state vector to have the `qubits` first
         self._reorder(qubits)
-        # apply U: (q x q) x (q x (n-q)) -> q x (n-q)
-        self.state = U @ self.state
+
+        # apply unitary
+        if self.is_matrix_mode():
+            # (q x q) x (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x q x (n-q)
+            self.state = np.tensordot(U, self.state, axes=1)
+            # (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x (n-q) x q
+            self.state = np.tensordot(self.state, U.T.conj(), axes=(2,0))
+            # q x (n-q) x (n-q) x q -> q x (n-q) x q x (n-q)
+            self.state = self.state.transpose([0, 1, 3, 2])
+        else:
+            # apply U: (q x q) x (q x (n-q)) -> q x (n-q)
+            self.state = np.tensordot(U, self.state, axes=1)
+
+        # update unitary if tracked
         if self._track_unitary:
+            # (q x q) x (q x q x 2(n-q)) -> q x q x 2(n-q)
             self.U = np.tensordot(U, self.U, axes=1)
         return self
+
+    def is_matrix_mode(self):
+        if self.state.shape[0] == 2**self.n:
+            if len(self.state.shape) == 1:
+                return False
+            return True
+        else:  # (q x (n-q)) form
+            if len(self.state.shape) == 2:
+                return False
+            return True
 
     def get_state(self, qubits='all'):
         if not self.n:
             return None
         qubits = self._check_qubit_arguments(qubits, False)
-        self._reorder(qubits)
+        self._reorder(qubits, reshape=False)
         if len(qubits) < self.n:
-            return partial_trace(self.state.reshape(-1), qubits)
+            return partial_trace(self.state, [self.qubits.index(q) for q in qubits])
         return self.state
 
-    def measure(self, qubits='all', obs=None):
+    def measure(self, qubits='all', hide_outcome=False, obs=None):
         self._reset_unitary()
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
             obs = self.parse_hermitian(obs, len(qubits))
             D, U = np.linalg.eig(obs)  # eig outputs a nicer basis than eigh
             self(U, qubits)  # basis change
-        # play God
+
         probs = self._probs(qubits)
-        choice = np.random.choice(2**len(qubits), p=probs)
-        # collapse
-        keep = self.state[choice]
-        keep = normalize(keep)
-        self.state = np.zeros_like(self.state)
-        self.state[choice] = keep
+        q = len(qubits)
+        if self.is_matrix_mode():
+            self.state = self.state.reshape(2**self.n, 2**self.n)
+            if hide_outcome:
+                # partial measurement of density matrix without "looking" -> decoherence
+                # new_state = np.zeros_like(self.state)
+                # for i, p in enumerate(probs):
+                #     Pi = np.kron(op(i, n=q), I_(self.n-q))
+                #     new_state += Pi @ self.state @ Pi.conj().T  # *p for weighing and /p for normalization cancel out
+                # self.state = new_state
+
+                # above is equivalent to throwing away all but the block diagonal elements
+                mask = np.zeros_like(self.state, dtype=bool)
+                for i in range(2**q):
+                    idcs = slice(i*2**(self.n-q), (i+1)*2**(self.n-q))
+                    mask[idcs, idcs] = True
+                self.state[~mask] = 0
+            else:
+                outcome = choice(range(2**q), p=probs)
+
+                # P = np.kron(op(outcome, n=q), I_(self.n-q))  # projector
+                # self.state = P @ self.state @ P.conj().T / probs[outcome]
+                mask = np.zeros_like(self.state, dtype=bool)
+                idcs = slice(outcome*2**(self.n-q), (outcome+1)*2**(self.n-q))
+                mask[idcs, idcs] = True
+                self.state[~mask] = 0
+        else:
+            if hide_outcome:
+                # self._reorder(qubits)  # already done in _probs
+                # if the state is a pure state, we can keep it as is
+                if entropy(probs) < 1e-12:
+                    outcome = np.argmax(probs)
+                    keep = self.state[outcome]
+                    self.state = np.zeros_like(self.state)
+                    self.state[outcome] = normalize(keep)
+                elif self.n > 12:
+                    warnings.warn("hide_outcome=True for large n -> using vector collapse (hide_outcome=False) instead of density matrix")
+                    hide_outcome = False
+                else:
+                    # repeat as density matrix
+                    self.state = np.outer(self.state, self.state.conj())
+                    return self.measure(qubits, hide_outcome=hide_outcome, obs=obs)
+            if not hide_outcome:
+                # play God
+                outcome = np.random.choice(2**q, p=probs)
+                # collapse
+                keep = self.state[outcome]
+                self.state = np.zeros_like(self.state)
+                self.state[outcome] = normalize(keep)  # may be 1 or vector
         if obs is not None:
             self(U.T.conj(), qubits)  # basis change back to standard basis
-        return binstr_from_int(choice, len(qubits))
+        if hide_outcome:
+            return self
+        return binstr_from_int(outcome, len(qubits))
+
+    def sample_purify(self):
+        if not self.is_matrix_mode():
+            raise NotImplementedError("state is not a density matrix")
+
+        self._reorder(self.original_order)
+        probs, kets = eig(self.state)
+        result = choice(range(len(probs)), p=probs)
+        self.state = kets[:, result]
+        return self
+
+    def entanglement_entropy(self, qubits='all'):
+        qubits = self._check_qubit_arguments(qubits, False)
+        if len(qubits) == self.n:
+            # generate a list of all bipartitions
+            print("All bipartitions:\n" + "-"*(self.n*2+3))
+            for bi, _ in bipartitions(range(self.n)):
+                entanglement = entropy_entanglement(self.state, bi)
+                in_partition = [str(self.qubits[i]) for i in bi]
+                out_partition = [str(q) for q in self.qubits if str(q) not in in_partition]
+                print(f"{' '.join(in_partition)}  |  {' '.join(out_partition)} \t{entanglement}")
+        else:
+            return entropy_entanglement(self.state, [self.qubits.index(q) for q in qubits])
 
     def ev(self, obs, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
-        self._reorder(qubits)
+        state = self.get_state(qubits)
         obs = self.parse_hermitian(obs, len(qubits))
-        ev = self.state.conj().T @ obs @ self.state
-        if len(qubits) < self.n:
-            ev = np.trace(ev)
+        if self.is_matrix_mode():
+            ev = np.trace(state @ obs)
+        else:
+            ev = state.conj().T @ obs @ state
         return ev.real
 
     def std(self, obs, qubits='all', return_ev=False):
-        ev = self.ev(obs, qubits)
-        m2 = self.state.conj().T @ obs @ obs @ self.state
-        if np.prod(m2.shape) > 1:
-            m2 = np.trace(m2)
-        var = m2 - ev**2
+        qubits = self._check_qubit_arguments(qubits, False)
+        state = self.get_state(qubits)
+        obs = self.parse_hermitian(obs, len(qubits))
+        if self.is_matrix_mode():
+            m1 = np.trace(state @ obs)
+            m2 = np.trace(state @ obs @ obs)
+        else:
+            m1 = state.conj().T @ obs @ state
+            m2 = state.conj().T @ obs @ obs @ state
+        var = m2 - m1**2
         std = np.sqrt(var.real)
         if return_ev:
             return std, ev
@@ -436,16 +533,23 @@ class QuantumComputer:
         return self._probs(qubits)
 
     def _probs(self, qubits='all'):
-        self._reorder(qubits)
-        probs = np.abs(self.state)**2
-        if len(probs.shape) == 1:  # all qubits
-            return probs
-        return np.sum(probs, axis=1)
+        if self.is_matrix_mode():
+            state = self.get_state(qubits)
+            return np.diag(state).real
+        else:
+            self._reorder(qubits)
+            probs = np.abs(self.state)**2
+            if len(probs.shape) == 1:  # all qubits
+                return probs
+            return np.sum(probs, axis=1)
 
     def init(self, state, qubits=None):
         if qubits is None:
             if self.n == 0:  # infer `qubits` from `state`
-                self.state = ket(state)
+                if hasattr(state, 'shape') and len(state.shape) == 2:
+                    self.state = dm(state)
+                else:
+                    self.state = ket(state)
                 n = count_qubits(self.state)
                 self.qubits = list(range(n))
                 self.original_order = list(range(n))
@@ -455,13 +559,26 @@ class QuantumComputer:
         else:
             qubits = self._check_qubit_arguments(qubits, True)
 
-        new_state = ket(state, len(qubits))
-        if len(qubits) < self.n:
-            choice = self.measure(qubits)
-            rest = self.state[int_from_binstr(choice)]
-            self.state = np.kron(new_state, rest)
+        if hasattr(state, 'shape') and len(state.shape) == 2:
+            new_state = dm(state, len(qubits))
+            if len(qubits) < self.n:
+                raise NotImplementedError("init with density matrix not implemented for less qubits")
+                choice = self.measure(qubits)
+                i = int_from_binstr(choice)
+                rest = self.state[i,i]
+                nmq = self.n - len(qubits)
+                rest = rest.reshape(2**nmq, 2**nmq)
+                self.state = np.kron(new_state, rest)
+            else:
+                self.state = new_state
         else:
-            self.state = new_state
+            new_state = ket(state, len(qubits))
+            if len(qubits) < self.n:
+                choice = self.measure(qubits)
+                rest = self.state[int_from_binstr(choice)]
+                self.state = np.kron(new_state, rest)
+            else:
+                self.state = new_state
         self._reset_unitary()
         return self
 
@@ -481,15 +598,21 @@ class QuantumComputer:
 
     def _alloc_qubit(self, q):
         if self._track_unitary:
-            if len(self.state)**2*16*2 > psutil.virtual_memory().available:
+            if np.prod(self.state.shape)**2*16*2 > psutil.virtual_memory().available:
                 warnings.warn(f"RAM almost full ({self.n}-qubit unitary)")
         else:
-            if len(self.state)*16*2 > psutil.virtual_memory().available:
-                warnings.warn(f"RAM almost full ({self.n} qubit state)")
+            if np.prod(self.state.shape)*16*2 > psutil.virtual_memory().available:
+                if self.is_matrix_mode():
+                    warnings.warn(f"RAM almost full ({self.n}-qubit density matrix)")
+                else:
+                    warnings.warn(f"RAM almost full ({self.n}-qubit state vector)")
 
+        if self.is_matrix_mode():
+            self.state = np.kron(self.state.reshape(2**self.n, 2**self.n), op(0))
+        else:
+            self.state = np.kron(self.state.reshape(2**self.n), [1,0])#.reshape([2]*self.n)
         self.qubits.append(q)
         self.original_order.append(q)
-        self.state = np.kron(self.state.reshape(-1), [1,0]).reshape([2]*self.n)
         if self._track_unitary:
             self.U = np.kron(self.U, np.eye(2))
 
@@ -497,10 +620,18 @@ class QuantumComputer:
         qubits = self._check_qubit_arguments(qubits, False)
         if len(qubits) == self.n:
             return self.clear()
-        choice = self.measure(qubits)
-        self.state = self.state[int_from_binstr(choice)]
-        if len(qubits) == self.n - 1:
-            self.state = self.state.reshape([2])
+        # if density matrix or entangled, we need to decohere
+        qubits_indcs = [self.qubits.index(q) for q in qubits]
+        if self.is_matrix_mode() or entropy_entanglement(self.state.reshape(-1), qubits_indcs) > 1e-10:
+            self.state = partial_trace(self.state, [q for q in range(self.n) if q not in qubits_indcs])
+        else:
+            # if no entanglement with others, just remove it
+            choice = self.measure(qubits, hide_outcome=False)
+            self.state = self.state[int_from_binstr(choice)]
+            self.state = normalize(self.state)
+            if len(qubits) == self.n - 1:
+                self.state = self.state.reshape([2])
+
         self.qubits = [q for q in self.qubits if q not in qubits]
         self.original_order = [q for q in self.original_order if q not in qubits]
         self._reset_unitary()
@@ -562,27 +693,38 @@ class QuantumComputer:
             assert n_obs == n_qubits, f"Observable has {n_obs} qubits, but {n_qubits} qubits were provided"
         return H
 
-    def _reorder(self, new_order):
+    def _reorder(self, new_order, reshape=True):
         new_order_all = new_order + [q for q in self.qubits if q not in new_order]
         axes_new = [self.qubits.index(q) for q in new_order_all]
         self.qubits = new_order_all # update index dictionary with new locations
-        if any(s > 2 for s in self.state.shape):
-            self.state = self.state.reshape([2]*self.n)
-        self.state = self.state.transpose(axes_new)
+        n_front = len(new_order)
+        if self.is_matrix_mode():
+            axes_new_dm = axes_new + [i + self.n for i in axes_new]
+            if any(s > 2 for s in self.state.shape):
+                self.state = self.state.reshape([2]*self.n*2)
+            self.state = self.state.transpose(axes_new_dm)
+            # collect
+            if reshape and n_front < self.n:
+                self.state = self.state.reshape([2**n_front, 2**(self.n-n_front), 2**n_front, 2**(self.n-n_front)])
+            else:
+                self.state = self.state.reshape([2**self.n, 2**self.n])
+        else:
+            if any(s > 2 for s in self.state.shape):
+                self.state = self.state.reshape([2]*self.n)
+            self.state = self.state.transpose(axes_new)
+            # collect
+            if reshape and n_front < self.n:
+                self.state = self.state.reshape([2**n_front, -1])
+            else:
+                self.state = self.state.reshape(2**self.n)
         if self._track_unitary:
             self.U = self.U.reshape([2,2]*self.n)
             U_axes_new = axes_new + [i + self.n for i in axes_new]
             self.U = self.U.transpose(U_axes_new)
-        # collect
-        n_front = len(new_order)
-        if n_front < self.n:
-            if self._track_unitary:
+            if reshape and n_front < self.n:
                 self.U = self.U.reshape([2**n_front, 2**n_front, -1])
-            self.state = self.state.reshape([2**n_front, -1])
-        else:
-            if self._track_unitary:
-                self.U = self.U.reshape([2**n_front, 2**n_front])
-            self.state = self.state.reshape(-1)
+            else:
+                self.U = self.U.reshape([2**self.n, 2**self.n])
 
     def __getitem__(self, qubits):
         if isinstance(qubits, slice):
@@ -602,12 +744,22 @@ class QuantumComputer:
         self.remove(qubits)
         return self
 
-    def plot(self, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=None, title=""):
-        self._reorder(self.original_order)
-        if showqubits is not None:
-            self._check_qubit_arguments(showqubits, False)
-            showqubits = [self.qubits.index(q) for q in showqubits]
-        return plotQ(self.state, showqubits=showqubits, showcoeff=showcoeff, showprobs=showprobs, showrho=showrho, figsize=figsize, title=title)
+    def __neg__(self):
+        if self.is_matrix_mode():
+            self._reorder(self.original_order)
+            self.state = I_(self.n) - self.state
+            return self
+        else:
+            raise ValueError("Negation is not defined for vector states")
+
+    def plot(self, show_qubits='all', **kw_args):
+        if self.n == 0:
+            return "No qubits allocated yet"
+        show_qubits = self._check_qubit_arguments(show_qubits, False)
+        state = self.get_state(show_qubits)
+        if self.is_matrix_mode():
+            return imshow(state, **kw_args)
+        return plotQ(state, **kw_args)
 
     def x(self, q):
         return self(X, q)
@@ -690,8 +842,11 @@ class QuantumComputer:
     def __str__(self):
         state = self.get_state()
         if state is not None:
-            state = unket(state)
-        return f"qubits {self.original_order} in state '{state}'"
+            if self.is_matrix_mode():
+                state = '\n' + str(state)
+            else:
+                state = unket(state)
+        return f"qubits {self.qubits} in state '{state}'"
 
     def __repr__(self):
         return self.__str__()
@@ -723,6 +878,8 @@ def transpose_qubit_order(state, new_order):
     n = count_qubits(state)
     if new_order == -1:
         new_order = list(range(n)[::-1])
+    else:
+        new_order = list(new_order)
 
     new_order_all = new_order + [q for q in range(n) if q not in new_order]
     if len(state.shape) == 1:
@@ -750,6 +907,7 @@ def partial_trace(rho, retain_qubits):
     # pre-process retain_qubits
     if is_int(retain_qubits):
         retain_qubits = [retain_qubits]
+    assert all(0 <= q < n for q in retain_qubits), f"Invalid qubit(s) {retain_qubits} for {n}-qubit state"
     dim_r = 2**len(retain_qubits)
 
     # get qubits to trace out
@@ -1097,8 +1255,8 @@ def op(specification1, specification2=None, n=None):
     s2 = s1 if specification2 is None else ket(specification2, count_qubits(s1))
     return np.outer(s1, s2.conj())
 
-def dm(specification1, specification2=None):
-    rho = op(specification1, specification2)
+def dm(specification1, specification2=None, n=None):
+    rho = op(specification1, specification2, n)
     assert is_dm(rho), f"The given matrix is not a density matrix!"
     return rho
 
@@ -2326,6 +2484,12 @@ def _test_QuantumComputer():
     qc.remove('s0')
     assert np.allclose(qc.get_state(), ket('0011'))
     qc.remove('all')
+
+    # test density matrix
+    qc = QuantumComputer(3, '010 + 101')
+    qc.remove(1)
+    qc.x(2)
+    assert np.allclose(qc.get_state(), op(op('01') + op('10')))
 
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
