@@ -1106,8 +1106,9 @@ def softmax(a, beta=1):
 
 def choice(a, size=None, replace=True, p=None):
     if p is not None:
-        if np.abs(np.sum(p) - 1) > sys.float_info.epsilon:
-            p = normalize(p, p=1)
+        p_sum = np.sum(p)
+        if np.abs(p_sum - 1) > 0.001:
+            raise ValueError(f"Probabilities sum to {p_sum:.3f} ≠ 1")
 
     if hasattr(a, '__len__'):
         n = len(a)
