@@ -1134,6 +1134,19 @@ if not sage_loaded:
         s = list(iterable)
         return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
+def bipartitions(iterable):
+    """ All unique bipartitions of an iterable.
+    >>> list(bipartitions([0,1,2]))
+    >>> [([0], [1, 2]), ([0, 1], [2]), ([0, 2], [1])]
+    """
+    s = list(iterable)
+    n = len(s)
+    for i in range(1, 1 << n):
+        part1 = [s[j] for j in range(n) if (i >> j) & 1]
+        part2 = [s[j] for j in range(n) if not (i >> j) & 1]
+        if part1 < part2:
+            yield part1, part2
+
 ### special numbers
 
 golden_ratio = (1 + np.sqrt(5))/2
