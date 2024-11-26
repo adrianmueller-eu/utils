@@ -157,32 +157,31 @@ class Polynomial(Function):
         p.error = p.mse(x,y)
         return p
 
+    @staticmethod
+    def from_roots(roots):
+        roots = list(roots)
+        p = np.prod([Polynomial([-r, 1]) for r in roots])
+        p._roots = roots
+        return p
+
     def __call__(self, x):
         return polyval(np.array(x), self.coeffs)
 
-    def print_factorized(self, precision=7):
-        variety = self.variety(precision)
-        variety = sorted(variety, key=lambda r: abs(r))
-        roots = self.roots
-        multiplicity = [roots.count(r) for r in variety]
-        factors = []
-        for r, m in zip(variety, multiplicity):
-            factor = ""
-            if np.isclose(r, 0):
-                factor = "x"
-            else:
-                r = _to_str_coeff_1(r, precision)
-                factor = f"(x-{r})"
-                factor = factor.replace("--", "+")
-            if m > 1:
-                factor += f"**{m}"
-            factors.append(factor)
-        return "*".join(factors)
-
     def __str__(self, precision=3):
-        if Polynomial.PRINT_FACTORIZED:
+        if self.PRINT_FACTORIZED:
             return self.print_factorized(precision=precision)
         return _generate_poly_label(self.coeffs, precision)
+
+    def plot(self, x=None, ax=None, label='auto'):
+        if x is None:
+            min_r, max_r = min(self.roots), max(self.roots)
+            root_range = max_r - min_r
+            x = np.linspace(-root_range*0.05, root_range*1.05, 1000) + min_r
+            if ax is None:
+                import matplotlib.pyplot as plt
+                ax = plt.gca()
+            ax.axhline(0, color='grey', linewidth=.5)
+        super().plot(x, ax, label=label)
 
     def __add__(self, other):
         if isinstance(other, Polynomial):
@@ -280,11 +279,28 @@ class Polynomial(Function):
             return set(np.round(self.roots, precision))
         return set(self.roots)
 
-    @property
     def factors(self):
         roots = sorted(self.roots, key=lambda r: abs(r))
-        factors = [Polynomial([-r, 1]) for r in roots]
-        return factors
+        return [Polynomial([-r, 1]) for r in roots]
+
+    def print_factorized(self, precision=7):
+        variety = self.variety(precision)
+        variety = sorted(variety, key=lambda r: abs(r))
+        roots = self.roots
+        multiplicity = [roots.count(r) for r in variety]
+        factors = []
+        for r, m in zip(variety, multiplicity):
+            factor = ""
+            if np.isclose(r, 0):
+                factor = "x"
+            else:
+                r = _to_str_coeff_1(r, precision)
+                factor = f"(x-{r})"
+                factor = factor.replace("--", "+")
+            if m > 1:
+                factor += f"**{m}"
+            factors.append(factor)
+        return "*".join(factors)
 
     def lt(self):
         return Polynomial([0]*self.degree + [self.coeffs[-1]])
