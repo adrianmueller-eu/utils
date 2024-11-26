@@ -1097,7 +1097,7 @@ def random_dm(n=1, pure=False):
         return np.outer(state, state.conj())
     else:
         probs = normalize(np.random.random(2**n), p=1)
-        kets = normalize(random_vec((2**n, 2**n), complex=True))
+        kets  = random_unitary(2**n)
         return kets @ np.diag(probs) @ kets.conj().T
 
 def ket_from_int(d, n=None):
