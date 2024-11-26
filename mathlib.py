@@ -314,6 +314,16 @@ def frobenius_norm(A):
 #     D, T = np.linalg.eig(J)
 #     return S @ T, np.diag(D), T.conj().T
 
+# def cholesky(A, check=True):
+#     """ Cholesky decomposition of a PSD matrix into a lower triangular matrix $A = LL^*$ """
+#     if check and not is_psd(A):
+#         raise ValueError('Cholesky decomposition works only for PSD matrices!')
+#     L = np.zeros_like(A)
+#     for i in range(A.shape[0]):
+#         L[i, i] = np.sqrt(A[i, i] - L[i, :i] @ L[i, :i])
+#         L[i+1:, i] = (A[i+1:, i] - L[i+1:, :i] @ L[i, :i].conj()) / L[i, i]
+#     return L
+
 ### rotation groups
 
 if not sage_loaded:
