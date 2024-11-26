@@ -120,13 +120,16 @@ class Function(ABC):
             return self.__str__(precision) + f" (MSE: {self.error:.{precision}g})"
         return self.__str__(precision)
 
-    def plot(self, x, ax=None, precision=3):
+    def plot(self, x, ax=None, label='auto', precision=3):
         import matplotlib.pyplot as plt
 
         if ax is None:
             ax = plt.gca()
-        ax.plot(x, self(x), label=self.label(precision))
-        ax.legend()
+        if label == 'auto':
+            label = self.label(precision)
+        ax.plot(x, self(x), label=label)
+        if label is not None:
+            ax.legend()
         return ax
 
 class Polynomial(Function):
