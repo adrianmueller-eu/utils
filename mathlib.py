@@ -441,7 +441,7 @@ def random_unitary(size):
     return matexp(1j*H)
 
 def random_psd(size, limits=(0,1), complex=True):
-    limits = np.sqrt(limits)  # because we square it later
+    # limits = np.sqrt(limits)  # because we square it later -> doesn't work for negative limits!
     a = random_square(size, limits=limits, complex=complex)
     return a @ a.conj().T
 
