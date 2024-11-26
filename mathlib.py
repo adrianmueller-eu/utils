@@ -298,7 +298,7 @@ def frobenius_norm(A):
     # return np.sqrt(np.trace(A.T.conj() @ A))
 
 # def polar(A, kind='left'):
-#     """Polar decomposition of a matrix into a unitary and a PSD matrix: $A = UJ$ or $A = KU$."""
+#     """Polar decomposition of *any* matrix into a unitary and a PSD matrix: $A = UJ$ or $A = KU$."""
 #     if kind == 'left':
 #         J = matsqrt(A.T.conj() @ A)
 #         U = A @ np.linalg.pinv(J)
