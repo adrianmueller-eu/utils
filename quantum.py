@@ -1322,6 +1322,11 @@ def op(specification1, specification2=None, n=None):
             if not abs(sp1_trace - 1) < 1e-8:
                 specification1 = specification1 / sp1_trace
             return specification1
+    elif specification2 is None:
+        if specification1 == 'random' or specification1 == 'random_mixed' or specification1 == 'random_dm':
+            return random_dm(n, pure=False)
+        elif specification1 == 'random_pure':
+            specification1 = 'random'
     s1 = ket(specification1, n)
     s2 = s1 if specification2 is None else ket(specification2, count_qubits(s1))
     return np.outer(s1, s2.conj())
