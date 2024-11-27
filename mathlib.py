@@ -1141,11 +1141,13 @@ def bipartitions(iterable):
     """
     s = list(iterable)
     n = len(s)
-    for i in range(1, 1 << n):
+    for i in range(1, 1 << n-1):
         part1 = [s[j] for j in range(n) if (i >> j) & 1]
         part2 = [s[j] for j in range(n) if not (i >> j) & 1]
         if part1 < part2:
             yield part1, part2
+        else:
+            yield part2, part1
 
 ### special numbers
 
