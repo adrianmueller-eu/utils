@@ -1150,12 +1150,14 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
 
 def random_ket(n=1):
     """Generate a random state vector ($2^{n+1}-2$ degrees of freedom). Normalized and without global phase."""
+    assert is_int(n), f"n needs to be an integer, but was: {n}"
     real = np.random.random(2**n)
     imag = np.random.random(2**n)
     return normalize(real + 1j*imag)
 
 def random_dm(n=1, pure=False):
     """Generate a random density matrix ($2^{n+1}-1$ degrees of freedom). Normalized and without global phase."""
+    assert is_int(n), f"n needs to be an integer, but was: {n}"
     if pure:
         state = random_ket(n)
         return np.outer(state, state.conj())
@@ -1180,12 +1182,15 @@ def ket(specification, n=None):
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
         n = n or count_qubits(specification) or 1
-        assert len(specification) == 2**n, f"State vector has wrong length: {len(specification)} ≠ {2**n}!"
+        if hasattr(specification, 'shape'):
+            assert specification.shape == (2**n,), f"State vector has wrong shape for {n} qubits: {specification.shape} ≠ {(2**n,)}!"
+        else:
+            assert len(specification) == 2**n, f"State vector has wrong size for {n} qubits: {len(specification)} ≠ {2**n}!"
         return normalize(specification)
     if is_int(specification):
         return ket_from_int(specification, n)
     if type(specification) == str:
-        if specification == "random" and n is not None:
+        if specification == "random":
             return random_ket(n)
         # handle some special cases: |+>, |->, |i>, |-i>
         if specification == "+":
@@ -1230,7 +1235,7 @@ def ket(specification, n=None):
                 if n is None:
                     n = len(state)
                 else:
-                    assert len(state) == n, f"Part of the specification has wrong length: len('{state}') != {n}"
+                    assert len(state) == n, f"Part of the specification has wrong length for {n} qubits: len('{state}') != {n}"
                 if state in specification_dict:
                     specification_dict[state] += weight
                 else:
@@ -1310,6 +1315,8 @@ def op(specification1, specification2=None, n=None):
     if isinstance(specification1, (list, np.ndarray)):
         specification1 = np.array(specification1, copy=False)
         if len(specification1.shape) > 1:
+            n = n or count_qubits(specification1) or 1
+            assert specification1.shape == (2**n, 2**n), f"Matrix has wrong shape for {n} qubits: {specification1.shape} ≠ {(2**n, 2**n)}"
             sp1_trace = np.trace(specification1)
             # trace normalize it if it's not already
             if not abs(sp1_trace - 1) < 1e-8:
@@ -1364,7 +1371,7 @@ def gibbs(H, beta=1):
 def count_qubits(obj):
     if hasattr(obj, '__len__') and not isinstance(obj, str):
         n = int(np.log2(len(obj)))
-        assert len(obj) == 2**n, f"Dimension must be a power of 2, but was {len(obj)}"
+        # assert len(obj) == 2**n, f"Dimension must be a power of 2, but was {len(obj)}"
         return n
     if isinstance(obj, str):
         import re
