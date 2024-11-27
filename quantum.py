@@ -479,27 +479,34 @@ class QuantumComputer:
     def decohere(self, qubits='all', obs=None):
         return self.measure(qubits, collapse=False, obs=obs)
 
+    def is_pure(self, qubits='all'):
+        rho = self.get_state(qubits)
+        if len(rho.shape) == 1:
+            return True
+        return np.trace(rho @ rho).real == 1
+
     def sample_purify(self):
         if not self.is_matrix_mode():
             raise NotImplementedError("State is not a density matrix")
 
         self._reorder(self.original_order)
-        probs, kets = eig(self.state)
-        result = choice(range(len(probs)), p=probs)
+        probs, kets = np.linalg.eig(self.state)
+        result = choice(range(len(probs)), p=probs.real)
         self.state = kets[:, result]
         return self
 
     def entanglement_entropy(self, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
-        if len(qubits) == self.n:
-            for part_in, part_out in bipartitions(range(self.n)):
-                yield part_in, part_out, entropy_entanglement(self.state, part_in)
-        else:
+        if len(qubits) < self.n:
             return entropy_entanglement(self.state, [self.qubits.index(q) for q in qubits])
+        else:
+            return [(i, o, entropy_entanglement(self.state, i))
+                for i, o in bipartitions(range(self.n), unique=self.is_pure())  # H(A) = H(B) if AB is pure
+            ]
 
-    def entanglement_entropy_pp(self, sort='default', head=100, precision=7):
+    def entanglement_entropy_pp(self, sort='in', head=100, precision=7):
         res = self.entanglement_entropy()
-        if sort == 'in' or sort == 'default':
+        if sort == 'in':
             skey = lambda x: (len(x[0]), x[0])
         elif sort == 'out':
             skey = lambda x: (len(x[1]), x[1])
@@ -588,11 +595,8 @@ class QuantumComputer:
             qubits = self.qubits
         else:
             qubits, to_alloc = self._check_qubit_arguments(qubits, True)
-
             original_order = self.original_order + to_alloc
-            for q in to_alloc:
-                assert q in qubits, f"Something went wrong, qubit {q} should be in {qubits}"
-            if len(qubits) != len(to_alloc) and len(qubits) < self.n:
+            if len(qubits) != len(to_alloc):  # avoid empty allocation
                 self.remove([q for q in qubits if q not in to_alloc], collapse=collapse)
                 to_alloc = qubits
 
@@ -610,7 +614,7 @@ class QuantumComputer:
             else:
                 new_state = ket(state, n=len(qubits))
 
-        if len(qubits) == self.n:
+        if qubits == self.qubits:
             self.state = new_state
         else:
             self._alloc_qubits(to_alloc, state=new_state)
@@ -628,9 +632,16 @@ class QuantumComputer:
         # else: pass
         return self
 
+    def rename(self, qubit_name_dict):
+        for q, name in qubit_name_dict.items():
+            assert q in self.qubits, f"Qubit {q} not allocated"
+            self.qubits[self.qubits.index(q)] = name
+            self.original_order[self.original_order.index(q)] = name
+        return self
+
     def random(self, n=None):
         n = n or self.n
-        assert n, 'No qubits has been allocated yet'
+        assert n, 'No qubits have been allocated yet'
         self.init(random_ket(n))
         return self
 
@@ -2517,8 +2528,7 @@ def _test_QuantumComputer():
     assert result == '01'
 
     # Heisenberg uncertainty principle
-    qc = QuantumComputer(1)
-    qc.init(random_ket(1))
+    qc = QuantumComputer(1, 'random')
     assert qc.std(X) * qc.std(Z) >= abs(qc.ev(1j*(X@Z - Z@X)))/2
 
     # Bell basis
@@ -2562,10 +2572,20 @@ def _test_QuantumComputer():
     qc.remove('all')
 
     # test density matrix
-    qc = QuantumComputer(3, '010 + 101')
+    qc = QuantumComputer(2, '00 + 11')
+    assert np.allclose(qc.get_state(), ket([1,0,0,1]))
+    qc.decohere()
+    assert np.allclose(qc.get_state(), (op('00') + op('11'))/2)
+
+    qc = QuantumComputer(4, '0100 + 1010')
+    assert np.isclose(qc.entanglement_entropy(3), 0)
+    qc.remove(3)
+    assert not qc.is_matrix_mode()
+    assert np.isclose(qc.entanglement_entropy(1), 1)
     qc.remove(1)
+    assert qc.is_matrix_mode()
     qc.x(2)
-    assert np.allclose(qc.get_state(), op(op('01') + op('10')))
+    assert np.allclose(qc.get_state(), (op('01') + op('10'))/2)
 
 def _test_reverse_qubit_order():
     # known 3-qubit matrix

@@ -1134,20 +1134,21 @@ if not sage_loaded:
         s = list(iterable)
         return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
-def bipartitions(iterable):
-    """ All unique bipartitions of an iterable.
-    >>> list(bipartitions([0,1,2]))
-    >>> [([0], [1, 2]), ([0, 1], [2]), ([0, 2], [1])]
+def bipartitions(iterable, unique=False):
+    """ All bipartitions of an iterable.
+    >>> list(bipartitions([0,1,2], unique=True))
+    >>> [([0], [1, 2]), ([1], [0, 2]), ([0, 1], [2])]
     """
     s = list(iterable)
     n = len(s)
-    for i in range(1, 1 << n-1):
+    end = 1 << (n-1) if unique else (1 << n) - 1
+    for i in range(1, end):
         part1 = [s[j] for j in range(n) if (i >> j) & 1]
         part2 = [s[j] for j in range(n) if not (i >> j) & 1]
-        if part1 < part2:
-            yield part1, part2
+        if unique:
+            yield (part1, part2) if part1 < part2 else (part2, part1)
         else:
-            yield part2, part1
+            yield part1, part2
 
 ### special numbers
 
