@@ -497,6 +497,28 @@ class QuantumComputer:
         else:
             return entropy_entanglement(self.state, [self.qubits.index(q) for q in qubits])
 
+    def entanglement_entropy_pp(self, sort='default', head=100, precision=7):
+        res = self.entanglement_entropy()
+        if sort == 'in' or sort == 'default':
+            skey = lambda x: (len(x[0]), x[0])
+        elif sort == 'out':
+            skey = lambda x: (len(x[1]), x[1])
+        elif sort == 'asc':
+            skey = lambda x: x[2]
+        elif sort == 'desc':
+            skey = lambda x: -x[2]
+        elif type(sort) == 'function':
+            skey = sort
+        else:
+            raise ValueError(f"Invalid sort parameter: {sort}")
+
+        howmany = "All" if head is None or head + 1 >= 1 << self.n - 1 else f"Top {head}"
+        print(howmany + " bipartitions:\n" + "-"*(self.n*2+3))
+        for part_in, part_out, entanglement in sorted(res, key=skey)[:head]:
+            part_in  = [str(self.qubits[i]) for i in part_in]
+            part_out = [str(self.qubits[i]) for i in part_out]
+            print(f"{' '.join(part_in)}  |  {' '.join(part_out)} \t{entanglement:.{precision}f}".rstrip('0'))
+
     def ev(self, obs, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
         state = self.get_state(qubits)
