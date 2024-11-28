@@ -1541,6 +1541,9 @@ def count_qubits(obj):
         return len(obj.qubits)
     raise ValueError(f'Unkown object: {obj}')
 
+## TODO: def random_stabilizer_state(n): + convert n to full quantum state
+## TODO: random_tensor_network_state + convert tensor network state -> full quantum state
+
 ##################################
 ### Quantum information theory ###
 ##################################
