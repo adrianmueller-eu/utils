@@ -1113,7 +1113,12 @@ def choice(a, size=None, replace=True, p=None):
     if hasattr(a, '__len__'):
         n = len(a)
         idx = np.random.choice(n, size=size, replace=replace, p=p)
-        return np.array(a)[idx]
+        if isinstance(a, np.ndarray):
+            return a[idx]
+        try:
+            return np.array(a)[idx]
+        except:
+            return np.array(a, dtype=object)[idx]
     else:
         return np.random.choice(a, size=size, replace=replace, p=p)
 
@@ -1382,6 +1387,7 @@ def test_mathlib_all():
         _test_int_from_bincoll,
         _test_bincoll_from_int,
         _test_softmax,
+        _test_choice,
         _test_Fibonacci,
         _test_calc_pi,
         _test_log_
@@ -1990,6 +1996,19 @@ def _test_softmax():
     a = np.random.rand(5)
     b = softmax(a)
     assert np.isclose(np.sum(b), 1)
+
+def _test_choice():
+    a = [0,1,2,3]  # list
+    assert choice(a) in a
+    a = np.random.rand(5)  # np.ndarray
+    assert choice(a) in a
+    a = np.random.rand(5,4)  # vectors
+    assert choice(a) in a
+    a = [i for i,o in bipartitions(range(5))]  # different lengths
+    assert choice(a) in a
+    x = Polynomial([0, 1])
+    a = [x**i for i in range(4)]  # objects
+    assert choice(a) in a
 
 def _test_powerset():
     assert list(powerset([1,2,3])) == [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
