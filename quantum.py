@@ -490,9 +490,9 @@ class QuantumComputer:
                 if not collapse:
                     # self._reorder(qubits)  # already done in _probs
                     # if the state is a pure state, we can keep it as is
-                    if entropy(probs) < 1e-12:
-                        print("Warning: Deterministic outcome -> no decoherence required")
-                        # return self
+                    # if entropy(probs) < 1e-12:
+                    #     print("Warning: Deterministic outcome -> not entangled -> no decoherence required")
+                    #     return self
                     if self.n > self.MATRIX_BREAK:
                         warnings.warn("collapse=False for large n -> using vector collapse (collapse=True) instead of density matrix")
                         collapse = True
@@ -648,7 +648,7 @@ class QuantumComputer:
 
     def plot(self, show_qubits='all', **kw_args):
         state = self.get_state(show_qubits)
-        if self.is_matrix_mode():
+        if len(state.shape) == 2:
             return imshow(state, **kw_args)
         return plotQ(state, **kw_args)
 
