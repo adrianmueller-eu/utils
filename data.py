@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 # make a list out of a pd.corr() matrix
 def corrList(corr, index_names=("feature 1", "feature 2")):
@@ -15,8 +16,6 @@ def plot_dendrogram(X, method="ward", truncate_after=25, metric='euclidean', ax=
     dendrogram(Z, truncate_mode='lastp', p=truncate_after, leaf_rotation=90, ax=ax)
 
 def plot_dendrograms(X, methods=("single", "complete", "average", "centroid", "ward"), truncate_after=50, metric='euclidean'):
-    from scipy.cluster.hierarchy import dendrogram, linkage
-
     fig, axes = plt.subplots(len(methods), figsize=(12,6*len(methods)))
     for ax, method in zip(axes, methods):
         ax.set_title(method)
