@@ -140,28 +140,6 @@ def is_numeric(x):
 def is_iterable(x):
     return isinstance(x, Iterable)
 
-def allclose_set(a, b):
-    """ Check if for each item in a there is a corresponding item in b that is close to it and vice versa. """
-    # matched_b_indices = []
-    # for item_a in a:
-    #     for i, item_b in enumerate(b):
-    #         if i not in matched_b_indices and np.isclose(item_a, item_b):
-    #             matched_b_indices.append(i)
-    #             break
-    # return len(matched_b_indices) == len(a)
-    # convert to numpy arrays if they are not
-    if isinstance(a, set):
-        a = list(a)
-    a = np.sort(np.reshape(a, -1))
-    if isinstance(b, set):
-        b = list(b)
-    b = np.sort(np.reshape(a, -1))
-    # check if they have the same length
-    if len(a) != len(b):
-        return False
-    # check if they are close
-    return np.allclose(a, b)
-
 def startfile(filepath):
     import subprocess, os, platform
     if platform.system() == 'Darwin':       # macOS
