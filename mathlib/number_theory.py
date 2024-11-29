@@ -34,13 +34,13 @@ def gcd(*a):
     return a
 
 def is_coprime(*a):
-    """ Test if `a` and `b` are coprime. """
+    """ Test if the given integers are coprime. """
     return gcd(*a) == 1
 
 if not sage_loaded:
 
     def is_prime(n, alpha=1e-20): # only up to 2^54 -> alpha < 1e-16.26 (-> 55 iterations; < 1e-20 is 67 iterations)
-        """Miller-Rabin test for primality."""
+        """ Miller-Rabin test for primality. """
         if n == 1 or n == 4:
             return False
         if n == 2 or n == 3:
@@ -83,7 +83,7 @@ if not sage_loaded:
         return True
 
     def prime_factors(n):
-        """Simple brute-force algorithm to find prime factors"""
+        """ Simple brute-force algorithm to find prime factors. """
         factors = []
         # remove all factors of 2 first
         while n % 2 == 0:
@@ -131,7 +131,7 @@ def closest_prime_factors_to(n, m):
     return min_combo
 
 def int_sqrt(n):
-    """For integer $n$, find the integer $a$ closest to $\\sqrt{n}$, such that $n/a$ is also an integer."""
+    """ For integer $n$, find the integer $a$ closest to $\\sqrt{n}$, such that $n/a$ is also an integer. """
     if n == 1 or n == 0:
         return n
     return int(np.prod(closest_prime_factors_to(n, sqrt(n))))
