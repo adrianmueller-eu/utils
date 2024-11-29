@@ -113,7 +113,7 @@ class QuantumComputer:
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
             obs = self.parse_hermitian(obs, len(qubits))
-            D, U = np.linalg.eig(obs)
+            D, U = np.linalg.eigh(obs)  # eigh produces less numerical errors than eig
             self(U.T.conj(), qubits)  # basis change
         try:
             yield qubits
