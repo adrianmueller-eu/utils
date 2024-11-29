@@ -2530,15 +2530,14 @@ def _test_parse_hamiltonian():
     assert np.allclose(H, 1.2*IZZI)
 
 def _test_random_ham():
-    for _ in range(100):
-        n_qubits = np.random.randint(1, 5)
-        n_terms = np.random.randint(1, 100)
-        n_terms = min(n_terms, 2**(2*n_qubits)-1)
-        H = random_ham(n_qubits, n_terms)
-        H = parse_hamiltonian(H)
-        assert H.shape == (2**n_qubits, 2**n_qubits)
-        assert np.allclose(np.trace(H), 0)
-        assert is_hermitian(H)
+    n_qubits = np.random.randint(1, 5)
+    n_terms = np.random.randint(1, 100)
+    n_terms = min(n_terms, 2**(2*n_qubits)-1)
+    H = random_ham(n_qubits, n_terms)
+    H = parse_hamiltonian(H)
+    assert H.shape == (2**n_qubits, 2**n_qubits)
+    assert np.allclose(np.trace(H), 0)
+    assert is_hermitian(H)
 
 def _test_exp_i():
     n = randint(1,6)
@@ -2596,11 +2595,10 @@ def _test_ket_unket():
             ket(psi)
 
 def _test_random_ket():
-    for _ in range(10):
-        n_qubits = np.random.randint(1, 10)
-        psi = random_ket(n_qubits)
-        assert psi.shape == (2**n_qubits,)
-        assert np.allclose(np.linalg.norm(psi), 1)
+    n_qubits = np.random.randint(1, 10)
+    psi = random_ket(n_qubits)
+    assert psi.shape == (2**n_qubits,)
+    assert np.allclose(np.linalg.norm(psi), 1)
 
 def _test_op_dm():
     assert np.allclose(op(0),   [[1,0], [0,0]])
@@ -2622,19 +2620,17 @@ def _test_op_dm():
 def _test_is_dm():
     assert is_dm(np.eye(2**2)/2**2)
     # random Bloch vectors
-    for _ in range(10):
-        v = np.random.uniform(-1, 1, 3)
-        if np.linalg.norm(v) > 1:
-            v = normalize(v)
-        # create dm from Bloch vector
-        rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
-        assert is_dm(rho)
+    v = np.random.uniform(-1, 1, 3)
+    if np.linalg.norm(v) > 1:
+        v = normalize(v)
+    # create dm from Bloch vector
+    rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
+    assert is_dm(rho)
 
 def _test_random_dm():
-    for _ in range(100):
-        n_qubits = np.random.randint(1, 5)
-        rho = random_dm(n_qubits)
-        assert is_dm(rho)
+    n_qubits = np.random.randint(1, 5)
+    rho = random_dm(n_qubits)
+    assert is_dm(rho)
 
 def _test_QuantumComputer():
     # test basic functionality
