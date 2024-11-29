@@ -1,8 +1,6 @@
 import numpy as np
 from math import sqrt, ceil
 
-from .sets import powerset
-
 sage_loaded = False
 try:
     from sage.all import *
@@ -118,6 +116,9 @@ if not sage_loaded:
 
 def closest_prime_factors_to(n, m):
     """Find the set of prime factors of n with product closest to m."""
+    if not sage_loaded:
+        from .sets import powerset
+
     pf = prime_factors(n)
 
     min_diff = float("inf")

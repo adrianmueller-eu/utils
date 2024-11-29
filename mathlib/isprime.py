@@ -1,4 +1,4 @@
-from mathlib import is_prime
+from number_theory import is_prime
 
 if __name__ == "__main__":
     import sys
