@@ -1,5 +1,4 @@
 This submodule contains a wide range of functionalities for quantum computing.
-
 Here are some examples:
 ```python
 psi = ket('01')
@@ -10,7 +9,11 @@ print(unket(swap @ psi))
 '10'
 ```
 
-This creates a [SWAP gate](https://en.wikipedia.org/wiki/Quantum_logic_gate#Swap_gate) and swaps `01` to `10`. Alternatively, we could have created the matrix using `parse_hamiltonian('0.5*(XX + YY + ZZ + II)')`. The following example uses `parse_hamiltonian` in combination with `ising` to generate an ising hamiltonian
+This creates a [SWAP gate](https://en.wikipedia.org/wiki/Quantum_logic_gate#Swap_gate) and swaps `01` to `10`. Alternatively, we could have created the matrix using
+```python
+SWAP = parse_hamiltonian('0.5*(XX + YY + ZZ + II)')
+```
+The following example uses `parse_hamiltonian` in combination with `ising` to generate an ising hamiltonian
 ```python
 H = parse_hamiltonian(ising((2,3), kind='2d', circular=True))  # random ising model on a 2x3 lattice with periodic boundary conditions
 ge, gs = ground_state_exact(H)
@@ -94,3 +97,5 @@ Top 5 bipartitions:
 0 1 2 4 5  |  3 	2.8515369
 1 2 4 5  |  0 3 	2.8515369
 ```
+
+Enjoy! ❤️
