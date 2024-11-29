@@ -605,7 +605,10 @@ class QuantumComputer:
         return self.__str__()
 
     def __getitem__(self, qubits):
-        return self.get_state(qubits)
+        state = self.get_state(qubits)
+        if len(state.shape) == 1:
+            state = np.outer(state, state.conj())
+        return state
 
     def __setitem__(self, qubits, state):
         self.init(state, qubits)
