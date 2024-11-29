@@ -140,6 +140,8 @@ def permanent(A):
     return immanant(A, 1)
 
 def determinant(A):
+    if A.shape[0] >= 10:
+        raise ValueError("Please use a proper method like np.linalg.det.")
     # np.prod(np.linalg.eigvals(A))  # O(n^3)
     return immanant(A, -1)           # O(n!)
 
