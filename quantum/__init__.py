@@ -2,7 +2,7 @@ from .constants import *
 from .state import *
 from .hamiltonian import *
 from .unitary import *
-from .quantum_info import *
+from .info import *
 from .QuantumComputer import *
 
 ###############

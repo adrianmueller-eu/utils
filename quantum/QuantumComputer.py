@@ -7,7 +7,7 @@ from .constants import *
 from .state import partial_trace, ket, op, dm, unket, count_qubits, random_ket, plotQ
 from .hamiltonian import parse_hamiltonian
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
-from .quantum_info import entropy_entanglement
+from .info import entropy_entanglement
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_hermitian
 from ..plot import imshow
 from ..utils import is_int, duh
