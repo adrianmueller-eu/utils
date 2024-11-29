@@ -87,11 +87,11 @@ qubits ['a', 'c'] in state
 
 Here is a slightly more complex example
 ```python
-qc = QuantumComputer(6)  # create a quantum simulator initialized with a 8-qubit random mixed state
-qc[3:5] = random_dm(2)   # initialize qubits [2,3] to a random density matrix
-qc.qft(list(range(6)))   # apply the quantum Fourier transform to qubits [0,1,2,3]
+qc = QuantumComputer(6)  # create a quantum simulator initialized with a 6-qubit random mixed state
+qc[3:5] = random_dm(2)   # initialize qubits [3,4] to a random density matrix
+qc.qft(list(range(6)))   # apply the quantum Fourier transform to all qubits
 qc.decohere([2,4])       # decohere qubits [2,4]
-qc.entanglement_entropy_pp('desc', head=5)  # show the remaining entanglement between all qubit bipartitions
+qc.entanglement_entropy_pp('desc', head=5)  # show which bipartitions have the highest entanglement
 # qc.plot()  # try this, also try calling qc.purify(True) before plotting
 # qc.plotU() # comment out qc.decohere above and then try this
 ```
