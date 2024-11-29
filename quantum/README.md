@@ -27,7 +27,11 @@ Ground state energy: -6.1492550068479614
 Energy of random state: -0.8639892573384738
 ```
 
-The class `QuantumComputer` allows to do interesting things. For example, the last part above could have been written as `QC(n, 'random').ev(H)`. Let's create a simple Bell state
+The class `QuantumComputer` allows to do interesting things. For example, the last part above could have been written as 
+```python
+QuantumComputer(n, 'random').ev(H)
+```
+Let's create a simple Bell state
 ```python
 qc = QuantumComputer(2)
 qc.h(0).cx(0, 1)  # create a Bell state
