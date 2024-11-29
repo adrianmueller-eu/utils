@@ -5,10 +5,6 @@ from .unitary import *
 from .quantum_info import *
 from .QuantumComputer import *
 
-from numpy.random import randint
-from ..prob import entropy
-from ..mathlib import is_unitary, is_involutory, anticommute, random_unitary, random_hermitian, float_from_binstr
-
 ###############
 ### Aliases ###
 ###############
@@ -22,6 +18,9 @@ qc = QuantumComputer()
 #############
 ### Tests ###
 #############
+
+from numpy.random import randint
+from ..mathlib import is_involutory, anticommute, float_from_binstr, random_hermitian
 
 def test_quantum_all():
     tests = [
