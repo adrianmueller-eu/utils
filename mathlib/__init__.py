@@ -22,7 +22,8 @@ def test_mathlib_all():
         _test_deg,
         _test_softmax,
         _test_choice,
-        # sets
+        # set
+        _test_bipartitions,
         # binary
         _test_binFrac,
         _test_binstr_from_float,
@@ -137,6 +138,24 @@ def _test_rad():
 def _test_deg():
     assert deg(np.pi) == 180
     assert deg(0) == 0
+
+def _test_bipartitions():
+    actual = list(bipartitions(range(3), unique=True))
+    expected = [([0], [1, 2]), ([1], [0, 2]), ([2], [0, 1])]
+    for a in actual:
+        assert a in expected or a[::-1] in expected  # order doesn't matter
+    assert len(actual) == len(expected)
+
+    actual = list(bipartitions(list('abc'), unique=False))
+    expected = [(['a'], ['b', 'c']),
+                (['b'], ['a', 'c']),
+                (['c'], ['a', 'b']),
+                (['a', 'b'], ['c']),
+                (['a', 'c'], ['b']),
+                (['b', 'c'], ['a'])]
+    for a in actual:
+        assert a in expected
+    assert len(actual) == len(expected)
 
 def _test_powerset():
     assert list(powerset([1,2,3])) == [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
