@@ -768,34 +768,34 @@ class QuantumComputer:
             warnings.warn("State is already a vector")
             return self
 
-        self._reorder(self.original_order)
-        probs, kets = np.linalg.eig(self.state)
-        result = choice(range(len(probs)), p=probs.real)
-        self.state = kets[:, result]
-        return self
 
-    def purify(self):
+
+    def purify(self, sample=False):
         """
-        Convert density matrix to a state vector representation by purification (i.e. doubling the number of qubits).
+        Convert density matrix to a state vector representation by purification, either by doubling the number of qubits or by sampling from the eigenstates.
         """
         if not self.is_matrix_mode():
             warnings.warn("State is already a vector")
             return self
 
         self._reorder(self.original_order)
-        # construct purification
         probs, kets = np.linalg.eig(self.state)
-        state = np.zeros(2**(2*self.n), dtype=complex)
-        for i, p in enumerate(probs):
-            state += np.sqrt(p.real) * np.kron(kets[:, i], kets[:, i])
-        # find self.n integers that are not in self.qubits
-        new_qubits = []
-        i = self.n
-        while len(new_qubits) < self.n:
-            if i not in self.qubits:
-                new_qubits.append(i)
-            i += 1
-        self.init(state, self.qubits + new_qubits)
+        if sample:
+            outcome = choice(2**self.n, p=probs.real)
+            self.state = kets[:, outcome]
+        else:
+            # construct purification
+            state = np.zeros(2**(2*self.n), dtype=complex)
+            for i, p in enumerate(probs):
+                state += np.sqrt(p.real) * np.kron(kets[:, i], kets[:, i])
+            # find self.n integers that are not in self.qubits
+            new_qubits = []
+            i = self.n
+            while len(new_qubits) < self.n:
+                if i not in self.qubits:
+                    new_qubits.append(i)
+                i += 1
+            self.init(state, self.qubits + new_qubits)
         return self
 
     def to_dm(self):
@@ -2732,7 +2732,7 @@ def _test_QuantumComputer():
     qc.decohere()
     assert qc.is_matrix_mode()
     assert np.allclose(qc.get_state(), (op('00') + op('11'))/2)
-    qc.sample_purify()
+    qc.purify()
     assert not qc.is_matrix_mode()
     qc.remove([0])
 
@@ -2745,6 +2745,7 @@ def _test_QuantumComputer():
     assert qc.is_matrix_mode()
     qc.x(2)
     assert np.allclose(qc.get_state(), (op('01') + op('10'))/2)
+    qc.purify(sample=True)
 
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
