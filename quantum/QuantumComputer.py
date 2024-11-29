@@ -444,16 +444,6 @@ class QuantumComputer:
             return True
         return np.isclose(np.trace(rho @ rho), 1)
 
-    def sample_purify(self):
-        """
-        Convert density matrix to a state vector representation by sampling from the eigenstates according to their eigenvalues (Born rule).
-        """
-        if not self.is_matrix_mode():
-            warnings.warn("State is already a vector")
-            return self
-
-
-
     def purify(self, sample=False):
         """
         Convert density matrix to a state vector representation by purification, either by doubling the number of qubits or by sampling from the eigenstates.
