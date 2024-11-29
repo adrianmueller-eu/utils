@@ -346,8 +346,10 @@ def _test_QuantumComputer():
     assert qc.is_matrix_mode()
     assert np.allclose(qc.get_state(), (op('00') + op('11'))/2)
     qc.purify()
+    assert np.allclose(qc.get_state(), ket('000 + 111'))  # purification only needs one ancilla qubit in this case
     assert not qc.is_matrix_mode()
     qc.remove([0])
+    qc.remove(1)
 
     qc = QuantumComputer(4, '0100 + 1010')
     assert np.isclose(qc.entanglement_entropy(3), 0)

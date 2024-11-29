@@ -444,6 +444,19 @@ class QuantumComputer:
             return True
         return np.isclose(np.trace(rho @ rho), 1)
 
+    def ensemble(self):
+        self._reorder(self.original_order)
+
+        if self.is_matrix_mode():
+            probs, kets = np.linalg.eigh(self.state)
+            # filter out zero eigenvalues
+            mask = probs > 1e-12
+            probs = probs[mask]
+            kets = kets[:, mask]
+            return probs.real, kets
+        else:
+            return np.array([1.]), np.array([self.state]).T
+
     def purify(self, sample=False):
         """
         Convert density matrix to a state vector representation by purification, either by doubling the number of qubits or by sampling from the eigenstates.
@@ -452,28 +465,30 @@ class QuantumComputer:
             warnings.warn("State is already a vector")
             return self
 
-        self._reorder(self.original_order)
-        probs, kets = np.linalg.eigh(self.state)
-        # filter out zero eigenvalues
-        mask = probs > 1e-12
-        probs = probs[mask]
-        kets = kets[:, mask]
-        if sample:
-            outcome = choice(len(probs), p=probs)
-            self.state = kets[:, outcome]
+        probs, kets = self.ensemble()
+        if sample or len(probs) == 1:
+            outcome = choice(len(probs), p=normalize(probs, p=1))
+            new_state = kets[:, outcome]
+            n_ancillas = 0
         else:
             # construct purification
-            state = np.zeros(2**(2*self.n), dtype=complex)
+            n_ancillas = int(np.ceil(np.log2(len(probs))))
+            new_state = np.zeros(2**(self.n + n_ancillas), dtype=complex)
+            ancilla_basis = I_(n_ancillas)
+
             for i, p in enumerate(probs):
-                state += np.sqrt(p.real) * np.kron(kets[:, i], kets[:, i])
-            # find self.n integers that are not in self.qubits
-            new_qubits = []
-            i = self.n
-            while len(new_qubits) < self.n:
-                if i not in self.qubits:
-                    new_qubits.append(i)
+                new_state += np.sqrt(p) * np.kron(kets[:, i], ancilla_basis[i])
+
+        # find n_ancillas integers that are not in self.qubits
+        ancillas = []
+        i = self.n
+        while len(ancillas) < n_ancillas:
+            while i in self.qubits:
                 i += 1
-            self.init(state, self.qubits + new_qubits)
+            ancillas.append(i)
+
+        # initialize the new purified state
+        self.init(new_state, self.qubits + ancillas)
         return self
 
     def to_dm(self):
