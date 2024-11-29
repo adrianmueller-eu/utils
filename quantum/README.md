@@ -3,7 +3,7 @@ Here are some examples:
 ```python
 psi = ket('01')
 SWAP = parse_unitary('CX @ XC @ CX')
-print(unket(swap @ psi))
+unket(swap @ psi)
 ```
 ```
 '10'
@@ -35,7 +35,6 @@ Let's create a simple Bell state
 ```python
 qc = QuantumComputer(2)
 qc.h(0).cx(0, 1)  # create a Bell state
-print(qc)  # show the current state
 ```
 ```
 qubits [0, 1] in state '0.70711*(00+11)'
@@ -46,9 +45,6 @@ Continuing this example, we find
 print("Unitary is\n", qc.get_U())  # the generated unitary should be the same as parse_unitary('CX @ HI')
 print("Subsystem of the first qubit\n", qc[0])  # Maximally mixed state
 print("Entropy of a Bell state in XX:", entropy(qc.probs(obs=XX)))  # show the entropy of the Bell state in the XX basis
-
-outcome = qc.measure()  # measure the state in the standard basis
-print("Measurement result:", outcome)
 ```
 ```
 Unitary is
@@ -60,7 +56,13 @@ Subsystem of the first qubit
 [[0.5+0.j 0. +0.j]
 [0. +0.j 0.5+0.j]]
 Entropy of a Bell state in XX: 0.0
-Measurement result: 11
+```
+And of course we can measure
+```python
+qc.measure()  # measure the state in the standard basis
+```
+```
+11
 ```
 
 The class allows to give qubits names as well as to dynamically add and remove them.
