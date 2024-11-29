@@ -3,6 +3,7 @@ import itertools
 from functools import reduce
 
 from ..mathlib import matexp
+from .state import ket
 
 fs = lambda x: 1/np.sqrt(x)
 f2 = fs(2)
@@ -75,3 +76,15 @@ iSWAP = np.array([ # 0.5*(1j*(XX + YY) + ZZ + II), R_(XX+YY, -pi/2)
     [0, 0, 0, 1]
 ], dtype=complex)
 fSWAP = SWAP @ CZ
+
+def GHZ_(n):
+    a = np.zeros(2**n)
+    a[0] = a[-1] = 1
+    return a
+Bell = [
+    ket('00 + 11'),  # GHZ_(2)
+    ket('00 - 11'),
+    ket('01 + 10'),
+    ket('01 - 10')
+]
+GHZ = GHZ_(3)

@@ -1,5 +1,5 @@
-from .constants import *
 from .state import *
+from .constants import *
 from .hamiltonian import *
 from .unitary import *
 from .info import *
@@ -278,12 +278,6 @@ def _test_QuantumComputer():
     assert qc.std(X) * qc.std(Z) >= abs(qc.ev(1j*(X@Z - Z@X)))/2
 
     # Bell basis
-    Bell = [
-        ket('00 + 11'),
-        ket('00 - 11'),
-        ket('01 + 10'),
-        ket('01 - 10')
-    ]
     qc = QuantumComputer(2)
     qc.h(0)
     qc.cx(0, 1)
