@@ -406,20 +406,20 @@ class QuantumComputer:
         axes_new = [self.qubits.index(q) for q in new_order_all]
         self.qubits = new_order_all # update index dictionary with new locations
         n_front = len(new_order)
+        n = self.n
 
         def _reorder(a, axes_new, is_matrix):
-            # alternatively, is_matrix = np.prod(a.shape) == 2**(2*self.n)
             if is_matrix:
-                axes_new = axes_new + [i + self.n for i in axes_new]
+                axes_new = axes_new + [i + n for i in axes_new]
             m = 2 if is_matrix else 1
             if any(s > 2 for s in a.shape):
-                a = a.reshape([2]*m*self.n)
+                a = a.reshape([2]*m*n)
             a = a.transpose(axes_new)
             # collect
-            if reshape and n_front < self.n:
-                a = a.reshape([2**n_front, 2**(self.n-n_front)]*m)
+            if reshape and n_front < n:
+                a = a.reshape([2**n_front, 2**(n-n_front)]*m)
             else:
-                a = a.reshape([2**self.n]*m)
+                a = a.reshape([2**n]*m)
             return a
 
         if self.is_matrix_mode():
