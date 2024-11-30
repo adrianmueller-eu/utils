@@ -177,9 +177,9 @@ class QuantumComputer:
                         self.state[~mask] = 0
             else:
                 if not collapse:
-                    # self._reorder(qubits)  # already done in _probs
                     # if the state is a pure state, we can keep it as is
-                    if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
+                    if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS \
+                            or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
                         warnings.warn("Not entangled -> no decoherence required")
                         return self
                     if self.n > self.MATRIX_BREAK:
@@ -213,21 +213,21 @@ class QuantumComputer:
         """
         Special reset for state vector collapse of existing qubits. For this case, this is ~2x faster than (but equivalent to) the general reset method.
         """
-        if not self.is_matrix_mode():
-            q = len(qubits)
-            new_state = ket(0, n=q)
-            if q == self.n:
-                self.state = new_state
-                self.qubits = qubits
-                return self
-            probs = self._probs(qubits)  # also moves qubits to the front and reshapes
-            outcome = np.random.choice(2**q, p=probs)
-            keep = self.state[outcome] / np.sqrt(probs[outcome])
-            self.state = np.zeros_like(self.state)
-            self.state[outcome] = keep
-            return self
-        else:
+        if self.is_matrix_mode():
             raise ValueError("Special reset not available for matrix mode")
+
+        q = len(qubits)
+        new_state = ket(0, n=q)
+        if q == self.n:
+            self.state = new_state
+            self.qubits = qubits
+            return self
+        probs = self._probs(qubits)  # also moves qubits to the front and reshapes
+        outcome = np.random.choice(2**q, p=probs)
+        keep = self.state[outcome] / np.sqrt(probs[outcome])
+        self.state = np.zeros_like(self.state)
+        self.state[outcome] = keep
+        return self
 
     def init(self, state, qubits=None, collapse=True):
         if qubits is None:
@@ -303,7 +303,7 @@ class QuantumComputer:
             else:
                 self.state = partial_trace(self.state, retain)
         else:
-            if collapse or entropy_entanglement(self.state.reshape(-1), qubits_indcs) < self.ENTROPY_EPS:
+            if collapse or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
                 # if no entanglement with others, just remove it
                 probs = self._probs(qubits)  # also moves qubits to the front and reshapes
                 outcome = choice(2**len(qubits), p=probs)
