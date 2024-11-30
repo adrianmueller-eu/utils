@@ -50,7 +50,7 @@ def trace_distance(rho1, rho2):
     rho1, rho2 = op(rho1), op(rho2)
     return 0.5 * trace_norm(rho1 - rho2)
 
-def Schmidt_decomposition(state, subsystem_qubits):
+def schmidt_decomposition(state, subsystem_qubits):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
     state = np.array(state)
     assert len(state.shape) == 1, f"State must be a vector, but has shape: {state.shape}"

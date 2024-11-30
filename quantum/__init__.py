@@ -45,7 +45,7 @@ def test_quantum_all():
         _test_entropy_entanglement,
         _test_fidelity,
         _test_trace_distance,
-        _test_Schmidt_decomposition,
+        _test_schmidt_decomposition,
         _test_correlation_quantum,
         _test_ground_state,
         _test_ising,
@@ -336,7 +336,7 @@ def _test_QuantumComputer():
     # test density matrix
     qc = QuantumComputer(2, '00 + 11')
     assert np.allclose(qc.get_state(), normalize([1,0,0,1]))
-    qc.decohere()
+    qc.decohere(0)
     assert qc.is_matrix_mode()
     assert np.allclose(qc.get_state(), (op('00') + op('11'))/2)
     qc.purify()
@@ -544,12 +544,12 @@ def _test_trace_distance():
     psi1, psi2 = '0', '-'
     assert np.isclose(trace_distance(psi1, psi2), fs(2)), f"trace_distance = {trace_distance(psi1, psi2)} ≠ 1/sqrt(2)"
 
-def _test_Schmidt_decomposition():
+def _test_schmidt_decomposition():
     n = 6
     subsystem = np.random.choice(n, size=np.random.randint(1, n), replace=False)
     subsystem = sorted(subsystem)  # TODO: figure out how to correctly transpose axes in partial trace with unsorted subsystems
     psi = random_ket(n)
-    l, A, B = Schmidt_decomposition(psi, subsystem)
+    l, A, B = schmidt_decomposition(psi, subsystem)
 
     # check non-negativity of Schmidt coefficients
     assert np.all(l >= 0), f"l = {l} < 0"
