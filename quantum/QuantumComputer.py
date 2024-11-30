@@ -11,6 +11,7 @@ from .info import entropy_entanglement
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_hermitian
 from ..plot import imshow
 from ..utils import is_int, duh
+from ..prob import entropy
 
 class QuantumComputer:
     MATRIX_SLOW = 8
@@ -178,9 +179,9 @@ class QuantumComputer:
                 if not collapse:
                     # self._reorder(qubits)  # already done in _probs
                     # if the state is a pure state, we can keep it as is
-                    # if entropy(probs) < 1e-12:
-                    #     print("Warning: Deterministic outcome -> not entangled -> no decoherence required")
-                    #     return self
+                    if entropy(probs) < self.ENTROPY_EPS or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
+                        warnings.warn("Not entangled -> no decoherence required")
+                        return self
                     if self.n > self.MATRIX_BREAK:
                         warnings.warn("collapse=False for large n -> using vector collapse (collapse=True) instead of density matrix")
                         collapse = True
