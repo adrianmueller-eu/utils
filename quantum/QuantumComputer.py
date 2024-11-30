@@ -179,7 +179,7 @@ class QuantumComputer:
                 if not collapse:
                     # self._reorder(qubits)  # already done in _probs
                     # if the state is a pure state, we can keep it as is
-                    if entropy(probs) < self.ENTROPY_EPS or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
+                    if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
                         warnings.warn("Not entangled -> no decoherence required")
                         return self
                     if self.n > self.MATRIX_BREAK:
