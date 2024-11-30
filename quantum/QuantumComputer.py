@@ -572,7 +572,7 @@ class QuantumComputer:
             part_out = [str(self.qubits[i]) for i in part_out]
             print(f"{' '.join(part_in)}  |  {' '.join(part_out)} \t{entanglement:.{precision}f}".rstrip('0'))
 
-    def schmidt_decomposition(self, qubits='all'):
+    def schmidt_decomposition(self, qubits='all', coeffs_only=False):
         """
         Schmidt decomposition of a bipartition of the qubits. Returns the Schmidt coefficients and the two sets of basis vectors.
 
@@ -589,15 +589,19 @@ class QuantumComputer:
             raise ValueError("Schmidt decomposition requires a bipartition of the qubits")
 
         state = self.get_state(qubits)  # state has now shape (2**q, 2**(n-q))
+        if coeffs_only:
+            S = np.linalg.svd(state, compute_uv=False)
+            S = S[S > self.DECOMPOSITION_EPS]
+            return S
         U, S, V = np.linalg.svd(state, full_matrices=False)  # U = q basis, S = Schmidt coefficients, V = (n-q basis).T.conj()
         # remove zero coefficients
-        Schmidt_coefficients = S[S > 1e-12]
-        U = U[:, :len(Schmidt_coefficients)]
-        V = V[:len(Schmidt_coefficients), :]
-        return U, Schmidt_coefficients, V.T.conj()
+        S = S[S > self.DECOMPOSITION_EPS]
+        U = U[:, :len(S)]
+        V = V[:len(S), :]
+        return U, S, V.T.conj()
 
     def schmidt_coefficients(self, qubits='all'):
-        return self.schmidt_decomposition(qubits)[1]
+        return self.schmidt_decomposition(qubits, coeffs_only=True)
 
     def __str__(self):
         try:
