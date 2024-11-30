@@ -539,10 +539,17 @@ class QuantumComputer:
 
     def entanglement_entropy(self, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
+        self._reorder(qubits, reshape=False)
+
+        def _entanglement_entropy(idcs):
+            state = partial_trace(self.state, idcs)
+            eigs  = np.linalg.eigvalsh(state)
+            return entropy(eigs)
+
         if len(qubits) < self.n:
-            return entropy_entanglement(self.state, [self.qubits.index(q) for q in qubits])
+            return _entanglement_entropy([self.qubits.index(q) for q in qubits])
         else:
-            return [(i, o, entropy_entanglement(self.state, i))
+            return [(i, o, _entanglement_entropy(i))
                 for i, o in bipartitions(range(self.n), unique=self.is_pure())  # H(A) = H(B) if AB is pure
             ]
 
