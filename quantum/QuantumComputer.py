@@ -176,19 +176,6 @@ class QuantumComputer:
                             mask[idcs, idcs] = True
                         self.state[~mask] = 0
             else:
-                if not collapse:
-                    # if the state is a pure state, we can keep it as is
-                    if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS \
-                            or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
-                        warnings.warn("Not entangled -> no decoherence required")
-                        return self
-                    if self.n > self.MATRIX_BREAK:
-                        warnings.warn("collapse=False for large n -> using vector collapse (collapse=True) instead of density matrix")
-                        collapse = True
-                    else:
-                        # repeat as density matrix
-                        self.to_dm()
-                        return self.measure(qubits, collapse=collapse, obs=obs)
                 if collapse:
                     # play God
                     outcome = np.random.choice(2**q, p=probs)
@@ -196,6 +183,16 @@ class QuantumComputer:
                     keep = self.state[outcome]
                     self.state = np.zeros_like(self.state)
                     self.state[outcome] = normalize(keep)  # may be 1 or vector
+                else:
+                    if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS \
+                            or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
+                        warnings.warn("Not entangled -> no decoherence required")
+                        return self
+                    if self.n > self.MATRIX_BREAK:
+                        warnings.warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.")
+                    # repeat as density matrix
+                    self.to_dm()
+                    return self.measure(qubits, collapse=collapse, obs=obs)
 
         if not collapse:
             return self
@@ -313,8 +310,8 @@ class QuantumComputer:
             else:
                 # otherwise, we need to decohere
                 if len(retain) > self.MATRIX_BREAK:
-                    warnings.warn("Decoherence from state vector for large n -> using vector collapse (collapse=True) instead of decoherence")
-                    return self.remove(qubits, collapse=True)
+                    warnings.warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
+                    # return self.remove(qubits, collapse=True)
                 self.state = partial_trace(self.state, retain)
 
         self.qubits = [q for q in self.qubits if q not in qubits]
