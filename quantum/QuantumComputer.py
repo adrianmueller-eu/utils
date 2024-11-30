@@ -13,13 +13,17 @@ from ..plot import imshow
 from ..utils import is_int, duh
 
 class QuantumComputer:
+    MATRIX_SLOW = 8
+    MATRIX_BREAK = 12
+    ENTROPY_EPS = 1e-12
+    DECOMPOSITION_EPS = 1e-12
+
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
     """
     def __init__(self, qubits=None, state=None, track_unitary='auto'):
         self.track_unitary = track_unitary
-        self.MATRIX_SLOW = 8
-        self.MATRIX_BREAK = 12
+
         self.clear()
 
         if is_int(qubits):
@@ -298,7 +302,7 @@ class QuantumComputer:
             else:
                 self.state = partial_trace(self.state, retain)
         else:
-            if collapse or entropy_entanglement(self.state.reshape(-1), qubits_indcs) < 1e-10:
+            if collapse or entropy_entanglement(self.state.reshape(-1), qubits_indcs) < self.ENTROPY_EPS:
                 # if no entanglement with others, just remove it
                 probs = self._probs(qubits)  # also moves qubits to the front and reshapes
                 outcome = choice(2**len(qubits), p=probs)
@@ -450,7 +454,7 @@ class QuantumComputer:
         if self.is_matrix_mode():
             probs, kets = np.linalg.eigh(self.state)
             # filter out zero eigenvalues
-            mask = probs > 1e-12
+            mask = probs > self.DECOMPOSITION_EPS
             probs = probs[mask]
             kets = kets[:, mask]
             return probs.real, kets
