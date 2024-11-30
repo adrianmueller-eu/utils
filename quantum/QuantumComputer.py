@@ -488,7 +488,7 @@ class QuantumComputer:
         ancillas = []
         i = self.n
         while len(ancillas) < n_ancillas:
-            while i in self.qubits:
+            while i in self.qubits or i in ancillas:
                 i += 1
             ancillas.append(i)
 
