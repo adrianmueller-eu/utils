@@ -187,7 +187,7 @@ class QuantumComputer:
                         collapse = True
                     else:
                         # repeat as density matrix
-                        self.state = np.outer(self.state, self.state.conj())
+                        self.to_dm()
                         return self.measure(qubits, collapse=collapse, obs=obs)
                 if collapse:
                     # play God
