@@ -30,7 +30,7 @@ def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter
         tq = tqdm
 
     if not np.isscalar(start_value):
-        start_value = np.asarray(start_value)
+        start_value = np.array(start_value, copy=True)
     res = start_value
     term = res
     for i in tq(range(start_index+1, max_iter)):
