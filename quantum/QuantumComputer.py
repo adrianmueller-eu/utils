@@ -777,5 +777,5 @@ def evolve(state, U, checks=True):
             state = ket(state)
         return U @ state
     if checks:
-        state = dm(state)
+        assert is_dm(state), "Invalid state: not a density matrix"
     return U @ state @ U.T.conj()
