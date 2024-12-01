@@ -495,7 +495,7 @@ class QuantumComputer:
 
     def to_dm(self):
         """
-        Convert state vector to density matrix representation, if sufficient RAM is available.
+        Convert state vector to density matrix representation.
         """
         if self.is_matrix_mode():
             warnings.warn("State is already a density matrix")
@@ -504,8 +504,8 @@ class QuantumComputer:
         RAM_required = 2**(2*self.n)*16*2
         if RAM_required > psutil.virtual_memory().available:
             warnings.warn(f"Insufficient RAM ({2*self.n}-qubit density matrix would require {duh(RAM_required)})")
-        else:
-            self.state = np.outer(self.state, self.state.conj())
+
+        self.state = np.outer(self.state, self.state.conj())
         return self
 
     def ev(self, obs, qubits='all'):
