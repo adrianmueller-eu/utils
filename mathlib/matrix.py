@@ -61,11 +61,14 @@ def is_complex(a):
         return np.issubdtype(a.dtype, complex)
     return np.iscomplex(a).any()
 
-def is_psd(a, rtol=1e-05, atol=1e-08):
+def is_psd(a, eigs=None, rtol=1e-05, atol=1e-08):
     if not is_hermitian(a, rtol=rtol, atol=atol):
         return False
-    eigv = np.linalg.eigvalsh(a)
-    return np.all(np.abs(eigv.imag) < atol) and np.all(eigv.real >= -atol)
+    if eigs is None:
+        eigs = np.linalg.eigvalsh(a)
+        return np.all(eigs >= -atol)
+    # tol = len(eigs)*sys.float_info.epsilon
+    return np.all(eigs.real >= -atol) and np.all(np.abs(eigs.imag) < atol)
 
 def is_normal(a, rtol=1e-05, atol=1e-08):
     return _sq_matrix_allclose(a, lambda a: (
