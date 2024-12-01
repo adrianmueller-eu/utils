@@ -17,7 +17,7 @@ except ImportError:
 #######################
 
 def _sq_matrix_allclose(a, f, rtol=1e-05, atol=1e-08):
-    a = np.array(a, copy=False)
+    a = np.asarray(a)
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         return False
     a[np.isnan(a)] = 0
@@ -113,10 +113,13 @@ except:
         return matpow(A, 1/n)
 
 def normalize(a, p=2, axis=0, remove_global_phase_if_1D=False):
+    """
+    Normalize a vector (or tensor of vectors). For np.ndarray, operates *inplace* and returns the same object.
+    """
     if is_complex(a):
-        a = np.array(a, dtype=complex)
+        a = np.asarray(a, dtype=complex)
     else:
-        a = np.array(a, dtype=float)
+        a = np.asarray(a, dtype=float)
     if a.shape == ():
         return a/np.linalg.norm(a)
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)

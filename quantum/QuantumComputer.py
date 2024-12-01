@@ -726,7 +726,7 @@ class QuantumComputer:
     @staticmethod
     def parse_unitary(U, n_qubits=None):
         if isinstance(U, (list, np.ndarray)):
-            U = np.array(U, copy=False)
+            U = np.asarray(U)
         elif isinstance(U, str):
             U = parse_unitary(U)
         elif sp.issparse(U):
@@ -746,7 +746,7 @@ class QuantumComputer:
     @staticmethod
     def parse_hermitian(H, n_qubits=None):
         if isinstance(H, (list, np.ndarray)):
-            H = np.array(H)
+            H = np.asarray(H)
         elif isinstance(H, str):
             H = parse_hamiltonian(H)
         elif sp.issparse(H):
@@ -762,7 +762,7 @@ class QuantumComputer:
 def evolve(state, U, checks=True):
     if checks:
         if not hasattr(state, 'shape'):
-            state = np.array(state)
+            state = np.asarray(state)
         n = count_qubits(state)
         U = QuantumComputer.parse_unitary(U, n)
     if len(state.shape) == 1:

@@ -7,7 +7,7 @@ from ..mathlib import normalize, random_unitary, binstr_from_int, is_hermitian, 
 from ..plot import colorize_complex
 
 def transpose_qubit_order(state, new_order):
-    state = np.array(state)
+    state = np.asarray(state)
     n = count_qubits(state)
     if new_order == -1:
         new_order = list(range(n)[::-1])
@@ -34,7 +34,7 @@ def reverse_qubit_order(state):
 
 def partial_trace(rho, retain_qubits):
     """Trace out all qubits not specified in `retain_qubits`. Returns the reduced density matrix (if qubits remain) or a scalar (if all qubits are traced out)."""
-    rho = np.array(rho, copy=False)
+    rho = np.asarray(rho)
     n = count_qubits(rho)
 
     # pre-process retain_qubits
@@ -80,7 +80,7 @@ def state_trace(state, retain_qubits):
     """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical 
     meaning of its output, but it was at times helpful to visualize and interpret subsystems, especially when 
     the density matrix was out of reach (or better: out of memory)."""
-    state = np.array(state)
+    state = np.asarray(state)
     state[np.isnan(state)] = 0
     n = count_qubits(state)
 
@@ -165,7 +165,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
             ax.set_yticks(range(rho.shape[0]), basis)
             ax.tick_params(axis="x", rotation=45)
 
-    state = np.array(state)
+    state = np.asarray(state)
 
     # trace out unwanted qubits
     if showqubits is None:
@@ -387,7 +387,7 @@ def unket(state, as_dict=False, prec=5):
 def op(specification1, specification2=None, n=None):
     # If it's already a matrix, ensure it's a density matrix and return it
     if isinstance(specification1, (list, np.ndarray)):
-        specification1 = np.array(specification1, copy=False)
+        specification1 = np.asarray(specification1)
         if len(specification1.shape) > 1:
             n = n or count_qubits(specification1) or 1
             assert specification1.shape == (2**n, 2**n), f"Matrix has wrong shape for {n} qubits: {specification1.shape} ≠ {(2**n, 2**n)}"
@@ -440,7 +440,7 @@ def is_eigenstate(psi, H):
 
 def gibbs(H, beta=1):
     """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
-    H = np.array(H)
+    H = np.asarray(H)
     assert is_hermitian(H), "Hamiltonian must be Hermitian!"
     assert beta >= 0, "Inverse temperature must be positive!"
     E, U = np.linalg.eigh(H)

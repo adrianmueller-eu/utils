@@ -30,7 +30,7 @@ def series(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_iter
         tq = tqdm
 
     if not np.isscalar(start_value):
-        start_value = np.array(start_value)
+        start_value = np.asarray(start_value)
     res = start_value
     term = res
     for i in tq(range(start_index+1, max_iter)):
@@ -61,7 +61,7 @@ def sequence(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_it
         float | np.ndarray: The value of the series.
     """
     if not np.isscalar(start_value):
-        start_value = np.array(start_value)
+        start_value = np.asarray(start_value)
     last_term = start_value
     for i in range(start_index+1, max_iter):
         current_term = f(i, last_term)
@@ -128,9 +128,9 @@ def choice(a, size=None, replace=True, p=None):
         if isinstance(a, np.ndarray):
             return a[idx]
         try:
-            return np.array(a)[idx]
+            return np.asarray(a)[idx]
         except:
-            return np.array(a, dtype=object)[idx]
+            return np.asarray(a, dtype=object)[idx]
     else:
         return np.random.choice(a, size=size, replace=replace, p=p)
 

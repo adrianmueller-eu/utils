@@ -29,8 +29,8 @@ def mutual_information_quantum(state, subsystem_qubits):
 
 def fidelity(state1, state2):
     """Calculate the fidelity between two quantum states."""
-    state1 = np.array(state1)
-    state2 = np.array(state2)
+    state1 = np.asarray(state1)
+    state2 = np.asarray(state2)
 
     if len(state1.shape) == 1 and len(state2.shape) == 1:
         return np.abs(state1 @ state2.conj())**2
@@ -52,7 +52,7 @@ def trace_distance(rho1, rho2):
 
 def schmidt_decomposition(state, subsystem_qubits):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
-    state = np.array(state)
+    state = np.asarray(state)
     assert len(state.shape) == 1, f"State must be a vector, but has shape: {state.shape}"
     n = int(np.log2(len(state)))
     assert len(subsystem_qubits) <= n-1, f"Too many subsystem qubits: {len(subsystem_qubits)} >= {n}"
@@ -70,7 +70,7 @@ def schmidt_decomposition(state, subsystem_qubits):
 def correlation_quantum(state, observable_A, observable_B):
     n_A = count_qubits(observable_A)
     n_B = count_qubits(observable_B)
-    state = np.array(state)
+    state = np.asarray(state)
     if len(state.shape) == 1:
         state = ket(state)
         observable_AB = np.kron(observable_A, observable_B)

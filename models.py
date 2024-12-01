@@ -21,7 +21,7 @@ def pm(x, y=None, deg=1, plot=True):
         ax.scatter(x,y, marker=".")
         #plt.show()
     return poly
-    #return lambda x0: polyval(np.array(x0), coeffs)
+    #return lambda x0: polyval(np.asarray(x0), coeffs)
 
 def lm(x, y=None, plot=True):
     return pm(x, y, 1, plot)
@@ -165,7 +165,7 @@ class Polynomial(Function):
         return p
 
     def __call__(self, x):
-        return polyval(np.array(x), self.coeffs)
+        return polyval(np.asarray(x), self.coeffs)
 
     def __str__(self, precision=3):
         if self.PRINT_FACTORIZED:
@@ -370,7 +370,7 @@ class InversePolynomial(Function):
         return p
 
     def __call__(self, x):
-        return 1/polyval(np.array(x), self.coeffs)
+        return 1/polyval(np.asarray(x), self.coeffs)
 
     def __str__(self, precision=3):
         "1/(" + _generate_poly_label(self.coeffs, precision) + ")"

@@ -113,7 +113,7 @@ def ste(ar):
 
 def check_probability_distribution(p, eps=1e-12):
     """`p` is a valid probability distribution if all $p_i \\in [0,1]$ and $\\sum_i p_i = 1$."""
-    p = np.array(p)
+    p = np.asarray(p)
     assert np.all(p >= -eps), f"Not a valid probability distribution: Negative values in {p}"
     assert np.all(p <= 1+eps), f"Not a valid probability distribution: Values greater than 1 in {p}"
     assert np.abs(np.sum(p) - 1) < eps, f"Not a valid probability distribution: Sum of {p} is {np.sum(p)} ≠ 1"
@@ -189,7 +189,7 @@ class P:
             y = smooth(y, smoothing=P.smoothing)
             x, y = P._normalize(x,y)
 
-        x, y = np.array(x), np.array(y)
+        x, y = np.asarray(x), np.asarray(y)
         # pdf
         self.pdf = scipy.interpolate.interp1d(x, y, assume_sorted=True, bounds_error=False, fill_value=0)
         # cdf & inverse cdf

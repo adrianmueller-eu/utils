@@ -46,7 +46,7 @@ for i in [2,3]:
 
 def C_(A, reverse=False, negative=False):
     if not hasattr(A, 'shape'):
-        A = np.array(A, dtype=complex)
+        A = np.asarray(A, dtype=complex)
     n = int(np.log2(A.shape[0]))
     op0, op1 = [[1,0],[0,0]], [[0,0],[0,1]]
     if negative:

@@ -89,7 +89,7 @@ def ODE_flow_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), T=10, n_timesteps=10000, 
 ######################
 
 def is_stable(f, fp, T=100, dt=1, eps=1e-3, verbose=False):
-    fp = np.array(fp)
+    fp = np.asarray(fp)
     dims = len(fp)
     noise = np.random.normal(0, 1, dims)  # normal = move to random direction
     noise *= eps/np.linalg.norm(noise)    # length eps -> uniform point on the eps-sphere
@@ -172,7 +172,7 @@ def classify_fixed_point(f, fp, eps, verbose=True):
     bool:                 Whether the fixed point is stable in all dimensions
     """
     if isinstance(fp, (int, float)) or len(fp) == 1:
-        x = np.array(fp)
+        x = np.asarray(fp)
         # Estimate the derivative at the fixed point via finite differences
         ffp = f(x)
         df_l = (f(x - eps) - ffp)/eps
@@ -196,14 +196,14 @@ def classify_fixed_point(f, fp, eps, verbose=True):
 
     # Estimate Jacobian matrix at the fixed point via finite differences
     if verbose:
-        ffp = np.array(f(*fp))
-    fp = np.array(fp)
+        ffp = np.asarray(f(*fp))
+    fp = np.asarray(fp)
     dims = len(fp)
     J = np.zeros((dims,dims))
     for k in range(dims):
         # partial derivative of f with respect to x_k at the root
-        dfabu = np.array(f(*(fp + eps*np.eye(dims)[:,k])))
-        dfabl = np.array(f(*(fp - eps*np.eye(dims)[:,k])))
+        dfabu = np.asarray(f(*(fp + eps*np.eye(dims)[:,k])))
+        dfabl = np.asarray(f(*(fp - eps*np.eye(dims)[:,k])))
         J[:,k] = (dfabu - dfabl)/(2*eps)
     if np.any(np.isnan(J)):
         if verbose:
@@ -744,7 +744,7 @@ def get_roots(f, x0s, filter_eps=1e-5, distance_eps=1e-5):
     for root in roots_:
         found = False
         for roots_list in roots_lists:
-            if np.mean(np.linalg.norm(np.array(roots_list) - np.array(root), axis=1)) < distance_eps:
+            if np.mean(np.linalg.norm(np.array(roots_list) - np.asarray(root), axis=1)) < distance_eps:
                 roots_list.append(root)
                 found = True
                 break
@@ -887,8 +887,8 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
                     J = np.zeros((dims, dims))
                     for k in range(dims):
                         # partial derivative of f with respect to x_k at the root
-                        dfabu = np.array(fab(root + eps*np.eye(dims)[:,k]))
-                        dfabl = np.array(fab(root - eps*np.eye(dims)[:,k]))
+                        dfabu = np.asarray(fab(root + eps*np.eye(dims)[:,k]))
+                        dfabl = np.asarray(fab(root - eps*np.eye(dims)[:,k]))
                         J[:,k] = (dfabu - dfabl)/(2*eps)
                     if np.any(np.isnan(J)):
                         continue
@@ -1077,7 +1077,7 @@ def flow_discrete_1d(f, x0s, lim=None, c=None, n_iter=1000, linewidth=.2, figsiz
     return xs
 
 def flow_discrete_2d(f, x0s, xlim=None, ylim=None, n_iter=1000, s=2, c=None, figsize=(10, 4), title=None, show=True):
-    x0s = np.array(x0s)
+    x0s = np.asarray(x0s)
     xs = np.zeros((n_iter+1, len(x0s)))
     ys = np.zeros((n_iter+1, len(x0s)))
     y0s = x0s[:,1]
@@ -1142,7 +1142,7 @@ def find_fixed_points_discrete(f, x0s, filter_eps=1e-6, distance_eps=1e-2):
 def classify_fixed_point_discrete(f, fp, eps=1e-6):
     if isinstance(fp, (int, float)):
         fp = [fp]
-    fp = np.array(fp)
+    fp = np.asarray(fp)
     # Calculate the Jacobian matrix
     dims = len(fp)
     J = np.zeros((dims, dims))
@@ -1335,7 +1335,7 @@ def fractal(f, max_iters=100, res=1000, xlim=(-2,2), ylim=(-2,2), eps=None, min_
     """
 
     def _fractal(f, z0, max_iters, eps=1e-6):
-        z = np.array(z0, copy=False)
+        z = np.asarray(z0)
         error = np.inf
         iters = np.zeros_like(z, dtype='i4')
         for it in tq(range(1,max_iters+1)):

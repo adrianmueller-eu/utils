@@ -178,7 +178,7 @@ def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=F
         fig, ax0 = plt.subplots(figsize=figsize)
 
     # filter nan, -inf, and inf from data
-    data = np.array(data)
+    data = np.asarray(data)
     n_filtered = np.sum(np.isnan(data)) + np.sum(np.isinf(data))
     if n_filtered > 0:
         n_original = len(data)
@@ -306,7 +306,7 @@ def scatter1d(data, figsize=None, xticks=None, alpha=.5, s=500, marker="|", xlim
             figsize[1] += 0.2
         fig = plt.figure(figsize=figsize)
     ax = fig.gca()
-    size = np.prod(np.array(data, copy=False).shape)
+    size = np.prod(np.asarray(data).shape)
     plt.scatter(data, np.zeros(size), alpha=alpha, marker=marker, s=s, **pltargs)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -341,7 +341,7 @@ def colorize_complex(z):
     s = 0.8
 
     c = np.vectorize(hls_to_rgb)(h,l,s)
-    c = np.array(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
+    c = np.asarray(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
     return c
 
 def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
@@ -368,7 +368,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
         None
     """
 
-    a = np.array(a, copy=False)
+    a = np.asarray(a)
     is_vector = np.prod(a.shape) == np.max(a.shape)
 
     # magic reshape
@@ -594,7 +594,7 @@ def pdcolor(df, threshold=None, minv=None, maxv=None, colors=('#ff0000', '#fffff
             scaled = max(0,min(scaled, len(colors)-1-1e-10)) #[0;len(colors)-1[
             subarea = int(np.floor(scaled))
             low_c, high_c = colors[subarea], colors[subarea+1] # get frame
-            low_c, high_c = np.array(rgb(low_c)), np.array(rgb(high_c)) # convert to (r,b,g,a)
+            low_c, high_c = np.asarray(rgb(low_c)), np.asarray(rgb(high_c)) # convert to (r,b,g,a)
             r,g,b,a = (scaled-subarea)*(high_c-low_c) + low_c
             return rgb(r,g,b,a), blackorwhite(r,g,b)
 
@@ -621,7 +621,7 @@ def graph_from_matrix(A, plot=True, lib="networkx"):
         lib: The library to use. Can be "networkx" (or "nx"), "graphviz" (or "gv"), or "igraph" (or "ig").
     """
 
-    A = np.array(A)
+    A = np.asarray(A)
     if A.shape[0] != A.shape[1]:
         # add zeros to make it square
         A = np.pad(A, ((0, max(A.shape)-A.shape[0]), (0, max(A.shape)-A.shape[1])), 'constant')

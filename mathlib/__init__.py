@@ -248,6 +248,12 @@ def _test_bincoll_from_int():
     assert bincoll_from_int(1) == [1]
 
 def _test_is_symmetric():
+    a = [
+        [1, 2],
+        [2, 1]
+    ]
+    assert is_symmetric(a)
+
     a = random_square(randint(2,20), complex=False)
     b = a + a.T
     assert is_symmetric(b)

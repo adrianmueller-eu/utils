@@ -415,7 +415,7 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
 
     # if J is not scalar or dict, it must be either the array of the couplings or the limits of the random range
     if not (np.isscalar(J) or isinstance(J, dict)):
-        J = np.array(J)
+        J = np.asarray(J)
         if J.shape == (2,):
             J = np.random.uniform(J[0], J[1], couplings)
         if kind == '1d' and J.shape == (n_qubits, n_qubits):
@@ -437,13 +437,13 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
         if n_total_qubits != 2 and hasattr(h, '__len__') and len(h) == 2:
             h = np.random.uniform(low=h[0], high=h[1], size=n_total_qubits)
         elif not np.isscalar(h):
-            h = np.array(h)
+            h = np.asarray(h)
         assert np.isscalar(h) or h.shape == (n_total_qubits,), f"h must be a scalar, 2-element vector, or vector of shape {(n_total_qubits,)}, but is {h.shape if not np.isscalar(h) else h}"
     if g is not None:
         if n_total_qubits != 2 and hasattr(g, '__len__') and len(g) == 2:
             g = np.random.uniform(low=g[0], high=g[1], size=n_total_qubits)
         elif not np.isscalar(g):
-            g = np.array(g)
+            g = np.asarray(g)
         assert np.isscalar(g) or g.shape == (n_total_qubits,), f"g must be a scalar, 2-element vector, or vector of shape {(n_total_qubits,)}, but is {g.shape if not np.isscalar(g) else g}"
 
     # round number to desired precision
@@ -622,7 +622,7 @@ def ising_graph(graph, J=(-1,1), h=(-1,1), g=(-1,1), offset=0):
     # get the edges
     edges = graph.edges()
     # get the coupling matrix
-    J = np.array(J)
+    J = np.asarray(J)
     if J.shape == ():
         # triangular matrix with all couplings set to J
         J = np.triu(np.ones((n_qubits, n_qubits)), k=1) * J
@@ -637,7 +637,7 @@ def ising_graph(graph, J=(-1,1), h=(-1,1), g=(-1,1), offset=0):
 
     # get the longitudinal fields
     if h is not None:
-        h = np.array(h)
+        h = np.asarray(h)
         if h.shape == ():
             h = np.ones(n_qubits) * h
         elif h.shape == (2,):
@@ -649,7 +649,7 @@ def ising_graph(graph, J=(-1,1), h=(-1,1), g=(-1,1), offset=0):
 
     # get the transverse fields
     if g is not None:
-        g = np.array(g)
+        g = np.asarray(g)
         if g.shape == ():
             g = np.ones(n_qubits) * g
         elif g.shape == (2,):
