@@ -16,9 +16,9 @@ except:
 
 
 def test_all():
-    print_header('mathlib.py')
+    print_header('mathlib')
     test_mathlib_all()
 
-    print_header('quantum.py')
+    print_header('quantum')
     from .quantum import test_quantum_all  # quantum might not be imported yet
     test_quantum_all()
