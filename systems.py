@@ -414,12 +414,7 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
 
     def get_nullclines(dot, eps, xmin, dx, ymin, dy):
         rows, cols = np.where(np.abs(dot) < eps)
-        ps = []
-        for r,c in zip(rows, cols):
-            p = xmin + c*dx, ymin + r*dy
-            ps.append(p)
-
-        return np.array(ps)
+        return xmin + cols*dx, ymin + rows*dy
 
     x_min, x_max = xlim
     y_min, y_max = ylim
@@ -492,7 +487,7 @@ def ODE_phase_2d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), dims=(None, None), T=30,
                     continue
             p = get_nullclines(dot, nc_eps, x_min, dx, y_min, dy)
             if len(p) > 0:
-                ax.scatter(*p.T, linewidths=0, s=.5, color=c)
+                ax.scatter(*p, linewidths=0, s=.5, color=c)
 
     # trajectories
     if x0s is not None:
@@ -606,12 +601,7 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), dims=(None,
     """
     def get_nullclines(dot, eps, xmin, dx, ymin, dy, zmin, dz):
         rows, cols, depths = np.where(np.abs(dot) < eps)
-        ps = []
-        for r,c,d in zip(rows, cols, depths):
-            p = xmin + c*dx, ymin + r*dy, zmin + d*dz
-            ps.append(p)
-
-        return np.array(ps)
+        return xmin + cols*dx, ymin + rows*dy, zmin + depths*dz
 
     dt = T/n_timesteps
     x_min, x_max = xlim
@@ -658,7 +648,7 @@ def ODE_phase_3d(f, x0s=None, xlim=(-2,2), ylim=(-2,2), zlim=(-2,2), dims=(None,
                     continue
             p = get_nullclines(dot, nc_eps, x_min, dx, y_min, dy, z_min, dz)
             if len(p) > 0:
-                ax.scatter(*p.T, linewidths=0, s=.5, color=c)
+                ax.scatter(*p, linewidths=0, s=.5, color=c)
 
     # trajectories
     if x0s is not None:
