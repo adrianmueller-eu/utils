@@ -1,4 +1,4 @@
-import os, time, sys, numbers
+import os, time, sys, numbers, warnings
 import numpy as np
 from warnings import warn
 from collections.abc import Iterable
@@ -148,6 +148,16 @@ def startfile(filepath):
         return os.startfile(filepath)
     else:                                   # linux variants
         return subprocess.call(('xdg-open', filepath))
+
+def reissue_warnings(func):
+    # Thanks to https://stackoverflow.com/questions/54399469/how-do-i-assign-a-stacklevel-to-a-warning-depending-on-the-caller
+    def inner(*args, **kwargs):
+        with warnings.catch_warnings(record = True) as warning_list:
+            result = func(*args, **kwargs)
+        for warning in warning_list:
+            warnings.warn(warning.message, warning.category, stacklevel = 2)
+        return result
+    return inner
 
 class ConvergenceCondition:
     def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_value=None, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False, verbose=True):

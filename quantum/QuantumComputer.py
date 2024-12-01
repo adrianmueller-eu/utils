@@ -9,7 +9,7 @@ from .hamiltonian import parse_hamiltonian
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_hermitian
 from ..plot import imshow
-from ..utils import is_int, duh
+from ..utils import is_int, duh, reissue_warnings
 from ..prob import entropy
 
 class QuantumComputer:
@@ -188,10 +188,10 @@ class QuantumComputer:
                 else:
                     if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS \
                             or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
-                        warnings.warn("Not entangled -> no decoherence required", stacklevel=3-int(collapse))
+                        warnings.warn("Not entangled -> no decoherence required", stacklevel=2)
                         return self
                     if self.n > self.MATRIX_BREAK:
-                        warnings.warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=3-int(collapse))
+                        warnings.warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
                     # repeat as density matrix
                     self.to_dm()
                     return self.measure(qubits, collapse=collapse, obs=obs)
@@ -428,6 +428,7 @@ class QuantumComputer:
         if self._track_unitary:
             self.U = _reorder(self.U, axes_new, True)
 
+    @reissue_warnings
     def decohere(self, qubits='all', obs=None):
         return self.measure(qubits, collapse=False, obs=obs)
 
