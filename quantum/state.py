@@ -430,6 +430,19 @@ def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
     return np.abs(state)**2
 
+def is_ket(psi):
+    """Check if `ket` is a valid state vector."""
+    try:
+        if isinstance(psi, str):
+            psi = ket(psi)
+        psi = np.asarray(psi, dtype=complex)
+        n = count_qubits(psi)
+    except:
+        return False
+    if len(psi.shape) != 1 or psi.shape[0] != 2**n:
+        return False
+    return abs(np.linalg.norm(psi) - 1) < 1e-10
+
 def is_dm(rho):
     """Check if matrix `rho` is a density matrix."""
     try:

@@ -38,6 +38,7 @@ def test_quantum_all():
         _test_partial_trace,
         _test_ket_unket,
         _test_dm,
+        _test_is_ket,
         _test_is_dm,
         _test_is_eigenstate,
         _test_count_qubits,
@@ -233,6 +234,17 @@ def _test_dm():
         assert time.time() - start < max_time, f"dm is too slow (iteration {_}/10)"
         for _ in range(100):
             dm(rho)
+
+def _test_is_ket():
+    assert is_ket([1,0,0,0])
+    assert not is_ket([1,0,0,1])
+    assert not is_ket([1,0,0,0,0])
+    assert is_ket([1])  # 0-qubit state
+    assert is_ket('0.5*00 + 11')
+    assert not is_ket('abc')
+    assert not is_ket([[1]])
+    assert not is_ket(np.eye(2)/2)
+    assert is_ket(random_ket(2))
 
 def _test_is_dm():
     assert is_dm(I_(2)/2**2)
