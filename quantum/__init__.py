@@ -354,7 +354,7 @@ def _test_QuantumComputer():
     assert np.allclose(U @ np.diag(S) @ V.T.conj(), qc.get_state(bip))
 
     # test density matrix
-    qc = QuantumComputer(2, '00 + 11')
+    qc = QuantumComputer('00 + 11')
     assert np.allclose(qc.get_state(), normalize([1,0,0,1]))
     qc.decohere(0)
     assert qc.is_matrix_mode()
@@ -365,7 +365,7 @@ def _test_QuantumComputer():
     qc.remove([0])
     qc.remove(1)
 
-    qc = QuantumComputer(4, '0100 + 1010')
+    qc = QuantumComputer('0100 + 1010')
     assert np.isclose(qc.entanglement_entropy(3), 0)
     qc.remove(3)
     assert not qc.is_matrix_mode()

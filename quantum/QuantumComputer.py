@@ -26,6 +26,9 @@ class QuantumComputer:
 
         self.clear()
 
+        if state is None and QuantumComputer.is_state(qubits):
+            state = qubits
+            qubits = count_qubits(state)
         if is_int(qubits):
             qubits = list(range(qubits))
         if state is None:
@@ -722,6 +725,10 @@ class QuantumComputer:
         # 3. IQFT on energy register
         self.iqft(energy, do_swaps=False)
         return self
+
+    @staticmethod
+    def is_state(state):
+        return is_ket(state) or is_dm(state)
 
     @staticmethod
     def parse_unitary(U, n_qubits=None):
