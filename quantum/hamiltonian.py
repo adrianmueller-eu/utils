@@ -261,7 +261,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
                 n = len(c)
                 break
         if n == 0:
-            warnings.warn("Hamiltonian is a scalar!")
+            warnings.warn("Hamiltonian is a scalar!", stacklevel=2)
 
     if not sparse and n > 10:
         # check if we would blow up the memory
@@ -274,7 +274,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
         H = sp.csr_array((2**n, 2**n), dtype=dtype)
     else:
         if n > 10:
-            warnings.warn(f"Using a dense matrix for a {n}-qubit Hamiltonian is not recommended. Use sparse=True.")
+            warnings.warn(f"Using a dense matrix for a {n}-qubit Hamiltonian is not recommended. Use sparse=True.", stacklevel=2)
         H = np.zeros((2**n, 2**n), dtype=dtype)
 
     for chunk in chunks:

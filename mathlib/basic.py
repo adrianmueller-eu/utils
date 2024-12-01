@@ -69,7 +69,7 @@ def sequence(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_it
             print(f"Iteration {i}:", current_term)
         # if it contains inf or nan, we assume divergence
         if np.isinf(current_term).all() or np.isnan(current_term).all():
-            warnings.warn(f"Warning: Sequence diverged after {i} iterations!")
+            warnings.warn(f"Sequence diverged after {i} iterations!", stacklevel=2)
             return current_term
         # if the difference between the last two terms is smaller than eps, we assume convergence
         error = np.sum(np.abs(current_term - last_term))
@@ -79,7 +79,7 @@ def sequence(f, start_value=0, start_index=0, eps=sys.float_info.epsilon, max_it
             return current_term
         last_term = current_term
 
-    warnings.warn(f"Warning: Sequence didn't converge after {max_iter} iterations! Error: {error}")
+    warnings.warn(f"Sequence didn't converge after {max_iter} iterations! Error: {error}", stacklevel=2)
     return current_term
 
 def arctan2(y, x):  # same as np.arctan2

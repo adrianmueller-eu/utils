@@ -114,7 +114,7 @@ try:
         if generate_state:
             simulator = Aer.get_backend("statevector_simulator")
             if shots is None or shots == 0:
-                warnings.warn("shots=0 is not supported for statevector_simulator. Using shots=1 instead.")
+                warnings.warn("shots=0 is not supported for statevector_simulator. Using shots=1 instead.", stacklevel=2)
                 shots = 1
         else:
             simulator = Aer.get_backend('aer_simulator')
@@ -168,7 +168,7 @@ try:
                     self.n = count_qubits(H)
                     # diagonalize, if necessary
                     if self.n >= 12:
-                        warnings.warn(f"Diagonalizing a {self.n}-qubit matrix")
+                        warnings.warn(f"Diagonalizing a {self.n}-qubit matrix", stacklevel=2)
                     self.D, self.U = np.linalg.eigh(H)
             # auxiliary variables
             try:
@@ -246,5 +246,5 @@ try:
         return len(t_circuit._data)
 
 except ModuleNotFoundError:
-    print("Warning: qiskit not installed! Use `pip install qiskit qiskit_aer pylatexenc`.")
+    warnings.warn("qiskit not installed! Use `pip install qiskit qiskit_aer pylatexenc`.", stacklevel=2)
     pass

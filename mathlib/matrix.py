@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import itertools
 import scipy.sparse as sp
@@ -246,7 +247,7 @@ if not sage_loaded:
             base = sp.lil_array((n,n), dtype=complex)
         else:
             if n > 100:
-                print(f"Warning: For `n = {n} > 100`, it is recommended to use `sparse=True` to save memory.")
+                warnings.warn(f"For `n = {n} > 100`, it is recommended to use `sparse=True` to save memory.", stacklevel=2)
             base = np.zeros((n,n), dtype=complex)
 
         basis = []

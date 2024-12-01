@@ -1,7 +1,7 @@
+import warnings
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
-import re
 from .mathlib import is_complex, is_symmetric, int_sqrt
 from .utils import *
 
@@ -392,13 +392,13 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     iscomplex = is_complex(a)
     if iscomplex:
         if colorbar == True:
-            print("Warning: colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
+            warnings.warn("colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.", stacklevel=2)
         if cmap != 'hot':
-            print("Warning: Argument cmap is not used for complex arrays.")
+            warnings.warn("Argument cmap is not used for complex arrays.", stacklevel=2)
 
     if vmin is not None or vmax is not None:
         if iscomplex:
-            print("Warning: vmin and vmax are not supported for complex arrays.")
+            warnings.warn("vmin and vmax are not supported for complex arrays.", stacklevel=2)
             norm = None
         else:
             if vmin is None:
@@ -406,7 +406,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
             if vmax is None:
                 vmax = np.max(a)
             if vmin > vmax:
-                print("Warning: vmin > vmax")
+                warnings.warn("vmin > vmax", stacklevel=2)
             norm = colors.Normalize(vmin, vmax)
     else:
         norm = None
@@ -435,7 +435,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     elif len(a.shape) == 3 and a.shape[2] == 3:
         plt.imshow(a, **pltargs)
         if colorbar == True:
-            print("Warning: colorbar not supported for RGB images.")
+            warnings.warn("colorbar not supported for RGB images.", stacklevel=2)
     else:
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
 

@@ -188,10 +188,10 @@ class QuantumComputer:
                 else:
                     if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS \
                             or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
-                        warnings.warn("Not entangled -> no decoherence required")
+                        warnings.warn("Not entangled -> no decoherence required", stacklevel=3-int(collapse))
                         return self
                     if self.n > self.MATRIX_BREAK:
-                        warnings.warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.")
+                        warnings.warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=3-int(collapse))
                     # repeat as density matrix
                     self.to_dm()
                     return self.measure(qubits, collapse=collapse, obs=obs)
@@ -312,7 +312,7 @@ class QuantumComputer:
             else:
                 # otherwise, we need to decohere
                 if len(retain) > self.MATRIX_BREAK:
-                    warnings.warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
+                    warnings.warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
                     # return self.remove(qubits, collapse=True)
                 self.state = partial_trace(self.state, retain)
 
@@ -374,14 +374,14 @@ class QuantumComputer:
         if self.n > 0 and self._track_unitary:
             RAM_required = (2**(self.n + q))**2*16*2
             if RAM_required > psutil.virtual_memory().available:
-                warnings.warn(f"Insufficient RAM ({self.n + q}-qubit unitary would require {duh(RAM_required)})")
+                warnings.warn(f"Insufficient RAM! ({self.n + q}-qubit unitary would require {duh(RAM_required)})", stacklevel=3)
         else:
             if self.is_matrix_mode():  # False if self.n == 0
                 RAM_required = (2**(self.n + q))**2*16*2
             else:
                 RAM_required = (2**(self.n + q))*16*2
             if RAM_required > psutil.virtual_memory().available:
-                warnings.warn(f"Insufficient RAM ({self.n + q}-qubit state would require {duh(RAM_required)})")
+                warnings.warn(f"Insufficient RAM! ({self.n + q}-qubit state would require {duh(RAM_required)})", stacklevel=3)
 
         if self.is_matrix_mode():
             state = state if state is not None else dm(0, n=q)
@@ -466,7 +466,7 @@ class QuantumComputer:
         Convert density matrix to a state vector representation by purification, either by doubling the number of qubits or by sampling from the eigenstates.
         """
         if not self.is_matrix_mode():
-            warnings.warn("State is already a vector")
+            warnings.warn("State is already a vector", stacklevel=2)
             return self
 
         probs, kets = self.ensemble()
@@ -500,12 +500,12 @@ class QuantumComputer:
         Convert state vector to density matrix representation.
         """
         if self.is_matrix_mode():
-            warnings.warn("State is already a density matrix")
+            warnings.warn("State is already a density matrix", stacklevel=2)
             return self
         # RAM check
         RAM_required = 2**(2*self.n)*16*2
         if RAM_required > psutil.virtual_memory().available:
-            warnings.warn(f"Insufficient RAM ({2*self.n}-qubit density matrix would require {duh(RAM_required)})")
+            warnings.warn(f"Insufficient RAM! ({2*self.n}-qubit density matrix would require {duh(RAM_required)})", stacklevel=2)
 
         self.state = np.outer(self.state, self.state.conj())
         return self

@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp, quad
@@ -1004,9 +1005,9 @@ def to_lorenz_map(f, dim=0, T=2, n_timesteps=200):
         x, t = res[:-1][dim], res[-1]
         peaks, _ = find_peaks(x)
         if len(peaks) > 10:
-            print(f"Warning: {len(peaks)} peaks found. Consider decreasing `T` or increasing `n_timesteps`.")
+            warnings.warn(f"{len(peaks)} peaks found. Consider decreasing `T` or increasing `n_timesteps`.", stacklevel=2)
         elif len(peaks) < 2:
-            print('Warning: Insufficient peaks found. Try increasing `T` or `n_timesteps`.')
+            warnings.warn('Insufficient peaks found. Try increasing `T` or `n_timesteps`.', stacklevel=2)
         elif len(peaks) == 0:
             raise ValueError('No peaks found. Does the system have periodic behavior?')
         # return the next peak
@@ -1174,7 +1175,7 @@ def coweb(f, x0s, max_iter=1000, eps=1e-6, xlim=None, ylim=None, title=None, fig
             ys.extend([x1, x1])
         # print(conv)
         if not np.isfinite(x1):
-            print(f"Warning: x0 = {x0s[i]} diverged ({x1})")
+            warnings.warn(f"x0 = {x0s[i]} diverged ({x1})", stacklevel=2)
         else:
             plt.plot(xs, ys, linewidth=linewidth)
 
