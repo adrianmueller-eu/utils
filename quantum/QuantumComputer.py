@@ -186,13 +186,12 @@ class QuantumComputer:
                     self.state = np.zeros_like(self.state)
                     self.state[outcome] = normalize(keep)  # may be 1 or vector
                 else:
-                    if len(qubits) == self.n or entropy(probs) < self.ENTROPY_EPS \
-                            or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
-                        warnings.warn("Not entangled -> no decoherence required", stacklevel=2)
+                    if entropy(probs) < self.ENTROPY_EPS:  # deterministic outcome implies no entanglement, but loss of information can also happen with the "measurement device" (even if there is no entanglement)
+                        warnings.warn('Outcome is deterministic -> no decoherence', stacklevel=2)
                         return self
                     if self.n > self.MATRIX_BREAK:
                         warnings.warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
-                    # repeat as density matrix
+                    # decohere as as density matrix
                     self.to_dm()
                     return self.measure(qubits, collapse=collapse, obs=obs)
 
