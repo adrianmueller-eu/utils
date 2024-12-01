@@ -384,7 +384,10 @@ def unket(state, as_dict=False, prec=5):
             res += [f"{weight}*({'+'.join(weights[weight])})"]
     return "+".join(res).replace("+-", "-")
 
-def op(specification1, specification2=None, n=None):
+def dm(specification1, specification2=None, n=None, check=False, obs=None):
+    """
+    Convenience function to generate or verify a density matrix. Also allows to generate other operators, e.g. `dm(0, 1)`.
+    """
     # If it's already a matrix, ensure it's a density matrix and return it
     if isinstance(specification1, (list, np.ndarray)):
         specification1 = np.asarray(specification1)
@@ -395,20 +398,29 @@ def op(specification1, specification2=None, n=None):
             # trace normalize it if it's not already
             if not abs(sp1_trace - 1) < 1e-8:
                 specification1 = specification1 / sp1_trace
+            if check:
+                assert is_dm(specification1), f"The given matrix is not a density matrix"
             return specification1
     elif specification2 is None:
         if specification1 == 'random' or specification1 == 'random_mixed' or specification1 == 'random_dm':
             return random_dm(n, pure=False)
         elif specification1 == 'random_pure':
             specification1 = 'random'
-    s1 = ket(specification1, n)
-    s2 = s1 if specification2 is None else ket(specification2, count_qubits(s1))
-    return np.outer(s1, s2.conj())
 
-def dm(specification1, specification2=None, n=None):
-    rho = op(specification1, specification2, n)
-    assert is_dm(rho), f"The given matrix is not a density matrix!"
-    return rho
+    s1 = ket(specification1, n)
+    if obs is not None:
+        if check:
+            assert is_hermitian(obs), "The given observable is not Hermitian"
+        _, U = np.linalg.eigh(obs)
+        s1 = U @ s1
+    if specification2 is None:
+        s2 = s1
+    else:
+        s2 = ket(specification2, n or count_qubits(s1))
+        if obs is not None:
+            s2 = U @ s2
+
+    return np.outer(s1, s2.conj())
 
 def ev(observable, psi):
     # assert is_hermitian(observable)
@@ -420,8 +432,13 @@ def probs(state):
 
 def is_dm(rho):
     """Check if matrix `rho` is a density matrix."""
-    rho = np.array(rho)
-    n = count_qubits(rho)
+    try:
+        if isinstance(rho, str):
+            rho = dm(rho, check=False)
+        rho = np.asarray(rho, dtype=complex)
+        n = count_qubits(rho)
+    except Exception as e:
+        return False
     if len(rho.shape) != 2 or rho.shape[0] != rho.shape[1] or rho.shape[0] != 2**n:
         return False
     return abs(np.trace(rho) - 1) < 1e-10 and is_psd(rho)

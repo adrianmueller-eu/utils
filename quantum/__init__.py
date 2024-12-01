@@ -37,7 +37,7 @@ def test_quantum_all():
         _test_reverse_qubit_order,
         _test_partial_trace,
         _test_ket_unket,
-        _test_op_dm,
+        _test_dm,
         _test_is_dm,
         _test_is_eigenstate,
         _test_count_qubits,
@@ -217,12 +217,12 @@ def _test_random_ket():
     assert psi.shape == (2**n_qubits,)
     assert np.allclose(np.linalg.norm(psi), 1)
 
-def _test_op_dm():
-    assert np.allclose(op(0),   [[1,0], [0,0]])
-    assert np.allclose(op(0,1), [[0,1], [0,0]])
-    assert np.allclose(op(1,0), [[0,0], [1,0]])
-    assert np.allclose(op(1),   [[0,0], [0,1]])
-    O = op(0,3,n=2)
+def _test_dm():
+    assert np.allclose(dm(0),   [[1,0], [0,0]])
+    assert np.allclose(dm(0,1), [[0,1], [0,0]])
+    assert np.allclose(dm(1,0), [[0,0], [1,0]])
+    assert np.allclose(dm(1),   [[0,0], [0,1]])
+    O = dm(0,3,n=2)
     assert O.shape[0] == O.shape[1]
     # op should be fast enough to return already-density-matrices 1000 times in negligible time
     import time
@@ -230,17 +230,25 @@ def _test_op_dm():
     max_time = 0.01
     start = time.time()
     for _ in range(10):
-        assert time.time() - start < max_time, f"op is too slow (iteration {_}/10)"
+        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/10)"
         for _ in range(100):
-            op(rho)
+            dm(rho)
 
 def _test_is_dm():
-    assert is_dm(np.eye(2**2)/2**2)
-    # random Bloch vectors
+    assert is_dm(I_(2)/2**2)
+    assert not is_dm(I_(2))
+    assert not is_dm(np.eye(3))
+    assert is_dm([[1]])  # 0-qubit state
+    assert is_dm('0.5*00 + 11')
+    assert not is_dm('abc')
+    assert not is_dm([1])
+    assert not is_dm([1,0,0,0])
+    assert is_dm(random_dm(2))
+
+    # random Bloch vector
     v = np.random.uniform(-1, 1, 3)
-    if np.linalg.norm(v) > 1:
+    if np.linalg.norm(v) > 1:  # also test mixed states
         v = normalize(v)
-    # create dm from Bloch vector
     rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
     assert is_dm(rho)
 
@@ -315,7 +323,7 @@ def _test_QuantumComputer():
     # test phase estimation
     H = ph(f'{1/8}*(IZ + ZI + II)')
     U = exp_i(2*np.pi*H)
-    assert np.isclose(np.trace(H @ op('00')), float_from_binstr('.011'))  # 00 is eigenstate with energy 0.375 = '011'
+    assert np.isclose(np.trace(H @ dm('00')), float_from_binstr('.011'))  # 00 is eigenstate with energy 0.375 = '011'
     state_qubits = ['s0', 's1']
     qc = QuantumComputer(state_qubits)
     E_qubits = ['e0', 'e1', 'e2']
@@ -338,7 +346,7 @@ def _test_QuantumComputer():
     assert np.allclose(qc.get_state(), normalize([1,0,0,1]))
     qc.decohere(0)
     assert qc.is_matrix_mode()
-    assert np.allclose(qc.get_state(), (op('00') + op('11'))/2)
+    assert np.allclose(qc.get_state(), (dm('00') + dm('11'))/2)
     qc.purify()
     assert np.allclose(qc.get_state(), ket('000 + 111'))  # purification only needs one ancilla qubit in this case
     assert not qc.is_matrix_mode()
@@ -353,7 +361,7 @@ def _test_QuantumComputer():
     qc.remove(1)
     assert qc.is_matrix_mode()
     qc.x(2)
-    assert np.allclose(qc.get_state(), (op('01') + op('10'))/2)
+    assert np.allclose(qc.get_state(), (dm('01') + dm('10'))/2)
     qc.purify(sample=True)
 
 def _test_reverse_qubit_order():
@@ -479,7 +487,7 @@ def _test_entropy_von_Neumann():
 
 def _test_entropy_entanglement():
     # Two qubits in the Bell state |00> + |11> should have entropy 1
-    rho = op('00 + 11')
+    rho = dm('00 + 11')
     S = entropy_entanglement(rho, [0])
     assert np.allclose(S, 1), f"S = {S} ≠ 1"
 

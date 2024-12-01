@@ -3,7 +3,7 @@ import numpy as np
 from functools import reduce
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
-from .state import op, count_qubits, plotQ
+from .state import dm, count_qubits, plotQ
 from .hamiltonian import pauli_decompose
 from ..mathlib import is_unitary
 
@@ -34,9 +34,9 @@ def parse_unitary(unitary):
         for c in chunk:
             # positive and negative controls
             if c == "C":
-                gate = op(1)
+                gate = dm(1)
             elif c == "N":
-                gate = op(0)
+                gate = dm(0)
             # single-qubit gates
             elif c == "T":
                     gate = T_gate
@@ -57,7 +57,7 @@ def parse_unitary(unitary):
                 if c == "C" or c == "N":
                     part_matrix = np.kron(part_matrix, I_(no_control))
                     no_control = 0
-                    on, off = (op(1), op(0)) if c == "C" else (op(0), op(1))
+                    on, off = (dm(1), dm(0)) if c == "C" else (dm(0), dm(1))
                     chunk_matrix += np.kron(part_matrix, np.kron(off, I_(n-i-1)))
                     part_matrix = np.kron(part_matrix, on)
                 else:

@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse as sp
 
 from .constants import *
-from .state import partial_trace, ket, op, dm, unket, count_qubits, random_ket, plotQ
+from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_ket, is_dm
 from .hamiltonian import parse_hamiltonian
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_hermitian
@@ -150,7 +150,7 @@ class QuantumComputer:
                 if collapse:
                     outcome = choice(range(2**q), p=probs)
 
-                    # P = np.kron(op(outcome, n=q), I_(self.n-q))  # projector
+                    # P = np.kron(dm(outcome, n=q), I_(self.n-q))  # projector
                     # self.state = P @ self.state @ P.conj().T / probs[outcome]
                     mask = np.zeros_like(self.state, dtype=bool)
                     idcs = slice(outcome*2**(self.n-q), (outcome+1)*2**(self.n-q))
@@ -161,7 +161,7 @@ class QuantumComputer:
                     # partial measurement of density matrix without "looking" -> decoherence
                     # new_state = np.zeros_like(self.state)
                     # for i, p in enumerate(probs):
-                    #     Pi = np.kron(op(i, n=q), I_(self.n-q))
+                    #     Pi = np.kron(dm(i, n=q), I_(self.n-q))
                     #     new_state += Pi @ self.state @ Pi.conj().T  # *p for weighing and /p for normalization cancel out
                     # self.state = new_state
 
@@ -229,7 +229,7 @@ class QuantumComputer:
         if qubits is None:
             if self.n == 0:  # infer `qubits` from `state`
                 if hasattr(state, 'shape') and len(state.shape) == 2:
-                    self.state = dm(state)
+                    self.state = dm(state, check=True)
                 else:
                     self.state = ket(state)
                 n = count_qubits(self.state)
@@ -247,15 +247,15 @@ class QuantumComputer:
 
         if (isinstance(state, str) and (state == 'random_dm' or state == 'random_mixed')) \
                 or (hasattr(state, 'shape') and len(state.shape) == 2):
-            new_state = dm(state, n=len(qubits))
+            new_state = dm(state, n=len(qubits), check=True)
             if self.n > 0 and not self.is_matrix_mode():
                 # switch to matrix mode
-                self.state = op(self.state)
+                self.state = dm(self.state)
         else:
             if isinstance(state, str) and state == 'random_pure':
                 state = 'random'
             if self.is_matrix_mode():
-                new_state = dm(state, n=len(qubits))
+                new_state = dm(state, n=len(qubits), check=True)
             else:
                 new_state = ket(state, n=len(qubits))
 
@@ -381,7 +381,7 @@ class QuantumComputer:
                 warnings.warn(f"Insufficient RAM ({self.n + q}-qubit state would require {duh(RAM_required)})")
 
         if self.is_matrix_mode():
-            state = state if state is not None else op(0, n=q)
+            state = state if state is not None else dm(0, n=q)
             self.state = np.kron(self.state.reshape(2**self.n, 2**self.n), state)
         else:
             state = state if state is not None else ket(0, n=q)

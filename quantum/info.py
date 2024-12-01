@@ -1,20 +1,19 @@
 import sys
 import numpy as np
 
-from .state import count_qubits, partial_trace, op, ket, dm, ev
+from .state import count_qubits, partial_trace, ket, dm, ev
 from ..mathlib import trace_norm
 from ..prob import entropy
 
 def entropy_von_Neumann(state):
     """Calculate the von Neumann entropy of a given density matrix."""
-    if not(isinstance(state, np.ndarray) and len(state.shape) == 2 and state.shape[0] == state.shape[1]):
-        state = op(state)
+    state = dm(state, check=False)
     # S = -np.trace(state @ matlog(state)/np.log(2))
-    # assert np.allclose(S.imag, 0), f"WTF: Entropy is not real: {S}"
+    # assert np.allclose(S.imag, 0), f"Entropy is not real: {S}"
     # return np.max(S.real, 0)  # fix rounding errors
     eigs = np.linalg.eigvalsh(state)
-    assert abs(np.sum(eigs) - 1) < 1e-10, f"Density matrix is not normalized! {np.sum(eigs)}"
-    assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite! {eigs}"
+    # assert abs(np.sum(eigs) - 1) < 1e-10, f"Density matrix is not normalized! {np.sum(eigs)}"  # dm trace-normalizes
+    assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite: {eigs}"
     return entropy(eigs)
 
 def entropy_entanglement(state, subsystem_qubits):
@@ -47,7 +46,7 @@ def fidelity(state1, state2):
 
 def trace_distance(rho1, rho2):
     """Calculate the trace distance between two density matrices."""
-    rho1, rho2 = op(rho1), op(rho2)
+    rho1, rho2 = dm(rho1), dm(rho2)
     return 0.5 * trace_norm(rho1 - rho2)
 
 def schmidt_decomposition(state, subsystem_qubits):
