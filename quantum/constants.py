@@ -79,7 +79,7 @@ fSWAP = SWAP @ CZ
 
 def GHZ_(n):
     a = np.zeros(2**n)
-    a[0] = a[-1] = 1
+    a[0] = a[-1] = f2
     return a
 Bell = [
     ket('00 + 11'),  # GHZ_(2)
