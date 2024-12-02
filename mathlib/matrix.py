@@ -21,7 +21,7 @@ def _sq_matrix_allclose(a, f, rtol=1e-05, atol=1e-08):
     a = np.asarray(a)
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         return False
-    a[np.isnan(a)] = 0
+    # a[np.isnan(a)] = 0
     a, b = f(a)
     return np.allclose(a, b, rtol=rtol, atol=atol)
 
@@ -83,6 +83,16 @@ def is_projection(a, rtol=1e-05, atol=1e-08):
 
 def is_projection_orthogonal(a, rtol=1e-05, atol=1e-08):
     return is_projection(a, rtol=rtol, atol=atol) and is_hermitian(a, rtol=rtol, atol=atol)
+
+def is_diag(a, rtol=1e-05, atol=1e-08):
+    # return _sq_matrix_allclose(a, lambda a: (
+    #     np.diag(np.diag(a)), a
+    # ), rtol=rtol, atol=atol)
+
+    # ~2.5x faster for (32,32) and ~6x faster for (1024, 1024)
+    # a[np.isnan(a)] = 0
+    a = a.reshape(-1)[:-1].reshape(a.shape[0]-1, a.shape[1]+1)[:,1:]  # remove diagonal
+    return np.isclose(np.linalg.norm(a), 0, rtol=rtol, atol=atol)
 
 ########################
 ### Matrix functions ###
