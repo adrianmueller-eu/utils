@@ -738,6 +738,11 @@ class QuantumComputer:
         self.iqft(energy, do_swaps=False)
         return self
 
+    @classmethod
+    def from_ensemble(cls, probs, kets):
+        state = np.sum(p * np.outer(k, k.conj()) for p, k in zip(probs, kets))
+        return cls(state)
+
     @staticmethod
     def is_state(state):
         return is_ket(state) or is_dm(state)
