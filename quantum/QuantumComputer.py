@@ -465,6 +465,13 @@ class QuantumComputer:
             else:
                 return np.array([1.]), np.array([self.state]).T
 
+    def ensemble_pp(self, obs=None):
+        probs, kets = self.ensemble(obs)
+        print(f"Prob      State")
+        print("-"*25)
+        for p, ket in zip(probs, kets.T):
+            print(f"{p:.6f}  {unket(ket)}")
+
     def purify(self, sample=False, obs=None):
         """
         Convert density matrix to a state vector representation by purification, either by doubling the number of qubits or by sampling from the eigenstates.
