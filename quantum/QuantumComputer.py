@@ -460,7 +460,7 @@ class QuantumComputer:
                 # filter out zero eigenvalues
                 mask = probs > self.DECOMPOSITION_EPS
                 probs = probs[mask]
-                kets = kets[:, mask]
+                kets = kets.T[mask]
                 return probs.real, kets
             else:
                 return np.array([1.]), np.array([self.state]).T
@@ -469,7 +469,7 @@ class QuantumComputer:
         probs, kets = self.ensemble(obs)
         print(f"Prob      State")
         print("-"*25)
-        for p, ket in zip(probs, kets.T):
+        for p, ket in zip(probs, kets):
             print(f"{p:.6f}  {unket(ket)}")
 
     def purify(self, sample=False, obs=None):
