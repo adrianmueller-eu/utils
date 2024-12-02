@@ -84,14 +84,17 @@ def is_projection(a, rtol=1e-05, atol=1e-08):
 def is_projection_orthogonal(a, rtol=1e-05, atol=1e-08):
     return is_projection(a, rtol=rtol, atol=atol) and is_hermitian(a, rtol=rtol, atol=atol)
 
-def is_diag(a, rtol=1e-05, atol=1e-08):
+def is_diag(a, exact=False, rtol=1e-05, atol=1e-08):
     # return _sq_matrix_allclose(a, lambda a: (
     #     np.diag(np.diag(a)), a
     # ), rtol=rtol, atol=atol)
 
     # ~2.5x faster for (32,32) and ~6x faster for (1024, 1024)
+    # exact version is ~9x even faster for (32,32) and ~2x for (1024, 1024)
     # a[np.isnan(a)] = 0
     a = a.reshape(-1)[:-1].reshape(a.shape[0]-1, a.shape[1]+1)[:,1:]  # remove diagonal
+    if exact:
+        return np.array_equal(a, 0)
     return np.isclose(np.linalg.norm(a), 0, rtol=rtol, atol=atol)
 
 ########################
