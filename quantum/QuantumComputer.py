@@ -97,23 +97,23 @@ class QuantumComputer:
             self.U = np.tensordot(U, self.U, axes=1)
         return self
 
-    def get_state(self, qubits='all'):
-        return self._get("state", qubits)
+    def get_state(self, qubits='all', obs=None):
+        return self._get("state", qubits, obs)
 
-    def get_U(self, qubits='all'):
+    def get_U(self, qubits='all', obs=None):
         if not self._track_unitary:
             raise ValueError("Unitary tracking is disabled")
-        return self._get("U", qubits)
+        return self._get("U", qubits, obs)
 
-    def _get(self, prop, qubits):
+    def _get(self, prop, qubits, obs):
         if self.n == 0:
             raise ValueError("No qubits allocated yet")
-        qubits = self._check_qubit_arguments(qubits, False)
-        self._reorder(qubits, reshape=False)
-        a = getattr(self, prop)
-        if len(qubits) == self.n:
-            return a
-        return partial_trace(a, [self.qubits.index(q) for q in qubits])
+        with self.observable(obs, qubits) as qubits:
+            self._reorder(qubits, reshape=False)
+            a = getattr(self, prop)
+            if len(qubits) == self.n:
+                return a
+            return partial_trace(a, [self.qubits.index(q) for q in qubits])
 
     @contextmanager
     def observable(self, obs=None, qubits='all'):
@@ -288,35 +288,35 @@ class QuantumComputer:
             self.init(state, qubits)
         return self
 
-    def remove(self, qubits, collapse=False):
-        qubits = self._check_qubit_arguments(qubits, False)
-        if len(qubits) == self.n:
-            return self.clear()
-        qubits_indcs = [self.qubits.index(q) for q in qubits]
-        retain = [q for q in range(self.n) if q not in qubits_indcs]
-        if self.is_matrix_mode():
-            if collapse:
-                q = len(qubits)
-                probs = self._probs(qubits)
-                outcome = choice(2**q, p=probs)
-                idcs = slice(outcome*2**(self.n-q), (outcome+1)*2**(self.n-q))
-                self.state = self.state[idcs, idcs] / probs[outcome]
+    def remove(self, qubits, collapse=False, obs=None):
+        with self.observable(obs, qubits) as qubits:
+            if len(qubits) == self.n:
+                return self.clear()
+            qubits_indcs = [self.qubits.index(q) for q in qubits]
+            retain = [q for q in range(self.n) if q not in qubits_indcs]
+            if self.is_matrix_mode():
+                if collapse:
+                    q = len(qubits)
+                    probs = self._probs(qubits)
+                    outcome = choice(2**q, p=probs)
+                    idcs = slice(outcome*2**(self.n-q), (outcome+1)*2**(self.n-q))
+                    self.state = self.state[idcs, idcs] / probs[outcome]
+                else:
+                    self.state = partial_trace(self.state, retain)
             else:
-                self.state = partial_trace(self.state, retain)
-        else:
-            if collapse or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
-                # if no entanglement with others, just remove it
-                probs = self._probs(qubits)  # also moves qubits to the front and reshapes
-                outcome = choice(2**len(qubits), p=probs)
-                self.state = normalize(self.state[outcome])
-                if len(qubits) == self.n - 1:
-                    self.state = self.state.reshape([2])
-            else:
-                # otherwise, we need to decohere
-                if len(retain) > self.MATRIX_BREAK:
-                    warnings.warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
-                    # return self.remove(qubits, collapse=True)
-                self.state = partial_trace(self.state, retain)
+                if collapse or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
+                    # if no entanglement with others, just remove it
+                    probs = self._probs(qubits)  # also moves qubits to the front and reshapes
+                    outcome = choice(2**len(qubits), p=probs)
+                    self.state = normalize(self.state[outcome])
+                    if len(qubits) == self.n - 1:
+                        self.state = self.state.reshape([2])
+                else:
+                    # otherwise, we need to decohere
+                    if len(retain) > self.MATRIX_BREAK:
+                        warnings.warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
+                        # return self.remove(qubits, collapse=True)
+                    self.state = partial_trace(self.state, retain)
 
         self.qubits = [q for q in self.qubits if q not in qubits]
         self.original_order = [q for q in self.original_order if q not in qubits]
@@ -336,14 +336,14 @@ class QuantumComputer:
         self._reorder(new_order)  # may be unnecessary here
         return self
 
-    def plot(self, show_qubits='all', **kw_args):
-        state = self.get_state(show_qubits)
+    def plot(self, show_qubits='all', obs=None, **kw_args):
+        state = self.get_state(show_qubits, obs)
         if len(state.shape) == 2:
             return imshow(state, **kw_args)
         return plotQ(state, **kw_args)
 
-    def plotU(self, show_qubits='all', **kw_args):
-        U = self.get_U(show_qubits)
+    def plotU(self, show_qubits='all', obs=None, **kw_args):
+        U = self.get_U(show_qubits, obs)
         return imshow(U, **kw_args)
 
     def _check_qubit_arguments(self, qubits, allow_new):
@@ -451,20 +451,21 @@ class QuantumComputer:
             return True
         return np.isclose(np.trace(rho @ rho), 1)
 
-    def ensemble(self):
+    def ensemble(self, obs=None):
         self._reorder(self.original_order)
 
-        if self.is_matrix_mode():
-            probs, kets = np.linalg.eigh(self.state)
-            # filter out zero eigenvalues
-            mask = probs > self.DECOMPOSITION_EPS
-            probs = probs[mask]
-            kets = kets[:, mask]
-            return probs.real, kets
-        else:
-            return np.array([1.]), np.array([self.state]).T
+        with self.observable(obs):
+            if self.is_matrix_mode():
+                probs, kets = np.linalg.eigh(self.state)
+                # filter out zero eigenvalues
+                mask = probs > self.DECOMPOSITION_EPS
+                probs = probs[mask]
+                kets = kets[:, mask]
+                return probs.real, kets
+            else:
+                return np.array([1.]), np.array([self.state]).T
 
-    def purify(self, sample=False):
+    def purify(self, sample=False, obs=None):
         """
         Convert density matrix to a state vector representation by purification, either by doubling the number of qubits or by sampling from the eigenstates.
         """
@@ -472,30 +473,31 @@ class QuantumComputer:
             warnings.warn("State is already a vector", stacklevel=2)
             return self
 
-        probs, kets = self.ensemble()
-        if sample or len(probs) == 1:
-            outcome = choice(len(probs), p=normalize(probs, p=1))
-            new_state = kets[:, outcome]
-            n_ancillas = 0
-        else:
-            # construct purification
-            n_ancillas = int(np.ceil(np.log2(len(probs))))
-            new_state = np.zeros(2**(self.n + n_ancillas), dtype=complex)
-            ancilla_basis = I_(n_ancillas)
+        with self.observable(obs):
+            probs, kets = self.ensemble()
+            if sample or len(probs) == 1:
+                outcome = choice(len(probs), p=normalize(probs, p=1))
+                new_state = kets[:, outcome]
+                n_ancillas = 0
+            else:
+                # construct purification
+                n_ancillas = int(np.ceil(np.log2(len(probs))))
+                new_state = np.zeros(2**(self.n + n_ancillas), dtype=complex)
+                ancilla_basis = I_(n_ancillas)
 
-            for i, p in enumerate(probs):
-                new_state += np.sqrt(p) * np.kron(kets[:, i], ancilla_basis[i])
+                for i, p in enumerate(probs):
+                    new_state += np.sqrt(p) * np.kron(kets[:, i], ancilla_basis[i])
 
-        # find n_ancillas integers that are not in self.qubits
-        ancillas = []
-        i = self.n
-        while len(ancillas) < n_ancillas:
-            while i in self.qubits or i in ancillas:
-                i += 1
-            ancillas.append(i)
+            # find n_ancillas integers that are not in self.qubits
+            ancillas = []
+            i = self.n
+            while len(ancillas) < n_ancillas:
+                while i in self.qubits or i in ancillas:
+                    i += 1
+                ancillas.append(i)
 
-        # initialize the new purified state
-        self.init(new_state, self.qubits + ancillas)
+            # initialize the new purified state
+            self.init(new_state, self.qubits + ancillas)
         return self
 
     def to_dm(self):
@@ -539,24 +541,24 @@ class QuantumComputer:
             return std, m1
         return std
 
-    def entanglement_entropy(self, qubits='all'):
-        qubits = self._check_qubit_arguments(qubits, False)
-        self._reorder(qubits, reshape=False)
+    def entanglement_entropy(self, qubits='all', obs=None):
+        with self.observable(obs, qubits) as qubits:
+            self._reorder(qubits, reshape=False)
 
-        def _entanglement_entropy(idcs):
-            state = partial_trace(self.state, idcs)
-            eigs  = np.linalg.eigvalsh(state)
-            return entropy(eigs)
+            def _entanglement_entropy(idcs):
+                state = partial_trace(self.state, idcs)
+                eigs  = np.linalg.eigvalsh(state)
+                return entropy(eigs)
 
-        if len(qubits) < self.n:
-            return _entanglement_entropy([self.qubits.index(q) for q in qubits])
-        else:
-            return [(i, o, _entanglement_entropy(i))
-                for i, o in bipartitions(range(self.n), unique=self.is_pure())  # H(A) = H(B) if AB is pure
+            if len(qubits) < self.n:
+                return _entanglement_entropy([self.qubits.index(q) for q in qubits])
+            else:
+                return [(i, o, _entanglement_entropy(i))
+                    for i, o in bipartitions(range(self.n), unique=self.is_pure())  # H(A) = H(B) if AB is pure
             ]
 
-    def entanglement_entropy_pp(self, sort='in', head=100, precision=7):
-        res = self.entanglement_entropy()
+    def entanglement_entropy_pp(self, sort='in', head=100, precision=7, obs=None):
+        res = self.entanglement_entropy(obs=obs)
         if sort == 'in':
             skey = lambda x: (len(x[0]), x[0])
         elif sort == 'out':
@@ -577,7 +579,7 @@ class QuantumComputer:
             part_out = [str(self.qubits[i]) for i in part_out]
             print(f"{' '.join(part_in)}  |  {' '.join(part_out)} \t{entanglement:.{precision}f}".rstrip('0'))
 
-    def schmidt_decomposition(self, qubits='all', coeffs_only=False):
+    def schmidt_decomposition(self, qubits='all', coeffs_only=False, obs=None):
         """
         Schmidt decomposition of a bipartition of the qubits. Returns the Schmidt coefficients and the two sets of basis vectors.
 
@@ -593,7 +595,7 @@ class QuantumComputer:
         if len(qubits) == self.n or len(qubits) == 0:
             raise ValueError("Schmidt decomposition requires a bipartition of the qubits")
 
-        state = self.get_state(qubits)  # state has now shape (2**q, 2**(n-q))
+        state = self.get_state(qubits, obs)  # state has now shape (2**q, 2**(n-q))
         if coeffs_only:
             S = np.linalg.svd(state, compute_uv=False)
             S = S[S > self.DECOMPOSITION_EPS]
@@ -605,8 +607,8 @@ class QuantumComputer:
         V = V[:len(S), :]
         return U, S, V.T.conj()
 
-    def schmidt_coefficients(self, qubits='all'):
-        return self.schmidt_decomposition(qubits, coeffs_only=True)
+    def schmidt_coefficients(self, qubits='all', obs=None):
+        return self.schmidt_decomposition(qubits, coeffs_only=True, obs=obs)
 
     def __str__(self):
         try:
