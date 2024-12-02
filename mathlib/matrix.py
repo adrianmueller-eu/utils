@@ -365,3 +365,18 @@ def random_projection(size, rank=None, orthogonal=True, complex=True):
     else:
         B = random_vec((rank, size), complex=complex)
     return A @ np.linalg.pinv(B @ A) @ B
+
+def Gram_Schmidt(A, normalized=True):
+    """ Orthonormalize a set of vectors using the Gram-Schmidt process. """
+    A = np.asarray(A, dtype=complex)
+    if len(A.shape) == 1:
+        A = A.reshape(-1, 1)
+    U = []
+    for i in range(A.shape[1]):
+        v = A[:, i]
+        for u in U:
+            v -= u.conj() @ v * u
+        if normalized:
+            v = normalize(v)
+        U.append(v)
+    return np.column_stack(U)
