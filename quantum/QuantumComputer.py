@@ -7,7 +7,7 @@ from .constants import *
 from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_ket, is_dm
 from .hamiltonian import parse_hamiltonian
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
-from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_hermitian
+from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_hermitian, is_diag
 from ..plot import imshow
 from ..utils import is_int, duh, reissue_warnings
 from ..prob import entropy
@@ -121,14 +121,14 @@ class QuantumComputer:
         if obs is not None:
             obs = self.parse_hermitian(obs, len(qubits))
             # if obs is diagonal, use identity as basis (convention clash: computational basis ordering breaks order by ascending eigenvalues)
-            is_diagonal = np.allclose(np.triu(obs, 1), 0)
-            if not is_diagonal:
+            diagonal = is_diag(obs)
+            if not diagonal:
                 U = np.linalg.eigh(obs)[1]
                 self(U.T.conj(), qubits)  # basis change
         try:
             yield qubits
         finally:
-            if obs is not None and not is_diagonal:
+            if obs is not None and not diagonal:
                 self(U, qubits)  # back to standard basis
 
     def probs(self, qubits='all', obs=None):
