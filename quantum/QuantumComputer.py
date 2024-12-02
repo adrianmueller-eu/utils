@@ -120,12 +120,15 @@ class QuantumComputer:
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
             obs = self.parse_hermitian(obs, len(qubits))
-            D, U = np.linalg.eigh(obs)  # eigh produces less numerical errors than eig
-            self(U.T.conj(), qubits)  # basis change
+            # if obs is diagonal, use identity as basis (convention clash: computational basis ordering breaks order by ascending eigenvalues)
+            is_diagonal = np.allclose(np.triu(obs, 1), 0)
+            if not is_diagonal:
+                U = np.linalg.eigh(obs)[1]
+                self(U.T.conj(), qubits)  # basis change
         try:
             yield qubits
         finally:
-            if obs is not None:
+            if obs is not None and not is_diagonal:
                 self(U, qubits)  # back to standard basis
 
     def probs(self, qubits='all', obs=None):
