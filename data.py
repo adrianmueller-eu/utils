@@ -38,6 +38,14 @@ def sqloss(f,x,y):
         return res.T @ res
     return _sqloss
 
+def noise(size=None, eps=0.1, kind='gaussian'):
+    if kind == 'gaussian':
+        return np.random.normal(0, eps, size)
+    elif kind == 'uniform':
+        return np.random.uniform(-eps, eps, size)
+    else:
+        raise ValueError(f"Unknown noise kind: {kind}")
+
 # # association mining
 # from mlxtend.frequent_patterns import apriori, association_rules
 # res = pd.DataFrame(index=df.index)
