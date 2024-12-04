@@ -746,6 +746,9 @@ class QuantumComputer:
     def rz(self, angle, q):
         return self(Rz(angle), q)
 
+    def rot(self, phi, theta, lam, q):
+        return self(Rot(phi, theta, lam), q)
+
     def qft(self, qubits, inverse=False, do_swaps=True):
         QFT = Fourier_matrix(n=len(qubits), n_is_qubits=True)
         if inverse:
