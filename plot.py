@@ -391,11 +391,15 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
 
     # intelligent figsize
     if figsize is None:
-        max_dim = 32
+        max_dim = 16
         if a.shape[0] >= a.shape[1]:
-            xdim, ydim = max_dim, min(max_dim, np.log2(max(2,a.shape[0])))  # matplotlib automatially scales the other dimension
+            ydim = min(max_dim, log2(max(2,a.shape[0])))
+            # matplotlib automatially scales the other dimension in the figure
+            # but unfortunately not the window when using ipython, so we have to scale it manually
+            xdim = ydim * a.shape[1] / a.shape[0]
         else:
-            xdim, ydim = min(max_dim, np.log2(max(2,a.shape[1]))), max_dim
+            xdim = min(max_dim, log2(max(2,a.shape[1])))
+            ydim = xdim * a.shape[0] / a.shape[1]
         figsize = (xdim, ydim)
     fig = plt.figure(figsize=figsize)
 
