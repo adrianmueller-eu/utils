@@ -137,7 +137,7 @@ class QuantumComputer:
     def _probs(self, qubits='all'):
         if self.is_matrix_mode():
             state = self.get_state(qubits)
-            return np.diag(state).real
+            return np.diag(state).real  # computational basis
         else:
             self._reorder(qubits)
             probs = np.abs(self.state)**2
