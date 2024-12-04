@@ -484,16 +484,15 @@ class QuantumComputer:
             probs, kets = self.ensemble()
             if sample or len(probs) == 1:
                 outcome = choice(len(probs), p=normalize(probs, p=1))
-                new_state = kets[:, outcome]
+                new_state = kets[outcome]
                 n_ancillas = 0
             else:
                 # construct purification
                 n_ancillas = int(np.ceil(np.log2(len(probs))))
-                new_state = np.zeros(2**(self.n + n_ancillas), dtype=complex)
                 ancilla_basis = I_(n_ancillas)
-
+                new_state = np.zeros(2**(self.n + n_ancillas), dtype=complex)
                 for i, p in enumerate(probs):
-                    new_state += np.sqrt(p) * np.kron(kets[:, i], ancilla_basis[i])
+                    new_state += np.sqrt(p) * np.kron(kets[i], ancilla_basis[i])
 
             # find n_ancillas integers that are not in self.qubits
             ancillas = []
