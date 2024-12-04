@@ -489,7 +489,7 @@ def _test_count_qubits():
     assert count_qubits(qc) == 5
 
 def _test_entropy_von_Neumann():
-    rho = random_dm(2, pure=True)
+    rho = random_dm(2, 'pure')
     S = entropy_von_Neumann(rho)
     assert np.allclose(S, 0), f"S = {S} ≠ 0"
 
@@ -504,8 +504,8 @@ def _test_entropy_entanglement():
     assert np.allclose(S, 1), f"S = {S} ≠ 1"
 
     # Two separable systems should have entropy 0
-    rhoA = random_dm(2, pure=True)
-    rhoB = random_dm(3, pure=True)
+    rhoA = random_dm(2, 'pure')
+    rhoB = random_dm(3, 'pure')
     rho = np.kron(rhoA, rhoB)
     S = entropy_entanglement(rho, [0,1])
     assert np.allclose(S, 0), f"S = {S} ≠ 0"

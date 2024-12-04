@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from ..utils import is_int, duh
 from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd
 from ..plot import colorize_complex
+from ..prob import random_p
 
 def transpose_qubit_order(state, new_order):
     state = np.asarray(state)
@@ -228,16 +229,26 @@ def random_ket(n=1):
     imag = np.random.random(2**n)
     return normalize(real + 1j*imag)
 
-def random_dm(n=1, pure=False):
-    """Generate a random density matrix ($2^{n+1}-1$ degrees of freedom). Normalized and without global phase."""
+def random_dm(n=1, rank='full'):
+    """
+    Generate a random density matrix ($2^{n+1}-1$ degrees of freedom). Normalized and without global phase.
+    """
     assert is_int(n), f"n needs to be an integer, but was: {n}"
-    if pure:
+    if rank == 'pure':
+        rank = 1
+    if rank == 'full':
+        rank = 2**n
+    assert is_int(rank) and rank >= 1, f"rank should be an integer >= 1, but was: {rank}"
+    assert rank <= 2**n, f"A {n}-qubit density matrix can be at most rank {2**n}, but requested was: {rank}"
+
+    if rank == 1:
         state = random_ket(n)
         return np.outer(state, state.conj())
-    else:
-        probs = normalize(np.random.random(2**n), p=1)
-        kets  = random_unitary(2**n)
-        return kets @ np.diag(probs) @ kets.conj().T
+
+    probs = random_p(rank, kind='uniform')
+    kets = np.array([random_ket(n) for _ in range(rank)]).conj().T
+    kets = np.linalg.qr(kets)[0]  # same speed as random_unitary for full rank, but much faster for rank << n_dim
+    return kets @ np.diag(probs) @ kets.conj().T
 
 def ket_from_int(d, n=None):
     if not n:
@@ -402,7 +413,7 @@ def dm(specification1, specification2=None, n=None, check=False, obs=None):
             return specification1
     elif specification2 is None:
         if specification1 == 'random' or specification1 == 'random_mixed' or specification1 == 'random_dm':
-            return random_dm(n, pure=False)
+            return random_dm(n, rank='full')
         elif specification1 == 'random_pure':
             specification1 = 'random'
 
