@@ -372,43 +372,48 @@ if not sage_loaded:
 ### Random ###
 ##############
 
-def random_vec(size, limits=(0,1), complex=False):
+def random_vec(size, params=(0,1), complex=False, kind='uniform'):
+    if kind == 'uniform':
+        rng = np.random.uniform
+    elif kind == 'normal':
+        rng = np.random.normal
+    else:
+        raise ValueError(f"Unknown kind '{kind}'.")
     if complex:
-        return random_vec(size, limits=limits) + 1j*random_vec(size, limits=limits)
-    return np.random.uniform(limits[0], limits[1], size=size)
+        return rng(*params, size=size) + 1j*rng(*params, size=size)
+    return rng(*params, size=size)
 
-def random_square(size, limits=(0,1), complex=False):
+def random_square(size, params=(0,1), complex=False, kind='normal'):
     if not hasattr(size, '__len__'):
         size = (size, size)
     if size[0] != size[1] or len(size) != 2:
         raise ValueError(f"The shape must be square, but was {size}.")
-    return random_vec(size, limits=limits, complex=complex)
+    return random_vec(size, params=params, complex=complex, kind=kind)
 
-def random_symmetric(size, limits=(0,1)):
-    a = random_square(size, limits=limits)
+def random_symmetric(size, params=(0,1)):
+    a = random_square(size, params=params)
     return (a + a.T)/2
 
-def random_orthogonal(size):
-    a = random_square(size)
-    q, r = np.linalg.qr(a)
-    return q
+def random_orthogonal(size, params=(0,1)):
+    a = random_square(size, params=params, complex=False)
+    return np.linalg.qr(a)[0]
 
-def random_hermitian(size, limits=(0,1)):
-    a = random_square(size, limits=limits, complex=True)
+def random_hermitian(size, params=(0,1)):
+    a = random_square(size, params=params, complex=True)
     return (a + a.conj().T)/2
 
 def random_unitary(size):
     H = random_hermitian(size)
     return matexp(1j*H)
 
-def random_psd(size, limits=(0,1), complex=True):
-    # limits = np.sqrt(limits)  # because we square it later -> doesn't work for negative limits!
-    a = random_square(size, limits=limits, complex=complex)
+def random_psd(size, params=(0,1), complex=True):
+    params = (params[0], np.sqrt(params[1]))  # eigs scale with variance
+    a = random_square(size, params=params, complex=complex, kind='normal')
     return a @ a.conj().T
 
-def random_normal(size, limits=(0,1), complex=True):
+def random_normal(size, params=(0,1), complex=True):
     U = random_unitary(size)
-    D = np.diag(random_vec(U.shape[0], limits=limits, complex=complex))
+    D = np.diag(random_vec(U.shape[0], params=params, complex=complex, kind='normal'))
     return U @ D @ U.conj().T
 
 def random_projection(size, rank=None, orthogonal=True, complex=True):
