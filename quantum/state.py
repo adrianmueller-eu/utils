@@ -433,9 +433,12 @@ def dm(specification1, specification2=None, n=None, renormalize=True, check=Fals
 
     return np.outer(s1, s2.conj())
 
-def ev(observable, psi):
-    # assert is_hermitian(observable)
-    return (psi.conj() @ observable @ psi).real
+def ev(obs, state, check=True):
+    if check:
+        assert is_hermitian(obs)
+    if len(state.shape) == 1:
+        return (state.conj() @ obs @ state).real
+    return np.trace(obs @ state).real
 
 def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
