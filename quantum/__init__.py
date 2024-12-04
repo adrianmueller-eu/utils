@@ -77,6 +77,12 @@ def _test_constants():
     assert np.allclose(Rx(2*np.pi), -I)
     assert np.allclose(Ry(2*np.pi), -I)
     assert np.allclose(Rz(2*np.pi), -I)
+    angle = np.random.rand()*4*np.pi - 2*np.pi
+    assert np.allclose(Rx(angle), R_(X, angle))
+    assert np.allclose(Ry(angle), R_(Y, angle))
+    assert np.allclose(Rz(angle), R_(Z, angle))
+    l,t,p = np.random.rand(3)*4*np.pi - 2*np.pi
+    assert np.allclose(Rot(p,t,l), Rz(l) @ Ry(t) @ Rz(p))
 
 def _test_fourier_matrix():
     assert np.allclose(Fourier_matrix(1), H)

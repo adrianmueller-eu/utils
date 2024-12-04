@@ -37,9 +37,29 @@ H = H_gate = 1/np.sqrt(2) * np.array([ # Fourier_matrix(2) = f2*(X + Z) = 1j*f2*
 def R_(gate, theta):
    return matexp(-1j*gate*theta/2)
 
-Rx = lambda theta: R_(X, theta)
-Ry = lambda theta: R_(Y, theta)
-Rz = lambda theta: R_(Z, theta)
+def Rx(theta):
+    ct = np.cos(theta/2)
+    st = -1j*np.sin(theta/2)
+    return np.array([[ct, st], [st, ct]], dtype=complex)
+def Ry(theta):  # beam splitter
+    ct = np.cos(theta/2)
+    st = np.sin(theta/2)
+    return np.array([[ct, -st], [st, ct]], dtype=complex)
+def Rz(theta):  # phase shift
+    jt2 = 1j*theta/2
+    return np.array([[np.exp(-jt2), 0], [0, np.exp(jt2)]], dtype=complex)
+
+def Rot(phi, theta, lam):
+    # return Rz(lam) @ Ry(theta) @ Rz(phi)  # 2x slower
+    ct = np.cos(theta/2)
+    st = np.sin(theta/2)
+    ppl = 1j*(phi + lam)/2
+    pml = 1j*(phi - lam)/2
+    return np.array([
+        [np.exp(-ppl)*ct, -np.exp(pml)*st],
+        [np.exp(-pml)*st, np.exp(ppl)*ct]
+    ])
+
 for i in [2,3]:
     for s, g in zip(itertools.product(['I','X','Y','Z'], repeat=i), itertools.product([I,X,Y,Z], repeat=i)):
         globals()["".join(s)] = reduce(np.kron, g)  # II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ
