@@ -71,28 +71,43 @@ def print_header(title, char='#'):
     res += char*(len(title)//charl + 2*4)
     print(res)
 
-def nbytes(n):
+def nbytes(o):
     """ Returns the number of bytes of some common objects. """
     # numpy array
-    if hasattr(n, 'nbytes'):
-        return n.nbytes
+    if hasattr(o, 'nbytes'):
+        return o.nbytes
     # scipy sparse matrix
-    elif hasattr(n, 'data') and isinstance(n.data, np.ndarray):
-        return n.data.nbytes + n.indptr.nbytes + n.indices.nbytes
+    elif hasattr(o, 'data') and isinstance(o.data, np.ndarray):
+        return o.data.nbytes + o.indptr.nbytes + o.indices.nbytes
     # pandas dataframe
-    elif hasattr(n, 'memory_usage'):
-        return n.memory_usage(deep=True).sum()
+    elif hasattr(o, 'memory_usage'):
+        return o.memory_usage(deep=True).sum()
     # pytorch tensor
-    elif hasattr(n, 'element_size') and hasattr(n, 'storage'):
-        return n.element_size() * n.storage().size()
+    elif hasattr(o, 'element_size') and hasattr(o, 'storage'):
+        return o.element_size() * o.storage().size()
     # string
-    elif isinstance(n, str):
-        return len(n)
-    # list, tuple, set, dict, etc.
-    elif is_iterable(n):
-        return sum([nbytes(i) for i in n])
+    elif isinstance(o, str):
+        return len(o)
+    # dict
+    elif isinstance(o, dict):
+        return sum(nbytes(k) + nbytes(v) for k, v in o.items())
+    # list, tuple, set
+    elif is_iterable(o):
+        try:
+            o = np.asarray(o)
+            if np.issubdtype(o.dtype, np.number):
+                return o.nbytes
+        finally:
+            return sum(nbytes(i) for i in o)
+    # numeric types
+    elif isinstance(o, (int, float)):
+        return 8
+    elif isinstance(o, (complex)):
+        return 16
+    elif isinstance(o, (bool)):
+        return 1
     else:
-        raise TypeError(f"Can't get the size of an object of type {type(n)}")
+        raise TypeError(f"Can't get the size of an object of type {type(o)}")
 
 def duh(n, precision=3):
     """ Takes a number of bytes and returns a human-readable string with the
