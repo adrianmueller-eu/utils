@@ -17,7 +17,6 @@ class QuantumComputer:
     MATRIX_SLOW = 8
     MATRIX_BREAK = 12
     ENTROPY_EPS = 1e-12
-    DECOMPOSITION_EPS = 1e-12
 
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
@@ -453,22 +452,26 @@ class QuantumComputer:
             return True
         return np.isclose(np.trace(rho @ rho), 1)
 
-    def ensemble(self, obs=None):
+    def ensemble(self, obs=None, filter_eps=1e-12):
         self._reorder(self.original_order)
 
         with self.observable(obs):
             if self.is_matrix_mode():
+                if self.n > self.MATRIX_SLOW and is_diag(self.state, eps=0):
+                    probs = np.diag(self.state).real
+                    kets = I_(self.n)
+                    return probs, kets
                 probs, kets = np.linalg.eigh(self.state)
                 # filter out zero eigenvalues
-                mask = probs > self.DECOMPOSITION_EPS
+                mask = probs > filter_eps
                 probs = probs[mask]
                 kets = kets.T[mask]
                 return probs.real, kets
             else:
                 return np.array([1.]), np.array([self.state]).T
 
-    def ensemble_pp(self, obs=None):
-        probs, kets = self.ensemble(obs)
+    def ensemble_pp(self, obs=None, filter_eps=1e-12):
+        probs, kets = self.ensemble(obs, filter_eps)
         print(f"Prob      State")
         print("-"*25)
         for p, ket in zip(probs, kets):
