@@ -237,24 +237,31 @@ def frobenius_norm(A):
     return np.linalg.norm(A, ord='fro')
     # return np.sqrt(np.trace(A.T.conj() @ A))
 
-# def polar(A, kind='left'):
-#     """Polar decomposition of *any* matrix into a unitary and a PSD matrix: $A = UJ$ or $A = KU$."""
-#     if kind == 'left':
-#         J = matsqrt(A.T.conj() @ A)
-#         U = A @ np.linalg.pinv(J)
-#         return U, J
-#     elif kind == 'right':
-#         K = matsqrt(A @ A.T.conj())
-#         U = np.linalg.pinv(K) @ A
-#         return K, U
-#     raise ValueError(f"Unknown kind '{kind}'.")
+def polar(A, kind='left'):  # a bit faster than scipy.linalg.polar
+    """Polar decomposition of *any* matrix into a unitary and a PSD matrix: $A = UJ$ or $A = KU$."""
+    def _get(S):
+        D, U = np.linalg.eigh(S)
+        D_sqrt = np.sqrt(D)[:,None]
+        J = U @ (D_sqrt * U.conj().T)
+        J_inv = U @ (1/D_sqrt * U.conj().T)
+        return J, J_inv
 
-# def svd(A):  # np.linalg.svd is faster
+    if kind == 'left':
+        J, J_inv = _get(A.T.conj() @ A)
+        U = A @ J_inv
+        return U, J
+    elif kind == 'right':
+        K, K_inv = _get(A @ A.T.conj())
+        U = K_inv @ A
+        return K, U
+    raise ValueError(f"Unknown kind '{kind}'.")
+
+# def svd(A):  # use np.linalg.svd
 #     S, J = polar(A, kind='left')
 #     D, T = np.linalg.eig(J)
 #     return S @ T, np.diag(D), T.conj().T
 
-# def cholesky(A, check=True):
+# def cholesky(A, check=True):  # very slow, use scipy.linalg.cholesky or np.linalg.cholesky
 #     """ Cholesky decomposition of a PSD matrix into a lower triangular matrix $A = LL^*$ """
 #     if check and not is_psd(A):
 #         raise ValueError('Cholesky decomposition works only for PSD matrices!')
