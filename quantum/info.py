@@ -54,7 +54,8 @@ def fidelity(state1, state2):
 
 def trace_distance(rho1, rho2):
     """Calculate the trace distance between two density matrices."""
-    rho1, rho2 = dm(rho1), dm(rho2)
+    # convert to density matrices if necessary
+    rho1, rho2 = dm(rho1, renormalize=False), dm(rho2, renormalize=False)
     return 0.5 * trace_norm(rho1 - rho2)
 
 def schmidt_decomposition(state, subsystem_qubits):
