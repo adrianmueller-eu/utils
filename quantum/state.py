@@ -248,7 +248,7 @@ def random_dm(n=1, rank='full'):
     probs = random_p(rank, kind='uniform')
     kets = np.array([random_ket(n) for _ in range(rank)]).conj().T
     kets = np.linalg.qr(kets)[0]  # same speed as random_unitary for full rank, but much faster for rank << n_dim
-    return kets @ np.diag(probs) @ kets.conj().T
+    return kets @ (probs[:,None] * kets.conj().T)
 
 def ket_from_int(d, n=None):
     if not n:
@@ -491,7 +491,7 @@ def gibbs(H, beta=1):
     assert beta >= 0, "Inverse temperature must be positive!"
     E, U = np.linalg.eigh(H)
     E = softmax(E, -beta)
-    return U @ np.diag(E) @ U.conj().T
+    return U @ (E[:,None] * U.conj().T)
 
 def count_qubits(obj):
     if isinstance(obj, str) or (hasattr(obj, 'dtype') and obj.dtype.kind == 'U'):  # after conversion to numpy array

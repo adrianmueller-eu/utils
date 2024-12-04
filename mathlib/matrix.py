@@ -365,7 +365,7 @@ if not sage_loaded:
         generators = su(n)
         def rotmat(G):
             D, U = np.linalg.eigh(G)
-            return lambda phi: U @ np.diag(np.exp(-1j*phi/2*D)) @ U.conj().T
+            return lambda phi: U @ (np.exp(-1j*phi/2*D)[:,None] * U.conj().T)
         return [rotmat(G) for G in generators]
 
 ##############
@@ -428,8 +428,8 @@ def random_psd(size, params=(0,1), complex=True):
 
 def random_normal(size, params=(0,1), complex=True):
     U = random_unitary(size)
-    D = np.diag(random_vec(U.shape[0], params=params, complex=complex, kind='normal'))
-    return U @ D @ U.conj().T
+    D = random_vec(U.shape[0], params=params, complex=complex, kind='normal')
+    return U @ (D[:,None] * U.conj().T)
 
 def random_projection(size, rank=None, orthogonal=True, complex=True):
     if rank is None:
@@ -441,12 +441,12 @@ def random_projection(size, rank=None, orthogonal=True, complex=True):
     #     # P^2 = P and P = P^H
     #     U = random_unitary(size)
     #     D = np.random.permutation([1]*rank + [0]*(size-rank))
-    #     return U @ np.diag(D) @ U.conj().T
+    #     return U @ (D[:,None] * U.conj().T)
     # else:
     #     # P^2 = P, but almost never P = P^H
     #     A = random_square(size, complex=True)
     #     D = np.random.permutation([1]*rank + [0]*(size-rank))
-    #     return A @ np.diag(D) @ np.linalg.pinv(A)
+    #     return A @ (D[:,None] * np.linalg.pinv(A))
 
     # much faster for rank << size
     A = random_vec((size, rank), complex=complex)

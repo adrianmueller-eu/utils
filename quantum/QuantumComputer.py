@@ -768,7 +768,7 @@ class QuantumComputer:
         U = self.parse_unitary(U, check=self.expensive_checks)
         UD, UU = np.linalg.eig(U)
         for j, q in enumerate(energy):
-            U_2j = UU @ np.diag(UD**(2**j)) @ UU.T.conj()
+            U_2j = UU @ (UD**(2**j) * UU.T.conj())
             self.c(U_2j, q, state)
 
         # 3. IQFT on energy register
