@@ -33,13 +33,13 @@ def reverse_qubit_order(state):
     """So the last will be first, and the first will be last."""
     return transpose_qubit_order(state, -1)
 
-def partial_trace(rho, retain_qubits):
+def partial_trace(state, retain_qubits):
     """
     Trace out all qubits not specified in `retain_qubits` and returns the reduced density matrix (or a scalar, if all qubits are traced out).
     The order of the qubits in `retain_qubits` also specifies the order of the qubits in the resulting reduced density matrix.
     """
-    rho = np.asarray(rho)
-    n = count_qubits(rho)
+    state = np.asarray(state)
+    n = count_qubits(state)
 
     # pre-process retain_qubits
     if is_int(retain_qubits):
@@ -50,31 +50,31 @@ def partial_trace(rho, retain_qubits):
     trace_out = np.array(sorted(set(range(n)) - set(retain_qubits)))
 
     # if rho is a state vector
-    if len(rho.shape) == 1:
+    if len(state.shape) == 1:
         if len(trace_out) == n:
             # Tr(|p><p|) = <p|p>
-            return rho @ rho.conj()
+            return state @ state.conj()
         elif len(trace_out) == 0:
-            return np.outer(rho, rho.conj())
-        st  = rho.reshape([2]*n)
-        rho = np.tensordot(st, st.conj(), axes=(trace_out,trace_out))
+            return np.outer(state, state.conj())
+        st  = state.reshape([2]*n)
+        state = np.tensordot(st, st.conj(), axes=(trace_out,trace_out))
     # if trace out all qubits, just return the normal trace
     elif len(trace_out) == n:
-        return np.trace(rho).reshape(1,1)
+        return np.trace(state).reshape(1,1)
     else:
-        assert rho.shape[0] == rho.shape[1], f"Can't trace a non-square matrix {rho.shape}"
+        assert state.shape[0] == state.shape[1], f"Can't trace a non-square matrix {state.shape}"
 
-        rho = rho.reshape([2]*(2*n))
+        state = state.reshape([2]*(2*n))
         for qubit in trace_out:
-            rho = np.trace(rho, axis1=qubit, axis2=qubit+n)
+            state = np.trace(state, axis1=qubit, axis2=qubit+n)
             n -= 1         # one qubit less
             trace_out -= 1 # rename the axes (only "higher" ones are left)
 
     # transpose the axes of the remaining qubits to the desired order
     new_order = np.argsort(list(retain_qubits))
-    rho = rho.transpose(new_order.tolist() + (new_order+len(new_order)).tolist())
+    state = state.transpose(new_order.tolist() + (new_order+len(new_order)).tolist())
 
-    return rho.reshape([2**len(retain_qubits)]*2)
+    return state.reshape([2**len(retain_qubits)]*2)
 
 def state_trace(state, retain_qubits):
     """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical 
