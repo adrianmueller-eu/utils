@@ -260,7 +260,7 @@ def ket_from_int(d, n=None):
     res[d] = 1
     return res
 
-def ket(specification, n=None):
+def ket(specification, n=None, renormalize=True):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number 
     or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
@@ -270,7 +270,9 @@ def ket(specification, n=None):
             assert specification.shape == (2**n,), f"State vector has wrong shape for {n} qubits: {specification.shape} ≠ {(2**n,)}!"
         else:
             assert len(specification) == 2**n, f"State vector has wrong size for {n} qubits: {len(specification)} ≠ {2**n}!"
-        return normalize(specification)
+        if renormalize:
+            return normalize(specification)
+        return np.asarray(specification)
     if is_int(specification):
         return ket_from_int(specification, n)
     if type(specification) == str:
