@@ -2,6 +2,7 @@ import warnings
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
+from math import log2
 from .mathlib import is_complex, is_symmetric, int_sqrt
 from .utils import *
 
@@ -157,7 +158,7 @@ def histogram(data, bins=None, xlog=False, density=False):
         bins = bins_sqrt(data)
     return np.histogram(data, bins=bins, density=density)
 
-def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
+def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
     """Uses magic to create pretty histograms."""
 
     if type(bins) == str:
@@ -174,20 +175,29 @@ def hist(data, bins=None, xlabel="", title="", xlog=False, ylog=False, density=F
     if colored:
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=figsize, sharex=True, gridspec_kw={"height_ratios": [10, 1]})
         ax0 = ax[0]
-    else:
+    elif len(plt.get_fignums()) == 0:
         fig, ax0 = plt.subplots(figsize=figsize)
 
     # filter nan, -inf, and inf from data
     data = np.asarray(data)
-    n_filtered = np.sum(np.isnan(data)) + np.sum(np.isinf(data))
+    nan_filter = np.isnan(data) | np.isinf(data)
+    n_filtered = np.sum(nan_filter)
     if n_filtered > 0:
         n_original = len(data)
-        data = data[~np.isnan(data)] # filter nan
-        data = data[~np.isinf(data)] # filter inf and -inf
+        data = data[~nan_filter]  # filter out nan and inf
         print(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
 
-    n, bins = histogram(data, bins=bins, xlog=xlog, density=density)
-    ax0.hist(bins[:-1], bins, weights=n) # TODO: moving_avg(bins,2) instead of bins[:-1]?
+    n, bins = histogram(data.ravel(), bins=bins, xlog=xlog, density=density)
+    if len(data.shape) > 1 and data.shape[0] < 10: # not more than 10 distributions
+        for i, d in enumerate(data):
+            if hasattr(labels, '__len__') and len(labels) == data.shape[0]:
+                label = labels[i]
+            else:
+                label = None
+            ax0.hist(d.ravel(), bins=bins, density=density, alpha=1.5/data.shape[0], label=label)
+        ax0.legend()
+    else:
+        ax0.hist(bins[:-1], bins, weights=n, density=density, label=labels)
     if xlog:
         ax0.set_xscale("log")
     if ylog:
