@@ -108,3 +108,12 @@ Bell = [
     ket('01 - 10')
 ]
 GHZ = GHZ_(3)
+
+noise_models = {
+    'depolarizing': lambda p: [np.sqrt(1 - 3*p/4) * I, np.sqrt(p/4) * X, np.sqrt(p/4) * Y, np.sqrt(p/4) * Z],
+    'bitflip':      lambda p: [np.sqrt(1 - p) * I, np.sqrt(p) * X],
+    'phaseflip':    lambda p: [np.sqrt(1 - p) * I, np.sqrt(p) * Z],
+    'bitphaseflip': lambda p: [np.sqrt(1 - p) * I, np.sqrt(p) * X, np.sqrt(p) * Z, np.sqrt(p) * X @ Z],
+    'amplitude_damping': lambda gamma: [np.array([[1, 0], [0, np.sqrt(1 - gamma)]]), np.sqrt(1 - gamma) * I],
+    'phase_damping':     lambda gamma: [np.array([[1, 0], [0, np.exp(-gamma)    ]]), np.sqrt(1 - gamma) * I],
+}

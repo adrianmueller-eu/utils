@@ -671,6 +671,16 @@ class QuantumComputer:
                 A_idcs = list(range(len(qubits_A)))
                 return mutual_information_quantum(state, A_idcs, check=False)
 
+    def noise(self, noise_model=None, qubits='all', p=0.1, obs=None):
+        """
+        Apply noise to the qubits. See `noise_models.keys()` for available noise models.
+        """
+        if noise_model is None:
+            raise ValueError("No noise model provided. Valid options are: " + ', '.join(noise_models.keys()))
+        with self.observable(obs, qubits) as qubits:
+            operators = noise_models[noise_model](p)
+            return self(operators, qubits)
+
     def __str__(self):
         try:
             state = self.get_state()
