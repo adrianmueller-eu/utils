@@ -394,7 +394,7 @@ def unket(state, as_dict=False, prec=5):
             res += [f"{weight}*({'+'.join(weights[weight])})"]
     return "+".join(res).replace("+-", "-")
 
-def dm(specification1, specification2=None, n=None, check=False, obs=None):
+def dm(specification1, specification2=None, n=None, renormalize=True, check=False, obs=None):
     """
     Convenience function to generate or verify a density matrix. Also allows to generate other operators, e.g. `dm(0, 1)`.
     """
@@ -404,10 +404,11 @@ def dm(specification1, specification2=None, n=None, check=False, obs=None):
         if len(specification1.shape) > 1:
             n = n or count_qubits(specification1) or 1
             assert specification1.shape == (2**n, 2**n), f"Matrix has wrong shape for {n} qubits: {specification1.shape} ≠ {(2**n, 2**n)}"
-            sp1_trace = np.trace(specification1)
-            # trace normalize it if it's not already
-            if not abs(sp1_trace - 1) < 1e-8:
-                specification1 = specification1 / sp1_trace
+            if renormalize:
+                sp1_trace = np.trace(specification1)
+                # trace normalize it if it's not already
+                if not abs(sp1_trace - 1) < 1e-8:
+                    specification1 = specification1 / sp1_trace
             if check:
                 assert is_dm(specification1), f"The given matrix is not a density matrix"
             return specification1

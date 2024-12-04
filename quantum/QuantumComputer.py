@@ -255,7 +255,7 @@ class QuantumComputer:
             new_state = dm(state, n=len(qubits), check=True)
             if self.n > 0 and not self.is_matrix_mode():
                 # switch to matrix mode
-                self.state = dm(self.state)
+                self.state = dm(self.state, renormalize=False)
         else:
             if isinstance(state, str) and state == 'random_pure':
                 state = 'random'
