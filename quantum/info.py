@@ -2,7 +2,7 @@ import sys
 import numpy as np
 
 from .state import count_qubits, partial_trace, ket, dm, ev
-from ..mathlib import trace_norm, is_hermitian
+from ..mathlib import trace_norm, matsqrth_psd, is_hermitian
 from ..prob import entropy
 
 def von_neumann_entropy(state, check=True):
@@ -43,8 +43,12 @@ def fidelity(state1, state2):
         return np.abs(state1.conj() @ state2 @ state1)
     elif len(state1.shape) == 2 and len(state2.shape) == 2:
         # state1_sqrt = matsqrt(state1)
-        # return np.trace(matsqrt(state1_sqrt @ state2 @ state1_sqrt))**2
-        return np.sum(np.sqrt(np.linalg.eigvals(state1 @ state2)))**2 # this is correct and faster
+        # return np.trace(matsqrt(state1_sqrt @ state2 @ state1_sqrt))**2  # textbook formula
+        # return np.sum(np.sqrt(np.linalg.eigvals(state1 @ state2)))**2  # this is correct and faster
+        state1_sqrt = matsqrth_psd(state1)
+        state2_sqrt = matsqrth_psd(state2)
+        S = np.linalg.svd(state1_sqrt @ state2_sqrt, compute_uv=False) # this is in between in efficiency, but the more stable
+        return np.sum(S)**2
     else:
         raise ValueError(f"Can't calculate fidelity between {state1.shape} and {state2.shape}")
 
