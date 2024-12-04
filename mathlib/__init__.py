@@ -49,6 +49,7 @@ def test_mathlib_all():
         _test_random_normal,
         _test_is_projection,
         _test_random_projection,
+        _test_is_diag,
         _test_matexp,
         _test_matlog,
         _test_normalize,
@@ -393,6 +394,13 @@ def _test_random_projection():
     assert is_projection(P)
     assert not is_projection_orthogonal(P)
     assert np.linalg.matrix_rank(P) == rank
+
+def _test_is_diag():
+    a = np.eye(randint(2,20))
+    assert is_diag(a)
+
+    a = random_square(randint(2,20))
+    assert not is_diag(a)
 
 def _test_matexp():
     a = random_square(randint(2,20), complex=True)
