@@ -58,21 +58,30 @@ def trace_distance(rho1, rho2):
     rho1, rho2 = dm(rho1, renormalize=False), dm(rho2, renormalize=False)
     return 0.5 * trace_norm(rho1 - rho2)
 
-def schmidt_decomposition(state, subsystem_qubits):
+def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps=1e-10):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
     state = np.asarray(state)
+    n = count_qubits(state)
+
     assert len(state.shape) == 1, f"State must be a vector, but has shape: {state.shape}"
-    n = int(np.log2(len(state)))
     assert len(subsystem_qubits) <= n-1, f"Too many subsystem qubits: {len(subsystem_qubits)} >= {n}"
 
     # reorder the qubits so that the subsystem qubits are at the beginning
     subsystem_qubits = list(subsystem_qubits)
-    other_qubits = sorted(set(range(n)) - set(subsystem_qubits))
-    state = state.reshape([2]*n).transpose(subsystem_qubits + other_qubits).reshape(-1)
+    other_qubits = [i for i in range(n) if i not in subsystem_qubits]
+    # but only if the subsystem qubits are not already at the beginning
+    if subsystem_qubits != list(range(len(subsystem_qubits))):
+        state = state.reshape([2]*n).transpose(subsystem_qubits + other_qubits)
+    a_jk = state.reshape([2**len(subsystem_qubits), 2**len(other_qubits)])
 
     # calculate the Schmidt coefficients and basis using SVD
-    a_jk = state.reshape([2**len(subsystem_qubits), 2**len(other_qubits)])
-    U, S, V = np.linalg.svd(a_jk)
+    if coeffs_only:
+        S = np.linalg.svd(a_jk, compute_uv=False)
+        return S[S > filter_eps]
+    U, S, V = np.linalg.svd(a_jk, full_matrices=False)
+    S = S[S > filter_eps]
+    U = U[:, :len(S)]
+    V = V[:len(S), :]
     return S, U.T, V
 
 def correlation_quantum(state, observable_A, observable_B):
