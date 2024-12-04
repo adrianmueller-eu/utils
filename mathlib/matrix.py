@@ -1,4 +1,4 @@
-import warnings
+import warnings, sys
 import numpy as np
 import itertools
 import scipy.sparse as sp
@@ -101,6 +101,12 @@ def is_diag(a, eps=1e-12):
 ### Matrix functions ###
 ########################
 
+def matfunc(A, f, not_hermitian=False):
+    if not not_hermitian and is_hermitian(A):  # is_hermitian takes a small fraction of the timing difference between eig and eigh
+        return matfunch(A, f)
+    D, T = np.linalg.eig(A)
+    return T @ (f(D.astype(complex))[:,None] * np.linalg.pinv(T))
+
 try:
     from scipy.linalg import expm as matexp
     from scipy.linalg import logm as _matlog
@@ -111,23 +117,57 @@ try:
         return _matlog(A) / np.log(base)
 except:
     def matexp(A):
-        # there is a faster method for hermitian matrices
-        if is_hermitian(A):
-            eigval, eigvec = np.linalg.eigh(A)
-            return eigvec @ np.diag(np.power(np.e, eigval)) @ eigvec.conj().T
-        # use series expansion
+        return matfunc(A, np.exp)
+
+    def matexp_series(A):
         return np.eye(A.shape[0]) + series(lambda n, A_pow: A_pow @ A / n, start_value=A, start_index=1)
 
     def matlog(A, base=np.e):
-        evals, evecs = np.linalg.eig(A)
-        return evecs @ np.diag(np.log(evals.astype(complex)) / np.log(base)) @ evecs.conj().T
+        return matfunc(A, lambda x: np.log(x) / np.log(base))
 
     def matpow(A, n):
-        evals, evecs = np.linalg.eig(A)
-        return evecs @ np.diag(evals.astype(complex)**n) @ evecs.conj().T
+        return matfunc(A, lambda x: x**n)
 
-    def matsqrt(A, n=2):
-        return matpow(A, 1/n)
+    def matsqrt(A):
+        return matfunc(A, np.sqrt)
+
+# eigh got a huge speedup on MacOS in numpy 2.0
+def matfunch(A, f):
+    D, U = np.linalg.eigh(A)
+    return U @ (f(D.astype(complex))[:,None] * U.conj().T)
+
+def matexph(A):
+    return matfunch(A, np.exp)
+
+def matlogh(A, base=np.e):
+    return matfunch(A, lambda x: np.log(x) / np.log(base))
+
+def matpowh(A, n):
+    return matfunch(A, lambda x: x**n)
+
+def matsqrth(A):
+    return matfunch(A, np.sqrt)
+
+# faster than scipy and eigh in numpy 1.24
+def matfunch_psd(A, f):
+    if np.__version__ >= '2.0' and sys.platform == 'darwin':
+        # warnings.warn("For numpy >= 2.0, eigh has better performance than svd for PSD matrix functions.", stacklevel=2)
+        return matfunch(A, f)
+    u, s, vh = np.linalg.svd(A)
+    return u @ (f(s)[:,None] * vh)
+
+def matexph_psd(A):
+    return matfunch_psd(A, np.exp)
+
+def matlogh_psd(A, base=np.e):
+    return matfunch_psd(A, lambda x: np.log(x) / np.log(base))
+
+def matpowh_psd(A, n):
+    return matfunch_psd(A, lambda x: x**n)
+
+def matsqrth_psd(A):
+    """ Matrix square root for PSD matrices using SVD """
+    return matfunch_psd(A, np.sqrt)
 
 def normalize(a, p=2, axis=0):
     """
