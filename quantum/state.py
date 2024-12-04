@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ..utils import is_int, duh
-from ..mathlib import normalize, random_unitary, binstr_from_int, is_hermitian, softmax, is_psd
+from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd
 from ..plot import colorize_complex
 
 def transpose_qubit_order(state, new_order):
@@ -19,7 +19,7 @@ def transpose_qubit_order(state, new_order):
         state = state.reshape([2]*n)
         state = state.transpose(new_order_all)
         state = state.reshape(-1)
-    elif state.shape[0] == state.shape[1]:
+    elif len(state.shape) == 2 and state.shape[0] == state.shape[1]:
         state = state.reshape([2,2]*n)
         new_order_all = new_order_all + [i + n for i in new_order_all]
         state = state.transpose(new_order_all)
@@ -33,7 +33,10 @@ def reverse_qubit_order(state):
     return transpose_qubit_order(state, -1)
 
 def partial_trace(rho, retain_qubits):
-    """Trace out all qubits not specified in `retain_qubits`. Returns the reduced density matrix (if qubits remain) or a scalar (if all qubits are traced out)."""
+    """
+    Trace out all qubits not specified in `retain_qubits` and returns the reduced density matrix (or a scalar, if all qubits are traced out).
+    The order of the qubits in `retain_qubits` also specifies the order of the qubits in the resulting reduced density matrix.
+    """
     rho = np.asarray(rho)
     n = count_qubits(rho)
 
@@ -41,7 +44,6 @@ def partial_trace(rho, retain_qubits):
     if is_int(retain_qubits):
         retain_qubits = [retain_qubits]
     assert all(0 <= q < n for q in retain_qubits), f"Invalid qubit indices {retain_qubits} for {n}-qubit state"
-    dim_r = 2**len(retain_qubits)
 
     # get qubits to trace out
     trace_out = np.array(sorted(set(range(n)) - set(retain_qubits)))
@@ -58,8 +60,6 @@ def partial_trace(rho, retain_qubits):
     # if trace out all qubits, just return the normal trace
     elif len(trace_out) == n:
         return np.trace(rho).reshape(1,1)
-    elif len(trace_out) == 0:
-        return rho
     else:
         assert rho.shape[0] == rho.shape[1], f"Can't trace a non-square matrix {rho.shape}"
 
@@ -69,12 +69,11 @@ def partial_trace(rho, retain_qubits):
             n -= 1         # one qubit less
             trace_out -= 1 # rename the axes (only "higher" ones are left)
 
-    # transpose the axes of the remaining qubits to the original order
-    # rows = np.argsort(list(retain_qubits))
-    # cols = rows + len(rows)
-    # rho = rho.transpose(rows.tolist() + cols.tolist())
+    # transpose the axes of the remaining qubits to the desired order
+    new_order = np.argsort(list(retain_qubits))
+    rho = rho.transpose(new_order.tolist() + (new_order+len(new_order)).tolist())
 
-    return rho.reshape(dim_r, dim_r)
+    return rho.reshape([2**len(retain_qubits)]*2)
 
 def state_trace(state, retain_qubits):
     """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical 
