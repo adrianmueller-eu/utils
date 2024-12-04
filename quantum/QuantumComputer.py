@@ -6,6 +6,7 @@ import scipy.sparse as sp
 from .constants import *
 from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_ket, is_dm
 from .hamiltonian import parse_hamiltonian
+from .info import von_neumann_entropy, schmidt_decomposition, mutual_information_quantum, correlation_quantum
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag
 from ..plot import imshow
@@ -548,74 +549,107 @@ class QuantumComputer:
             return std, m1
         return std
 
-    def entanglement_entropy(self, qubits='all', obs=None):
+    def von_neumann_entropy(self, qubits='all', obs=None):
+        """
+        Calculate the von Neumann entropy of the reduced density matrix of the given qubits.
+        """
+        state = self.get_state(qubits, obs)
+        return von_neumann_entropy(state, check=False)
+
+    def entanglement_entropy(self, qubits, obs=None):
+        """
+        Calculate the entanglement entropy of the given qubits with respect to the rest of the system.
+
+        Alias for `von_neumann_entropy(qubits)`.
+        """
         with self.observable(obs, qubits) as qubits:
-            self._reorder(qubits, reshape=False)
+            if len(qubits) == self.n:
+                raise ValueError("Entanglement entropy requires a bipartition of the qubits")
+            return self.von_neumann_entropy(qubits)
 
-            def _entanglement_entropy(idcs):
-                state = partial_trace(self.state, idcs)
-                eigs  = np.linalg.eigvalsh(state)
-                return entropy(eigs)
+    def entanglement_entropies(self, qubits='all', obs=None):
+        """
+        Calculate the entanglement entropy of all bipartitions.
+        """
+        with self.observable(obs, qubits) as qubits:
+            for i, o in bipartitions(qubits, unique=self.is_pure()):
+                yield i, o, self.entanglement_entropy(i)
 
-            if len(qubits) < self.n:
-                return _entanglement_entropy([self.qubits.index(q) for q in qubits])
-            else:
-                return [(i, o, _entanglement_entropy(i))
-                    for i, o in bipartitions(range(self.n), unique=self.is_pure())  # H(A) = H(B) if AB is pure
-            ]
-
-    def entanglement_entropy_pp(self, sort='in', head=100, precision=7, obs=None):
-        res = self.entanglement_entropy(obs=obs)
-        if sort == 'in':
+    def entanglement_entropy_pp(self, sort=None, head=100, precision=7, obs=None):
+        res = self.entanglement_entropies(obs=obs)
+        if sort == None:
+            skey = None
+            word = ""
+        elif sort == 'in':
             skey = lambda x: (len(x[0]), x[0])
+            word = "First "
         elif sort == 'out':
             skey = lambda x: (len(x[1]), x[1])
+            word = "First "
         elif sort == 'asc':
             skey = lambda x: x[2]
+            word = "Lowest "
         elif sort == 'desc':
             skey = lambda x: -x[2]
+            word = "Highest "
         elif type(sort) == 'function':
             skey = sort
         else:
             raise ValueError(f"Invalid sort parameter: {sort}")
 
-        howmany = "All" if head is None or head + 1 >= 1 << self.n - 1 else f"Top {head}"
+        howmany = "All" if head is None or head + 1 >= 2**self.n - 1 else f"{word}{head}"
         print(howmany + " bipartitions:\n" + "-"*(self.n*2+3))
-        for part_in, part_out, entanglement in sorted(res, key=skey)[:head]:
-            part_in  = [str(self.qubits[i]) for i in part_in]
-            part_out = [str(self.qubits[i]) for i in part_out]
+        if skey is not None:
+            res = sorted(res, key=skey)
+        for i, (part_in, part_out, entanglement) in enumerate(res):
+            if head is not None and i >= head:
+                break
+            part_in  = [str(i) for i in part_in]
+            part_out = [str(i) for i in part_out]
             print(f"{' '.join(part_in)}  |  {' '.join(part_out)} \t{entanglement:.{precision}f}".rstrip('0'))
+        # add full state entropy
+        if howmany == "All":
+            print(f"\nFull state (i.e. classical) entropy: {self.von_neumann_entropy():.{precision}f}".rstrip('0'))
 
-    def schmidt_decomposition(self, qubits='all', coeffs_only=False, obs=None):
+    def schmidt_decomposition(self, qubits='all', coeffs_only=False, obs=None, filter_eps=1e-10):
         """
         Schmidt decomposition of a bipartition of the qubits. Returns the Schmidt coefficients and the two sets of basis vectors.
-
-        >>> qc = QuantumComputer(2, '00 + 01')
-        >>> U, S, V = qc.schmidt_decomposition([1])
-        >>> print(S)  # [1.] because it is a product state
-        [1.]
-        >>> np.allclose(U @ np.diag(S) @ V.T.conj(), qc.get_state([1]))
         """
-        qubits = self._check_qubit_arguments(qubits, False)
         if self.is_matrix_mode():
             raise ValueError("Schmidt decomposition is not available for density matrices")
-        if len(qubits) == self.n or len(qubits) == 0:
-            raise ValueError("Schmidt decomposition requires a bipartition of the qubits")
+        with self.observable(obs, qubits) as qubits:
+            if len(qubits) == self.n or len(qubits) == 0:
+                raise ValueError("Schmidt decomposition requires a bipartition of the qubits")
 
-        state = self.get_state(qubits, obs)  # state has now shape (2**q, 2**(n-q))
-        if coeffs_only:
-            S = np.linalg.svd(state, compute_uv=False)
-            S = S[S > self.DECOMPOSITION_EPS]
-            return S
-        U, S, V = np.linalg.svd(state, full_matrices=False)  # U = q basis, S = Schmidt coefficients, V = (n-q basis).T.conj()
-        # remove zero coefficients
-        S = S[S > self.DECOMPOSITION_EPS]
-        U = U[:, :len(S)]
-        V = V[:len(S), :]
-        return U, S, V.T.conj()
+            idcs = [self.qubits.index(q) for q in qubits]
+            return schmidt_decomposition(self.state.reshape(-1), idcs, coeffs_only, filter_eps)
 
     def schmidt_coefficients(self, qubits='all', obs=None):
         return self.schmidt_decomposition(qubits, coeffs_only=True, obs=obs)
+
+    def correlation(self, qubits_A, qubits_B, obs_A, obs_B):
+        """
+        Compute the correlation between two subsystems A and B, defined with respective observables obs_A and obs_B.
+        """
+        qubits_A = self._check_qubit_arguments(qubits_A, False)
+        qubits_B = self._check_qubit_arguments(qubits_B, False)
+        assert not any(q in qubits_B for q in qubits_A), "Subsystems A and B must be disjoint"
+        state = self.get_state(qubits_A + qubits_B)
+        return correlation_quantum(state, obs_A, obs_B, check=False)
+
+    def mutual_information(self, qubits_A, qubits_B=None, obs_A=None, obs_B=None):
+        """
+        Compute the mutual information between two subsystems A and B, defined as S(A) + S(B) - S(AB). If B is not provided, it is assumed to be the complement of A.
+        """
+        with self.observable(obs_A, qubits_A) as qubits_A:
+            if qubits_B is None:
+                qubits_B = [q for q in self.qubits if q not in qubits_A]
+            with self.observable(obs_B, qubits_B) as qubits_B:
+                assert not any(q in qubits_B for q in qubits_A), "Subsystems A and B must be disjoint"
+
+                state = self.get_state(qubits_A + qubits_B)
+                A_idcs = list(range(len(qubits_A)))
+                return mutual_information_quantum(state, A_idcs, check=False)
 
     def __str__(self):
         try:

@@ -20,7 +20,7 @@ qc = QuantumComputer()
 #############
 
 from numpy.random import randint
-from ..mathlib import is_involutory, anticommute, float_from_binstr, random_hermitian
+from ..mathlib import is_involutory, anticommute, float_from_binstr, random_hermitian, random_unitary
 
 def test_quantum_all():
     tests = [
@@ -297,10 +297,11 @@ def _test_QuantumComputer():
     qc = QuantumComputer(1, 'random')
     assert qc.std(X) * qc.std(Z) >= abs(qc.ev(1j*(X@Z - Z@X)))/2
 
-    # Bell basis
+    # test functions
     qc = QuantumComputer(2)
     qc.h(0)
     qc.cx(0, 1)
+    assert np.allclose(qc.get_state(), normalize([1,0,0,1]))  # Bell state |00> + |11>
     qc(I, 0)  # let it reshape to [2,2]
     assert np.allclose(qc[0], I/2)
     assert np.allclose(qc[1], I/2)
@@ -319,8 +320,24 @@ def _test_QuantumComputer():
     assert np.isclose(qc.ev(Y, 0), 0)
     assert np.isclose(qc.ev(Z, 0), 0)
 
-    assert np.allclose(qc.schmidt_coefficients([0]), [.5, .5])
-    qc = QuantumComputer(2, '00 + 01')
+    assert np.isclose(qc.entanglement_entropy(1), 1)
+    assert np.isclose(qc.correlation(0, 1, Z, Z), 1)
+    S = qc.schmidt_decomposition(0, coeffs_only=True)
+    assert np.allclose(S, [f2, f2])
+    assert np.isclose(qc.mutual_information(0, 1), 2)
+
+    # test density matrix
+    qc.decohere(0)
+    assert np.isclose(qc.mutual_information(0, 1), 1)
+    assert qc.is_matrix_mode()
+    assert np.allclose(qc.get_state(), (dm('00') + dm('11'))/2)
+    qc.purify()
+    assert np.allclose(qc.get_state(), ket('000 + 111'))  # purification only needs one ancilla qubit in this case
+    assert not qc.is_matrix_mode()
+    qc.remove([0])
+    qc.remove(1)
+
+    qc = QuantumComputer('00 + 01')
     assert np.allclose(qc.schmidt_coefficients([1]), [1])
 
     # more complex test
@@ -350,21 +367,17 @@ def _test_QuantumComputer():
     # test schmidt decomposition
     qc = QuantumComputer(5, 'random')
     bip = choice([i for i,o in bipartitions(range(5))])
-    U, S, V = qc.schmidt_decomposition(bip)
-    assert np.allclose(U @ np.diag(S) @ V.T.conj(), qc.get_state(bip))
+    S, U, V = qc.schmidt_decomposition(bip)
+    # check RDM for subsystem A
+    rho_expect = qc[bip]
+    rho_actual = np.sum([l_i**2 * np.outer(A_i, A_i.conj()) for l_i, A_i in zip(S, U)], axis=0)
+    assert np.allclose(rho_actual, rho_expect), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
+    # check RDM for subsystem B
+    rho_expect = qc[[i for i in qc.qubits if i not in bip]]
+    rho_actual = np.sum([l_i**2 * np.outer(B_i, B_i.conj()) for l_i, B_i in zip(S, V)], axis=0)
+    assert np.allclose(rho_actual, rho_expect), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
 
     # test density matrix
-    qc = QuantumComputer('00 + 11')
-    assert np.allclose(qc.get_state(), normalize([1,0,0,1]))
-    qc.decohere(0)
-    assert qc.is_matrix_mode()
-    assert np.allclose(qc.get_state(), (dm('00') + dm('11'))/2)
-    qc.purify()
-    assert np.allclose(qc.get_state(), ket('000 + 111'))  # purification only needs one ancilla qubit in this case
-    assert not qc.is_matrix_mode()
-    qc.remove([0])
-    qc.remove(1)
-
     qc = QuantumComputer('0100 + 1010')
     assert np.isclose(qc.entanglement_entropy(3), 0)
     qc.remove(3)
