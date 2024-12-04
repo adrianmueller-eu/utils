@@ -164,19 +164,19 @@ def _test_exp_i():
     H = ph(H_str)
     U_expect = matexp(1j*H)
     U_actual = get_unitary(exp_i(H))
-    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    assert np.allclose(U_actual, U_expect), f"H_str: {H_str}"
     U_actual = exp_i(H).get_unitary()
-    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    assert np.allclose(U_actual, U_expect), f"H_str: {H_str}"
 
     U_expect = matexp(1j*3*H)
     U_actual = get_unitary(exp_i(H)**3)
-    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    assert np.allclose(U_actual, U_expect), f"H_str: {H_str}"
     U_actual = (exp_i(H)**3).get_unitary()
-    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    assert np.allclose(U_actual, U_expect), f"H_str: {H_str}"
     U_actual = exp_i(H).get_unitary(3)
-    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    assert np.allclose(U_actual, U_expect), f"H_str: {H_str}"
     U_actual = exp_i(H, k=3).get_unitary()
-    assert np.allclose(U_expect, U_actual), f"H_str: {H_str}"
+    assert np.allclose(U_actual, U_expect), f"H_str: {H_str}"
 
 def _test_get_H_energies_eq_get_pe_energies():
     n_qubits = np.random.randint(1, 5)
@@ -436,7 +436,7 @@ def _test_partial_trace():
     rho = np.arange(16).reshape(4,4)
     rhoA_expect = np.array([[ 5, 9], [21, 25]])
     rhoA_actual = partial_trace(rho, 0)
-    assert np.allclose(rhoA_expect, rhoA_actual), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
+    assert np.allclose(rhoA_actual, rhoA_expect), f"rho_actual = {rhoA_actual}\nrho_expect = {rhoA_expect}"
 
     # two separable density matrices
     rhoA = random_dm(2)
@@ -444,7 +444,7 @@ def _test_partial_trace():
     rho = np.kron(rhoA, rhoB)
     rhoA_expect = rhoA
     rhoA_actual = partial_trace(rho, [0,1])
-    assert np.allclose(rhoA_expect, rhoA_actual), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
+    assert np.allclose(rhoA_actual, rhoA_expect), f"rho_actual = {rhoA_actual}\nrho_expect = {rhoA_expect}"
 
     # two separable state vectors
     psiA = random_ket(2)
@@ -452,26 +452,26 @@ def _test_partial_trace():
     psi = np.kron(psiA, psiB)
     psiA_expect = np.outer(psiA, psiA.conj())
     psiA_actual = partial_trace(psi, [0,1])
-    assert np.allclose(psiA_expect, psiA_actual), f"psi_expect = {psiA_expect}\npsi_actual = {psiA_actual}"
+    assert np.allclose(psiA_actual, psiA_expect), f"psi_actual = {psiA_actual}\npsi_expect = {psiA_expect}"
 
     # total trace
     st = random_ket(3)
     st_tr = partial_trace(st, [])
-    assert np.allclose(np.array([[1]]), st_tr), f"st_tr = {st_tr} ≠ 1"
+    assert np.allclose(st_tr, np.array([[1]])), f"st_tr = {st_tr} ≠ 1"
     rho = random_dm(3)
     rho_tr = partial_trace(rho, [])
-    assert np.allclose(np.array([[1]]), rho_tr), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
+    assert np.allclose(rho_tr, np.array([[1]])), f"rho_tr = {rho_tr} ≠ 1"
 
     # retain all qubits
     st = random_ket(3)
     st_tr = partial_trace(st, [0,1,2])
     st_expect = np.outer(st, st.conj())
-    assert st_expect.shape == st_tr.shape, f"st_expect.shape = {st_expect.shape} ≠ st_tr.shape = {st_tr.shape}"
-    assert np.allclose(st_expect, st_tr), f"st_expect = {st_expect} ≠ st_tr = {st_tr}"
+    assert st_tr.shape == st_expect.shape, f"st_tr.shape = {st_tr.shape} ≠ st_expect.shape = {st_expect.shape}"
+    assert np.allclose(st_tr, st_expect), f"st_tr = {st_tr} ≠ st_expect = {st_expect}"
     rho = random_dm(2)
     rho_tr = partial_trace(rho, [0,1])
-    assert rho.shape == rho_tr.shape, f"rho.shape = {rho.shape} ≠ rho_tr.shape = {rho_tr.shape}"
-    assert np.allclose(rho, rho_tr), f"rho_expect = {rhoA_expect}\nrho_actual = {rhoA_actual}"
+    assert rho_tr.shape == rho.shape, f"rho_tr.shape = {rho_tr.shape} ≠ rho.shape = {rho.shape}"
+    assert np.allclose(rho_tr, rho), f"rho_tr = {rho_tr} ≠ rho = {rho}"
 
 def _test_is_eigenstate():
     H = parse_hamiltonian('XX + YY + ZZ')
@@ -579,17 +579,17 @@ def _test_schmidt_decomposition():
     # check RDM for subsystem A
     rho_expect = partial_trace(np.outer(psi, psi.conj()), subsystem)
     rho_actual = np.sum([l_i**2 * np.outer(A_i, A_i.conj()) for l_i, A_i in zip(l, A)], axis=0)
-    assert np.allclose(rho_expect, rho_actual), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
+    assert np.allclose(rho_actual, rho_expect), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
 
     # check RDM for subsystem B
     rho_expect = partial_trace(np.outer(psi, psi.conj()), [i for i in range(n) if i not in subsystem])
     rho_actual = np.sum([l_i**2 * np.outer(B_i, B_i.conj()) for l_i, B_i in zip(l, B)], axis=0)
-    assert np.allclose(rho_expect, rho_actual), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
+    assert np.allclose(rho_actual, rho_expect), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
 
     # check entanglement entropy
     S_expect = entropy_entanglement(psi, subsystem)
     S_actual = -np.sum([l_i**2 * np.log2(l_i**2) for l_i in l])
-    assert np.allclose(S_expect, S_actual), f"S_expect = {S_expect} ≠ S_actual = {S_actual}"
+    assert np.allclose(S_actual, S_expect), f"S_expect = {S_expect} ≠ S_actual = {S_actual}"
 
 def _test_correlation_quantum():
     assert np.isclose(correlation_quantum(ket('0101 + 0000'), ZZ, ZZ), 1)
