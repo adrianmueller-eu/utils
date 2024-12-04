@@ -2,29 +2,33 @@ import sys
 import numpy as np
 
 from .state import count_qubits, partial_trace, ket, dm, ev
-from ..mathlib import trace_norm
+from ..mathlib import trace_norm, is_hermitian
 from ..prob import entropy
 
-def entropy_von_Neumann(state):
+def von_neumann_entropy(state, check=True):
     """Calculate the von Neumann entropy of a given density matrix."""
-    state = dm(state, check=False)
-    # S = -np.trace(state @ matlog(state)/np.log(2))
-    # assert np.allclose(S.imag, 0), f"Entropy is not real: {S}"
-    # return np.max(S.real, 0)  # fix rounding errors
+    state = np.asarray(state)
+    if len(state.shape) == 1:
+        return 0  # pure state
+    if check:
+        assert is_hermitian(state), "Density matrix is not Hermitian!"
     eigs = np.linalg.eigvalsh(state)
-    # assert abs(np.sum(eigs) - 1) < 1e-10, f"Density matrix is not normalized! {np.sum(eigs)}"  # dm trace-normalizes
-    assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite: {eigs}"
+    if check:
+        assert abs(np.sum(eigs) - 1) < 1e-10, f"State is not normalized! {np.sum(eigs)}"  # dm trace-normalizes
+        assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite: {eigs}"
     return entropy(eigs)
 
-def entropy_entanglement(state, subsystem_qubits):
+def entanglement_entropy(state, subsystem_qubits, check=True):
     """Calculate the entanglement entropy of a quantum state (density matrix or vector) with respect to the given subsystem."""
-    return entropy_von_Neumann(partial_trace(state, subsystem_qubits))
+    return von_neumann_entropy(partial_trace(state, subsystem_qubits), check=check)
 
-def mutual_information_quantum(state, subsystem_qubits):
+def mutual_information_quantum(state, subsystem_qubits, check=True):
     n = count_qubits(state)
-    rho_A = partial_trace(state, subsystem_qubits)
-    rho_B = partial_trace(state, [s for s in range(n) if s not in subsystem_qubits])
-    return entropy_von_Neumann(rho_A) + entropy_von_Neumann(rho_B) - entropy_von_Neumann(state)
+    S_AB = von_neumann_entropy(state, check=check)
+    S_A = entanglement_entropy(state, subsystem_qubits, check=False)
+    B = [i for i in range(n) if i not in subsystem_qubits]
+    S_B = entanglement_entropy(state, B, check=False)
+    return S_A + S_B - S_AB
 
 def fidelity(state1, state2):
     """Calculate the fidelity between two quantum states."""

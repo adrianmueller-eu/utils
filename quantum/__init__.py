@@ -42,8 +42,8 @@ def test_quantum_all():
         _test_is_dm,
         _test_is_eigenstate,
         _test_count_qubits,
-        _test_entropy_von_Neumann,
-        _test_entropy_entanglement,
+        _test_von_neumann_entropy,
+        _test_entanglement_entropy,
         _test_fidelity,
         _test_trace_distance,
         _test_schmidt_decomposition,
@@ -488,26 +488,26 @@ def _test_count_qubits():
     qc.x(4)
     assert count_qubits(qc) == 5
 
-def _test_entropy_von_Neumann():
+def _test_von_neumann_entropy():
     rho = random_dm(2, 'pure')
-    S = entropy_von_Neumann(rho)
+    S = von_neumann_entropy(rho)
     assert np.allclose(S, 0), f"S = {S} ≠ 0"
 
     rho = np.eye(2)/2
-    S = entropy_von_Neumann(rho)
+    S = von_neumann_entropy(rho)
     assert np.allclose(S, 1), f"S = {S} ≠ 1"
 
-def _test_entropy_entanglement():
+def _test_entanglement_entropy():
     # Two qubits in the Bell state |00> + |11> should have entropy 1
     rho = dm('00 + 11')
-    S = entropy_entanglement(rho, [0])
+    S = entanglement_entropy(rho, [0])
     assert np.allclose(S, 1), f"S = {S} ≠ 1"
 
     # Two separable systems should have entropy 0
     rhoA = random_dm(2, 'pure')
     rhoB = random_dm(3, 'pure')
     rho = np.kron(rhoA, rhoB)
-    S = entropy_entanglement(rho, [0,1])
+    S = entanglement_entropy(rho, [0,1])
     assert np.allclose(S, 0), f"S = {S} ≠ 0"
 
 def _test_fidelity():
@@ -587,7 +587,7 @@ def _test_schmidt_decomposition():
     assert np.allclose(rho_actual, rho_expect), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
 
     # check entanglement entropy
-    S_expect = entropy_entanglement(psi, subsystem)
+    S_expect = entanglement_entropy(psi, subsystem)
     S_actual = -np.sum([l_i**2 * np.log2(l_i**2) for l_i in l])
     assert np.allclose(S_actual, S_expect), f"S_expect = {S_expect} ≠ S_actual = {S_actual}"
 
