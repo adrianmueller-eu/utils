@@ -271,6 +271,16 @@ def polar(A, kind='left'):  # a bit faster than scipy.linalg.polar
 #         L[i+1:, i] = (A[i+1:, i] - L[i+1:, :i] @ L[i, :i].conj()) / L[i, i]
 #     return L
 
+def gram_schmidt(A, normalized=True):
+    """ Orthonormalize a set of vectors using the Gram-Schmidt process. Consider using `np.linalg.qr` for better performance. """
+    A = np.asarray(A)
+    basis = []
+    for v in A.conj().T:
+        w = v - np.sum(np.vdot(v,b)*b for b in basis)
+        if (w > 1e-10).any():
+            basis.append(normalize(w) if normalized else w)
+    return np.array(basis)
+
 #######################
 ### Rotation groups ###
 #######################
@@ -425,18 +435,3 @@ def random_projection(size, rank=None, orthogonal=True, complex=True):
     else:
         B = random_vec((rank, size), complex=complex)
     return A @ np.linalg.pinv(B @ A) @ B
-
-def Gram_Schmidt(A, normalized=True):
-    """ Orthonormalize a set of vectors using the Gram-Schmidt process. """
-    A = np.asarray(A, dtype=complex)
-    if len(A.shape) == 1:
-        A = A.reshape(-1, 1)
-    U = []
-    for i in range(A.shape[1]):
-        v = A[:, i]
-        for u in U:
-            v -= u.conj() @ v * u
-        if normalized:
-            v = normalize(v)
-        U.append(v)
-    return np.column_stack(U)
