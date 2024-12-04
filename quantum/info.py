@@ -84,19 +84,15 @@ def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps
     V = V[:len(S), :]
     return S, U.T, V
 
-def correlation_quantum(state, observable_A, observable_B):
-    n_A = count_qubits(observable_A)
-    n_B = count_qubits(observable_B)
-    state = np.asarray(state)
+def correlation_quantum(state, obs_A, obs_B, check=True):
+    n_A = count_qubits(obs_A)
+    n_B = count_qubits(obs_B)
     if len(state.shape) == 1:
-        state = ket(state)
-        observable_AB = np.kron(observable_A, observable_B)
-        observable_AI = np.kron(observable_A, np.eye(2**n_B))
-        observable_IB = np.kron(np.eye(2**n_A), observable_B)
-        return ev(observable_AB, state) - ev(observable_AI, state)*ev(observable_IB, state)
+        state = ket(state, renormalize=check)
     else:
-        state = dm(state)
-        rho_A = partial_trace(state, list(range(n_A)))
-        rho_B = partial_trace(state, list(range(n_A, n_A + n_B)))
-        observable_AB = np.kron(observable_A, observable_B)
-        return np.trace(observable_AB @ (state - np.kron(rho_A, rho_B))).real
+        state = dm(state, renormalize=check, check=check)
+
+    obs_AB = np.kron(obs_A, obs_B)
+    rho_A = partial_trace(state, list(range(n_A)))
+    rho_B = partial_trace(state, list(range(n_A, n_A + n_B)))
+    return ev(obs_AB, state, check) - ev(obs_A, rho_A, check) * ev(obs_B, rho_B, check)
