@@ -125,15 +125,16 @@ def ste(ar):
 ### Information Theory ###
 ##########################
 
-def check_probability_distribution(p, eps=1e-12):
+def check_probability_distribution(p, eps=1e-12, check=True):
     """`p` is a valid probability distribution if all $p_i \\in [0,1]$ and $\\sum_i p_i = 1$."""
     p = np.asarray(p)
-    assert np.all(p >= -eps), f"Not a valid probability distribution: Negative values in {p}"
-    assert np.all(p <= 1+eps), f"Not a valid probability distribution: Values greater than 1 in {p}"
-    assert np.abs(np.sum(p) - 1) < eps, f"Not a valid probability distribution: Sum of {p} is {np.sum(p)} ≠ 1"
+    if check:
+        assert np.all(p >= -eps), f"Not a valid probability distribution: Negative values in {p}"
+        assert np.all(p <= 1+eps), f"Not a valid probability distribution: Values greater than 1 in {p}"
+        assert np.abs(np.sum(p) - 1) < eps, f"Not a valid probability distribution: Sum of {p} is {np.sum(p)} ≠ 1"
     return p
 
-def entropy(p): # e.g. entropy(1*[1/2] + 4*[1/8])
+def entropy(p, check=True): # e.g. entropy(1*[1/2] + 4*[1/8])
     """Entropy! $H(p) = -\\sum_i p_i \\log_2(p_i)$"""
     if callable(p):
         S = 0
@@ -141,29 +142,29 @@ def entropy(p): # e.g. entropy(1*[1/2] + 4*[1/8])
             if px > 0:
                 S -= px*np.log2(px)
         return S
-    p = check_probability_distribution(p).ravel()
+    p = check_probability_distribution(p, check=check).ravel()
     return -sum((p*np.log2(p) for p in p if p > 0))  # 0*log(0) = 0
     return expectation(-np.log2(p), p)
 
-def cross_entropy(p, q):
+def cross_entropy(p, q, check=True):
     """Cross entropy $H(p,q) = -\\sum_i p_i \\log_2(q_i)$"""
-    p = check_probability_distribution(p)
-    q = check_probability_distribution(q)
+    p = check_probability_distribution(p, check=check)
+    q = check_probability_distribution(q, check=check)
     assert len(p) == len(q), f"Length mismatch: {len(p)} ≠ {len(q)}"
     return -sum((p*np.log2(q) for p,q in zip(p,q) if p > 0))
 
-def kl_divergence(p, q):
+def kl_divergence(p, q, check=True):
     """Kullback-Leibler divergence $D_{KL}(p||q) = \\sum_i p_i \\log_2(p_i/q_i)$"""
-    p = check_probability_distribution(p)
-    q = check_probability_distribution(q)
+    p = check_probability_distribution(p, check=check)
+    q = check_probability_distribution(q, check=check)
     assert len(p) == len(q), f"Length mismatch: {len(p)} ≠ {len(q)}"
     return sum((p*np.log2(p/q) for p,q in zip(p,q) if p > 0))
 
 relative_entropy = kl_divergence
 
-def mutual_information(pxy):
+def mutual_information(pxy, check=True):
     """Mutual information $I(X;Y) = \\sum_{x,y} p(x,y) \\log_2(p(x,y)/(p(x)p(y)))$"""
-    pxy = check_probability_distribution(pxy)
+    pxy = check_probability_distribution(pxy, check=check)
     px = np.sum(pxy, axis=1)
     py = np.sum(pxy, axis=0)
     return sum((pxy*np.log2(pxy/(px[:,None]*py[None,:]))).ravel())
