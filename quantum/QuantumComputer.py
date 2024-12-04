@@ -7,7 +7,7 @@ from .constants import *
 from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_ket, is_dm
 from .hamiltonian import parse_hamiltonian
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
-from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_hermitian, is_diag
+from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag
 from ..plot import imshow
 from ..utils import is_int, duh, reissue_warnings
 from ..prob import entropy
@@ -21,8 +21,9 @@ class QuantumComputer:
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
     """
-    def __init__(self, qubits=None, state=None, track_unitary='auto'):
+    def __init__(self, qubits=None, state=None, track_unitary='auto', expensive_checks=True):
         self.track_unitary = track_unitary
+        self.expensive_checks = expensive_checks
 
         self.clear()
 
@@ -688,7 +689,7 @@ class QuantumComputer:
         if not isinstance(target, (list, np.ndarray)):
             target = [target]
         target = list(target)
-        U = self.parse_unitary(U, len(target))
+        U = self.parse_unitary(U, len(target), check=self.expensive_checks)
         for _ in control:
             U = C_(U, negative=negative)
         return self(U, control + target)
@@ -727,7 +728,7 @@ class QuantumComputer:
         self.h(energy)
 
         # 2. Unitary condition
-        U = self.parse_unitary(U)
+        U = self.parse_unitary(U, check=self.expensive_checks)
         UD, UU = np.linalg.eig(U)
         for j, q in enumerate(energy):
             U_2j = UU @ np.diag(UD**(2**j)) @ UU.T.conj()
@@ -746,8 +747,7 @@ class QuantumComputer:
     def is_state(state):
         return is_ket(state) or is_dm(state)
 
-    @staticmethod
-    def parse_unitary(U, n_qubits=None):
+    def parse_unitary(U, n_qubits=None, check=True):
         if isinstance(U, (list, np.ndarray)):
             U = np.asarray(U)
         elif isinstance(U, str):
@@ -760,14 +760,15 @@ class QuantumComputer:
                 U = get_unitary(U)
             except:
                 raise ValueError(f"Can't process unitary of type {type(U)}: {U}")
-        # assert is_unitary(U), f"Unitary is not unitary: {U}"
+        if check:
+            assert is_unitary(U), f"Unitary is not unitary: {U}"
         if n_qubits is not None:
-            n_obs = count_qubits(U)
-            assert n_obs == n_qubits, f"Unitary has {n_obs} qubits, but {n_qubits} qubits were provided"
+            n_U = count_qubits(U)
+            assert n_U == n_qubits or n_U == 1, f"Unitary has {n_U} qubits, but {n_qubits} qubits were provided"
         return U
 
     @staticmethod
-    def parse_hermitian(H, n_qubits=None):
+    def parse_hermitian(H, n_qubits=None, check=True):
         if isinstance(H, (list, np.ndarray)):
             H = np.asarray(H)
         elif isinstance(H, str):
@@ -776,7 +777,8 @@ class QuantumComputer:
             H = H.toarray()
         else:
             raise ValueError(f"Can't process observable of type {type(H)}: {H}")
-        assert is_hermitian(H), f"Observable is not hermitian: {H}"
+        if check:
+            assert is_hermitian(H), f"Observable is not hermitian: {H}"
         if n_qubits is not None:
             n_obs = count_qubits(H)
             assert n_obs == n_qubits, f"Observable has {n_obs} qubits, but {n_qubits} qubits were provided"
@@ -787,7 +789,7 @@ def evolve(state, U, checks=True):
         if not hasattr(state, 'shape'):
             state = np.asarray(state)
         n = count_qubits(state)
-        U = QuantumComputer.parse_unitary(U, n)
+        U = QuantumComputer.parse_unitary(U, n, checks=True)
     if len(state.shape) == 1:
         if checks:
             state = ket(state)
