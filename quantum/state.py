@@ -492,7 +492,9 @@ def gibbs(H, beta=1):
     return U @ np.diag(E) @ U.conj().T
 
 def count_qubits(obj):
-    if isinstance(obj, str):
+    if isinstance(obj, str) or (hasattr(obj, 'dtype') and obj.dtype.kind == 'U'):  # after conversion to numpy array
+        if hasattr(obj, 'item'):
+            obj = obj.item()
         import re
         obj = obj.replace(' ', '')  # remove spaces
         if "+" in obj or "-" in obj:
