@@ -64,38 +64,55 @@ class QuantumComputer:
             qc.U = self.U.copy()
         return qc
 
-    def __call__(self, U, qubits='all'):
+    def __call__(self, operators, qubits='all'):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         self._alloc_qubits(to_alloc)
-        U = self.parse_unitary(U)
-        if U.shape == (2,2) and len(qubits) > 1:
-            U_ = U
-            for _ in qubits[1:]:
-                U = np.kron(U, U_)
-        assert U.shape == (2**len(qubits), 2**len(qubits)), f"Invalid unitary shape for {len(qubits)} qubits: {U.shape} != {2**len(qubits),2**len(qubits)}"
+        operators = self.parse_channel(operators, len(qubits), check=self.expensive_checks)
+        isunitary = len(operators) == 1
+        # if it's a 1-qubit unitary and multiple qubits are given, apply it to all qubits
+        if operators[0].shape == (2,2) and len(qubits) > 1:
+            for q in qubits:
+                self(operators, q)
+            return self
+
+        if not isunitary:
+            if self.track_unitary == True:
+                warnings.warn("Unitary tracking disabled for multiple operators", stacklevel=2)
+            self.track_unitary = False
+
+            if not self.is_matrix_mode():
+                self.to_dm()
+
         # rotate axes of state vector to have the `qubits` first
         self._reorder(qubits)
 
-        # apply unitary
+        if isunitary:
+            # update unitary if tracked
+            if self._track_unitary:
+                U = operators[0]
+                # (q x q) x (q x q x 2(n-q)) -> q x q x 2(n-q)
+                self.U = np.tensordot(U, self.U, axes=1)
+
+        # apply operators
         if self.is_matrix_mode():
-            if len(qubits) == self.n:
-                # (q x q) x (q x q) x (q x q) -> q x q
-                self.state = U @ self.state @ U.T.conj()
-            else:
-                # (q x q) x (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x q x (n-q)
-                self.state = np.tensordot(U, self.state, axes=1)
-                # (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x (n-q) x q
-                self.state = np.tensordot(self.state, U.T.conj(), axes=(2,0))
-                # q x (n-q) x (n-q) x q -> q x (n-q) x q x (n-q)
-                self.state = self.state.transpose([0, 1, 3, 2])
+            new_state = np.zeros_like(self.state, dtype=complex)
+            for K in operators:
+                if len(qubits) == self.n:
+                    # (q x q) x (q x q) x (q x q) -> q x q
+                    new_state += K @ self.state @ K.T.conj()
+                else:
+                    # (q x q) x (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x q x (n-q)
+                    tmp = np.tensordot(K, self.state, axes=1)
+                    # (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x (n-q) x q
+                    tmp = np.tensordot(tmp, K.T.conj(), axes=(2,0))
+                    # q x (n-q) x (n-q) x q -> q x (n-q) x q x (n-q)
+                    new_state += tmp.transpose([0, 1, 3, 2])
+            self.state = new_state
         else:
+            assert len(operators) == 1, "Non-unitary operators can't be applied to state vectors!"
+            U = operators[0]
             # (q x q) x (q x (n-q)) -> q x (n-q)  or  (q x q) x q -> q
             self.state = np.tensordot(U, self.state, axes=1)
-
-        # update unitary if tracked
-        if self._track_unitary:
-            # (q x q) x (q x q x 2(n-q)) -> q x q x 2(n-q)
-            self.U = np.tensordot(U, self.U, axes=1)
         return self
 
     def get_state(self, qubits='all', obs=None):
@@ -787,6 +804,35 @@ class QuantumComputer:
     def is_state(state):
         return is_ket(state) or is_dm(state)
 
+    @staticmethod
+    def parse_channel(operators, n_qubits=None, check=True):
+        """
+        Ensures `operators` form a valid CPTP map. Returns a list of np.ndarray.
+        """
+        if isinstance(operators, (list, np.ndarray)):
+            operators = np.asarray(operators)
+        if len(operators.shape) == 3:
+            assert len(operators) > 0, "No operators provided"
+            # ensure square
+            for i, K in enumerate(operators):
+                K = np.asarray(K)
+                operators[i] = K
+                assert K.shape[0] == K.shape[1], f"Kraus operator is not square: {K}"
+                if n_qubits is not None:
+                    n_K = count_qubits(K)
+                    assert n_K == n_qubits or n_K == 1, f"Kraus operator has {n_K} qubits, but {n_qubits} qubits were provided"
+            # ensure they all have the same shape
+            assert all(K.shape == operators[0].shape for K in operators), f"Kraus operators have different shapes: {[K.shape for K in operators]}"
+            if check:
+                # ensure trace-preserving
+                assert np.allclose(np.sum([K.conj().T @ K for K in operators], axis=0), np.eye(K.shape[0]))
+            return [K for K in operators]
+        else:
+            # it's probably a unitary!
+            U = QuantumComputer.parse_unitary(operators, n_qubits, check)
+            return [U]
+
+    @staticmethod
     def parse_unitary(U, n_qubits=None, check=True):
         if isinstance(U, (list, np.ndarray)):
             U = np.asarray(U)
