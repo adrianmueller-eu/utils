@@ -402,9 +402,24 @@ def random_hermitian(size, params=(0,1)):
     a = random_square(size, params=params, complex=True)
     return (a + a.conj().T)/2
 
-def random_unitary(size):
-    H = random_hermitian(size)
-    return matexp(1j*H)
+def random_unitary(size, kind='haar'):
+    if kind == 'haar':
+        A = random_square(size, complex=True, kind='normal')
+        Q, R = np.linalg.qr(A)
+        R_d = np.diag(R)
+        L = R_d / np.abs(R_d)
+        return Q * L[None,:]
+    elif kind == 'polar':  # fastest for very small and slowest for very large matrices
+        A = random_square(size, complex=True, kind='normal')
+        D, U = np.linalg.eigh(A.T.conj() @ A)
+        D_sqrt = np.sqrt(D)[:,None]
+        J_inv = U @ (1/D_sqrt * U.conj().T)
+        return A @ J_inv
+    elif kind == 'hermitian':
+        H = random_hermitian(size)
+        return matexp(1j*H)
+    else:
+        raise ValueError(f"Unknown kind '{kind}'.")
 
 def random_psd(size, params=(0,1), complex=True):
     params = (params[0], np.sqrt(params[1]))  # eigs scale with variance
