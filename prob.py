@@ -75,6 +75,20 @@ def resample(x, y, size=int(1e6)):
     u = np.random.uniform(0, 1, size)
     return invcdf(u)
 
+def random_p(size=100, kind='uniform'):
+    if not isinstance(size, tuple):
+        size = (size,)
+    if kind == 'uniform':
+        p = np.random.random(size)
+        p /= np.sum(p, axis=-1, keepdims=True)
+    elif kind == 'dirichlet':
+        o = np.ones(size[-1])
+        p = np.random.dirichlet(o, size=size[:-1])
+    else:
+        raise ValueError(f"Unknown kind: {kind}")
+
+    return p
+
 ##################
 ### Statistics ###
 ##################
