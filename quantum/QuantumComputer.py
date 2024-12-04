@@ -107,8 +107,6 @@ class QuantumComputer:
         return self._get("U", qubits, obs)
 
     def _get(self, prop, qubits, obs):
-        if self.n == 0:
-            raise ValueError("No qubits allocated yet")
         with self.observable(obs, qubits) as qubits:
             self._reorder(qubits, reshape=False)
             a = getattr(self, prop)
@@ -348,6 +346,8 @@ class QuantumComputer:
         return imshow(U, **kw_args)
 
     def _check_qubit_arguments(self, qubits, allow_new):
+        if not allow_new and self.n == 0:
+            raise ValueError("No qubits allocated yet")
         if isinstance(qubits, slice):
             qubits = self.qubits[qubits]
         elif isinstance(qubits, str) and qubits == 'all':
