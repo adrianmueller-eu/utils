@@ -155,6 +155,17 @@ def is_numeric(x):
 def is_iterable(x):
     return isinstance(x, Iterable)
 
+def is_from_assert(func, print_error=True):
+    def inner(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+            return True
+        except AssertionError as e:
+            if print_error:
+                print(f"AssertionError: {e}")
+            return False
+    return inner
+
 def startfile(filepath):
     import subprocess, os, platform
     if platform.system() == 'Darwin':       # macOS

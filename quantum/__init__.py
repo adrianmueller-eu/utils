@@ -211,12 +211,18 @@ def _test_ket_unket():
     # ket should be fast enough to return already-kets 1000 times in negligible time
     import time
     psi = random_ket(2)
-    max_time = 0.02
+    max_time = 0.01
     start = time.time()
-    for _ in range(10):
-        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/10)"
+    for _ in range(60):
+        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/60)"
         for _ in range(100):
-            ket(psi)
+            ket(psi, check=0)
+
+    start = time.time()
+    for _ in range(15):
+        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/15)"
+        for _ in range(100):
+            ket(psi, check=1)
 
 def _test_random_ket():
     n_qubits = np.random.randint(1, 10)
@@ -231,36 +237,55 @@ def _test_dm():
     assert np.allclose(dm(1),   [[0,0], [0,1]])
     O = dm(0,3,n=2)
     assert O.shape[0] == O.shape[1]
-    # op should be fast enough to return already-density-matrices 1000 times in negligible time
+    # dm should be fast enough to return already-density-matrices 1000 times in negligible time
     import time
     rho = random_dm(2)
     max_time = 0.01
+
     start = time.time()
-    for _ in range(10):
-        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/10)"
+    for _ in range(3):
+        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/3)"
         for _ in range(100):
-            dm(rho)
+            dm(rho, check=3)
+
+    start = time.time()
+    for _ in range(5):
+        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/5)"
+        for _ in range(100):
+            dm(rho, check=2)
+
+    start = time.time()
+    for _ in range(15):
+        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/15)"
+        for _ in range(100):
+            dm(rho, check=1)
+
+    start = time.time()
+    for _ in range(25):
+        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/25)"
+        for _ in range(100):
+            dm(rho, check=0)
 
 def _test_is_ket():
     assert is_ket([1,0,0,0])
-    assert not is_ket([1,0,0,1])
-    assert not is_ket([1,0,0,0,0])
+    assert not is_ket([1,0,0,1], print_errors=False)
+    assert not is_ket([1,0,0,0,0], print_errors=False)
     assert is_ket([1])  # 0-qubit state
     assert is_ket('0.5*00 + 11')
-    assert not is_ket('abc')
-    assert not is_ket([[1]])
-    assert not is_ket(np.eye(2)/2)
+    assert not is_ket('abc', print_errors=False)
+    assert not is_ket([[1]], print_errors=False)
+    assert not is_ket(np.eye(2)/2, print_errors=False)
     assert is_ket(random_ket(2))
 
 def _test_is_dm():
     assert is_dm(I_(2)/2**2)
-    assert not is_dm(I_(2))
-    assert not is_dm(np.eye(3))
+    assert not is_dm(I_(2), print_errors=False)
+    assert not is_dm(np.eye(3), print_errors=False)
     assert is_dm([[1]])  # 0-qubit state
     assert is_dm('0.5*00 + 11')
-    assert not is_dm('abc')
-    assert not is_dm([1])
-    assert not is_dm([1,0,0,0])
+    assert not is_dm('abc', print_errors=False)
+    assert not is_dm([1], print_errors=False)
+    assert not is_dm([1,0,0,0], print_errors=False)
     assert is_dm(random_dm(2))
 
     # random Bloch vector

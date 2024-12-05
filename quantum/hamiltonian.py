@@ -7,7 +7,7 @@ from functools import reduce
 from ..mathlib import normalize, sequence, softmax, random_vec, is_hermitian
 from ..utils import duh
 from .constants import I,X,Y,Z
-from .state import random_ket, count_qubits
+from .state import random_ket
 
 def ground_state_exact(hamiltonian):
     """ Calculate the ground state using exact diagonalization. """
@@ -56,7 +56,7 @@ def power_iteration(A, eps=1e-8):
 
 matmap_np, matmap_sp = None, None
 
-def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buffer_n=0, dtype=complex):
+def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buffer_n=0, dtype=complex, check=2):
     """Parse a string representation of a Hamiltonian into a matrix representation. The result is guaranteed to be Hermitian.
     The string `hamiltonian` must follow the following syntax (see examples below)
         ```
@@ -72,6 +72,8 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
         scaling (float): A constant factor to scale the Hamiltonian by.
         buffer (dict): A dictionary to store calculated chunks in. If `None`, it defaults to the global `matmap_np` (or `matmap_sp` if `sparse == True`). Give `buffer={}` and leave `max_buffer_n == 0` (default) to disable the buffer.
         max_buffer_n (int): The maximum length (number of qubits) for new chunks to store in the buffer (default: 0). If `0`, no new chunks will be stored in the buffer.
+        dtype (type): The data type of the matrix elements.
+        check (int): Checking whether the resulting matrix is Hermitian requires check level 2.
 
     Returns:
         numpy.ndarray | scipy.sparse.csr_matrix: The matrix representation of the Hamiltonian.
@@ -319,10 +321,11 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
         else:
             H += chunk_matrix
 
-    if sparse:
-        assert np.allclose(H.data, H.conj().T.data), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H.data}"
-    else:
-        assert is_hermitian(H), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H}"
+    if check >= 2:
+        if sparse:
+            assert np.allclose(H.data, H.conj().T.data), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H.data}"
+        else:
+            assert is_hermitian(H), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H}"
 
     return H
 

@@ -2,7 +2,7 @@ import psutil
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..utils import is_int, duh
+from ..utils import is_int, duh, is_from_assert
 from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd
 from ..plot import colorize_complex
 from ..prob import random_p
@@ -260,7 +260,7 @@ def ket_from_int(d, n=None):
     res[d] = 1
     return res
 
-def ket(specification, n=None, renormalize=True):
+def ket(specification, n=None, check=1):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number 
     or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
@@ -270,7 +270,7 @@ def ket(specification, n=None, renormalize=True):
             assert specification.shape == (2**n,), f"State vector has wrong shape for {n} qubits: {specification.shape} ≠ {(2**n,)}!"
         else:
             assert len(specification) == 2**n, f"State vector has wrong size for {n} qubits: {len(specification)} ≠ {2**n}!"
-        if renormalize:
+        if check >= 1:
             return normalize(specification)
         return np.asarray(specification)
     if is_int(specification):
@@ -355,7 +355,7 @@ def unket(state, as_dict=False, prec=5):
     n = count_qubits(state)
     if as_dict:
         # cast to float if imaginary part is zero
-        if np.allclose(state.imag, 0):
+        if np.all(state < 1e-12):
             state = state.real
         return {binstr_from_int(i, n): state[i] for i in range(2**n) if np.abs(state[i]) > eps}
 
@@ -396,9 +396,10 @@ def unket(state, as_dict=False, prec=5):
             res += [f"{weight}*({'+'.join(weights[weight])})"]
     return "+".join(res).replace("+-", "-")
 
-def dm(specification1, specification2=None, n=None, renormalize=True, check=False, obs=None):
+def dm(specification1, specification2=None, n=None, check=2, obs=None):
     """
     Convenience function to generate or verify a density matrix. Also allows to generate other operators, e.g. `dm(0, 1)`.
+    Check level only relevant if a matrix or observable is given.
     """
     # If it's already a matrix, ensure it's a density matrix and return it
     if isinstance(specification1, (list, np.ndarray)):
@@ -406,13 +407,12 @@ def dm(specification1, specification2=None, n=None, renormalize=True, check=Fals
         if len(specification1.shape) > 1:
             n = n or count_qubits(specification1) or 1
             assert specification1.shape == (2**n, 2**n), f"Matrix has wrong shape for {n} qubits: {specification1.shape} ≠ {(2**n, 2**n)}"
-            if renormalize:
+            if check >= 1:
                 sp1_trace = np.trace(specification1)
-                # trace normalize it if it's not already
+                # trace normalize it only if it's not already
                 if not abs(sp1_trace - 1) < 1e-8:
                     specification1 = specification1 / sp1_trace
-            if check:
-                assert is_dm(specification1), f"The given matrix is not a density matrix"
+            assert_dm(specification1, check=check)
             return specification1
     elif specification2 is None:
         if specification1 == 'random' or specification1 == 'random_mixed' or specification1 == 'random_dm':
@@ -420,75 +420,106 @@ def dm(specification1, specification2=None, n=None, renormalize=True, check=Fals
         elif specification1 == 'random_pure':
             specification1 = 'random'
 
-    s1 = ket(specification1, n)
+    s1 = ket(specification1, n, check=check)
     if obs is not None:
-        if check:
+        if check >= 2:
             assert is_hermitian(obs), "The given observable is not Hermitian"
         _, U = np.linalg.eigh(obs)
         s1 = U @ s1
     if specification2 is None:
         s2 = s1
     else:
-        s2 = ket(specification2, n or count_qubits(s1))
+        s2 = ket(specification2, n or count_qubits(s1), check=check)
         if obs is not None:
             s2 = U @ s2
 
     return np.outer(s1, s2.conj())
 
-def ev(obs, state, check=True):
-    if check:
+def as_state(state, check=2):
+    try:
+        return ket(state, check=check)
+    except:
+        pass
+    return dm(state, check=check)
+
+def ev(obs, state, check=2):
+    if check >= 2:
         assert is_hermitian(obs)
     if len(state.shape) == 1:
+        assert_ket(state)
         return (state.conj() @ obs @ state).real
+    assert_dm(state, check=check)
     return np.trace(obs @ state).real
 
 def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
     return np.abs(state)**2
 
-def is_ket(psi):
+def is_ket(psi, print_errors=True):
     """Check if `ket` is a valid state vector."""
+    return is_from_assert(assert_ket, print_errors)(psi)
+
+def assert_ket(psi):
+    """ Check if `ket` is a valid state vector. """
+    if isinstance(psi, str):
+        try:
+            psi = ket(psi, check=0)
+        except Exception as e:
+            assert False, f"Invalid state vector: {psi}\n{e.__class__.__name__}: {e}"
+    psi = np.asarray(psi, dtype=complex)
+    n = count_qubits(psi)
+    assert len(psi.shape) == 1 and psi.shape[0] == 2**n, f"Invalid state vector shape: {psi.shape} ≠ {(2**n,)}"
+    assert abs(np.linalg.norm(psi) - 1) < 1e-10, f"State vector is not normalized: {np.linalg.norm(psi)}"
+
+def is_dm(rho, print_errors=True, check=3):
+    """Check if matrix `rho` is a density matrix."""
+    return is_from_assert(assert_dm, print_errors)(rho, check)
+
+def assert_dm(rho, check=3):
+    """ Check if matrix `rho` is a density matrix. """
+    if isinstance(rho, (int, str)):
+        try:
+            rho = dm(rho, check=0)
+        except Exception as e:
+            assert False, f"Invalid density matrix: {rho}\n{e.__class__.__name__}: {e}"
+    rho = np.asarray(rho, dtype=complex)
+    assert len(rho.shape) == 2 and rho.shape[0] == rho.shape[1], f"Invalid density matrix shape: {rho.shape}"
+    n = count_qubits(rho)
+    assert rho.shape[0] == 2**n, f"Invalid density matrix shape: {rho.shape} should be a power of 2"
+    assert abs(np.trace(rho) - 1) < 1e-10, f"Density matrix is not normalized: {np.trace(rho)}"
+    assert is_psd(rho, check=check), "Density matrix is not positive semi-definite"
+
+def is_state(state, check=3):
     try:
-        if isinstance(psi, str):
-            psi = ket(psi)
-        psi = np.asarray(psi, dtype=complex)
-        n = count_qubits(psi)
+        assert_ket(state)
+        return True
+    except:
+        pass
+    try:
+        assert_dm(state, check=check)
+        return True
     except:
         return False
-    if len(psi.shape) != 1 or psi.shape[0] != 2**n:
-        return False
-    return abs(np.linalg.norm(psi) - 1) < 1e-10
 
-def is_dm(rho):
-    """Check if matrix `rho` is a density matrix."""
-    try:
-        if isinstance(rho, str):
-            rho = dm(rho, check=False)
-        rho = np.asarray(rho, dtype=complex)
-        n = count_qubits(rho)
-    except Exception as e:
-        return False
-    if len(rho.shape) != 2 or rho.shape[0] != rho.shape[1] or rho.shape[0] != 2**n:
-        return False
-    return abs(np.trace(rho) - 1) < 1e-10 and is_psd(rho)
-
-def is_pure_dm(rho):
-    """Check if matrix `rho` is a pure density matrix."""
-    if not is_dm(rho):
+def is_pure_dm(rho, check=3):
+    """ Check if matrix `rho` is a pure density matrix. """
+    if not is_dm(rho, check=check):
         return False
     # return np.linalg.matrix_rank(rho) == 1
-    return abs(np.trace(rho @ rho) - 1) < 1e-10
+    if check >= 2:
+        return abs(np.trace(rho @ rho) - 1) < 1e-12
 
 def is_eigenstate(psi, H):
     psi = normalize(psi)
     psi2 = normalize(H @ psi)
     return abs(abs(psi2 @ psi) - 1) < 1e-10
 
-def gibbs(H, beta=1):
+def gibbs(H, beta=1, check=2):
     """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
     H = np.asarray(H)
-    assert is_hermitian(H), "Hamiltonian must be Hermitian!"
-    assert beta >= 0, "Inverse temperature must be positive!"
+    if check >= 2:
+        assert is_hermitian(H), "Hamiltonian must be Hermitian"
+    assert beta >= 0, f"Inverse temperature must be positive, but was {beta}"
     E, U = np.linalg.eigh(H)
     E = softmax(E, -beta)
     return U @ (E[:,None] * U.conj().T)

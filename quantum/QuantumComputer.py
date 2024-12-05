@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse as sp
 
 from .constants import *
-from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_ket, is_dm
+from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_state, is_dm, as_state
 from .hamiltonian import parse_hamiltonian
 from .info import von_neumann_entropy, schmidt_decomposition, mutual_information_quantum, correlation_quantum
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
@@ -21,13 +21,13 @@ class QuantumComputer:
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
     """
-    def __init__(self, qubits=None, state=None, track_unitary='auto', expensive_checks=True):
+    def __init__(self, qubits=None, state=None, track_unitary='auto', check_level=2):
         self.track_unitary = track_unitary
-        self.expensive_checks = expensive_checks
+        self.check_level = check_level
 
         self.clear()
 
-        if state is None and QuantumComputer.is_state(qubits):
+        if state is None and qubits is not None and not is_int(qubits) and is_state(qubits, self.check_level):
             state = qubits
             qubits = count_qubits(state)
         if is_int(qubits):
@@ -67,9 +67,9 @@ class QuantumComputer:
     def __call__(self, operators, qubits='all'):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         self._alloc_qubits(to_alloc)
-        operators = self.parse_channel(operators, len(qubits), check=self.expensive_checks)
+        operators = self.parse_channel(operators, len(qubits), check=self.check_level)
         isunitary = len(operators) == 1
-        # if it's a 1-qubit unitary and multiple qubits are given, apply it to all qubits
+        # if it's a 1-qubit channel and multiple qubits are given, apply it to all qubits
         if operators[0].shape == (2,2) and len(qubits) > 1:
             for q in qubits:
                 self(operators, q)
@@ -135,7 +135,7 @@ class QuantumComputer:
     def observable(self, obs=None, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
-            obs = self.parse_hermitian(obs, len(qubits))
+            obs = self.parse_hermitian(obs, len(qubits), check=self.check_level)
             # if obs is diagonal, use identity as basis (convention clash: computational basis ordering breaks order by ascending eigenvalues)
             diagonal = is_diag(obs)
             if not diagonal:
@@ -249,10 +249,7 @@ class QuantumComputer:
     def init(self, state, qubits=None, collapse=True):
         if qubits is None:
             if self.n == 0:  # infer `qubits` from `state`
-                if hasattr(state, 'shape') and len(state.shape) == 2:
-                    self.state = dm(state, check=True)
-                else:
-                    self.state = ket(state)
+                self.state = as_state(state, check=self.check_level)
                 n = count_qubits(self.state)
                 self.qubits = list(range(n))
                 self.original_order = list(range(n))
@@ -268,15 +265,15 @@ class QuantumComputer:
 
         if (isinstance(state, str) and (state == 'random_dm' or state == 'random_mixed')) \
                 or (hasattr(state, 'shape') and len(state.shape) == 2):
-            new_state = dm(state, n=len(qubits), check=True)
+            new_state = dm(state, n=len(qubits), check=self.check_level)
             if self.n > 0 and not self.is_matrix_mode():
                 # switch to matrix mode
-                self.state = dm(self.state, renormalize=False)
+                self.state = dm(self.state, check=0)
         else:
             if isinstance(state, str) and state == 'random_pure':
                 state = 'random'
             if self.is_matrix_mode():
-                new_state = dm(state, n=len(qubits), check=True)
+                new_state = dm(state, n=len(qubits), check=self.check_level)
             else:
                 new_state = ket(state, n=len(qubits))
 
@@ -546,7 +543,7 @@ class QuantumComputer:
     def ev(self, obs, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
         state = self.get_state(qubits)
-        obs = self.parse_hermitian(obs, len(qubits))
+        obs = self.parse_hermitian(obs, len(qubits), check=self.check_level)
         if len(state.shape) == 2:
             ev = np.trace(state @ obs)
         else:
@@ -556,7 +553,7 @@ class QuantumComputer:
     def std(self, obs, qubits='all', return_ev=False):
         qubits = self._check_qubit_arguments(qubits, False)
         state = self.get_state(qubits)
-        obs = self.parse_hermitian(obs, len(qubits))
+        obs = self.parse_hermitian(obs, len(qubits), check=self.check_level)
         if len(state.shape) == 2:
             m1 = np.trace(state @ obs)
             m2 = np.trace(state @ obs @ obs)
@@ -574,7 +571,7 @@ class QuantumComputer:
         Calculate the von Neumann entropy of the reduced density matrix of the given qubits.
         """
         state = self.get_state(qubits, obs)
-        return von_neumann_entropy(state, check=False)
+        return von_neumann_entropy(state, check=0)
 
     def entanglement_entropy(self, qubits, obs=None):
         """
@@ -642,7 +639,7 @@ class QuantumComputer:
                 raise ValueError("Schmidt decomposition requires a bipartition of the qubits")
 
             idcs = [self.qubits.index(q) for q in qubits]
-            return schmidt_decomposition(self.state.reshape(-1), idcs, coeffs_only, filter_eps)
+            return schmidt_decomposition(self.state.reshape(-1), idcs, coeffs_only, filter_eps, check=0)
 
     def schmidt_coefficients(self, qubits='all', obs=None):
         return self.schmidt_decomposition(qubits, coeffs_only=True, obs=obs)
@@ -655,7 +652,9 @@ class QuantumComputer:
         qubits_B = self._check_qubit_arguments(qubits_B, False)
         assert not any(q in qubits_B for q in qubits_A), "Subsystems A and B must be disjoint"
         state = self.get_state(qubits_A + qubits_B)
-        return correlation_quantum(state, obs_A, obs_B, check=False)
+        obs_A = self.parse_hermitian(obs_A, len(qubits_A), check=self.check_level)
+        obs_B = self.parse_hermitian(obs_B, len(qubits_B), check=self.check_level)
+        return correlation_quantum(state, obs_A, obs_B, check=0)
 
     def mutual_information(self, qubits_A, qubits_B=None, obs_A=None, obs_B=None):
         """
@@ -753,7 +752,7 @@ class QuantumComputer:
         if not isinstance(target, (list, np.ndarray)):
             target = [target]
         target = list(target)
-        U = self.parse_unitary(U, len(target), check=self.expensive_checks)
+        U = self.parse_unitary(U, len(target), check=self.check_level)
         for _ in control:
             U = C_(U, negative=negative)
         return self(U, control + target)
@@ -795,7 +794,7 @@ class QuantumComputer:
         self.h(energy)
 
         # 2. Unitary condition
-        U = self.parse_unitary(U, check=self.expensive_checks)
+        U = self.parse_unitary(U, check=self.check_level)
         UD, UU = np.linalg.eig(U)
         for j, q in enumerate(energy):
             U_2j = UU @ (UD**(2**j) * UU.T.conj())
@@ -811,11 +810,7 @@ class QuantumComputer:
         return cls(state)
 
     @staticmethod
-    def is_state(state):
-        return is_ket(state) or is_dm(state)
-
-    @staticmethod
-    def parse_channel(operators, n_qubits=None, check=True):
+    def parse_channel(operators, n_qubits=None, check=2):
         """
         Ensures `operators` form a valid CPTP map. Returns a list of np.ndarray.
         """
@@ -843,7 +838,7 @@ class QuantumComputer:
             return [U]
 
     @staticmethod
-    def parse_unitary(U, n_qubits=None, check=True):
+    def parse_unitary(U, n_qubits=None, check=2):
         if isinstance(U, (list, np.ndarray)):
             U = np.asarray(U)
         elif isinstance(U, str):
@@ -856,7 +851,7 @@ class QuantumComputer:
                 U = get_unitary(U)
             except:
                 raise ValueError(f"Can't process unitary of type {type(U)}: {U}")
-        if check:
+        if check >= 2:
             assert is_unitary(U), f"Unitary is not unitary: {U}"
         if n_qubits is not None:
             n_U = count_qubits(U)
@@ -864,8 +859,8 @@ class QuantumComputer:
         return U
 
     @staticmethod
-    def parse_hermitian(H, n_qubits=None, check=True):
-        if isinstance(H, (list, np.ndarray)):
+    def parse_hermitian(H, n_qubits=None, check=2):
+        if isinstance(H, (np.ndarray, list)):
             H = np.asarray(H)
         elif isinstance(H, str):
             H = parse_hamiltonian(H)
@@ -873,23 +868,18 @@ class QuantumComputer:
             H = H.toarray()
         else:
             raise ValueError(f"Can't process observable of type {type(H)}: {H}")
-        if check:
+        if check >= 2:
             assert is_hermitian(H), f"Observable is not hermitian: {H}"
         if n_qubits is not None:
             n_obs = count_qubits(H)
             assert n_obs == n_qubits, f"Observable has {n_obs} qubits, but {n_qubits} qubits were provided"
         return H
 
-def evolve(state, U, checks=True):
-    if checks:
-        if not hasattr(state, 'shape'):
-            state = np.asarray(state)
-        n = count_qubits(state)
-        U = QuantumComputer.parse_unitary(U, n, checks=True)
+def evolve(state, U, check=2):
+    state = as_state(state, check=check)
+    n = count_qubits(state)
+    U = QuantumComputer.parse_unitary(U, n, check)
     if len(state.shape) == 1:
-        if checks:
-            state = ket(state)
         return U @ state
-    if checks:
-        assert is_dm(state), "Invalid state: not a density matrix"
+    assert is_dm(state, check=check), "Invalid state: not a density matrix"
     return U @ state @ U.T.conj()

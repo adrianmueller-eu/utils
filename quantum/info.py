@@ -1,39 +1,39 @@
 import sys
 import numpy as np
+import itertools
 
-from .state import count_qubits, partial_trace, ket, dm, ev
-from ..mathlib import trace_norm, matsqrth_psd, is_hermitian
+from .state import count_qubits, partial_trace, dm, ev, as_state, assert_dm
+from ..mathlib import trace_norm, matsqrth_psd
 from ..prob import entropy
+from ..utils import is_iterable, is_from_assert
 
-def von_neumann_entropy(state, check=True):
-    """Calculate the von Neumann entropy of a given density matrix."""
-    state = np.asarray(state)
+def von_neumann_entropy(state, check=2):
+    """ Calculate the von Neumann entropy of a given density matrix. """
+    state = as_state(state, check=check)
     if len(state.shape) == 1:
         return 0  # pure state
-    if check:
-        assert is_hermitian(state), "Density matrix is not Hermitian!"
     eigs = np.linalg.eigvalsh(state)
-    if check:
-        assert abs(np.sum(eigs) - 1) < 1e-10, f"State is not normalized! {np.sum(eigs)}"  # dm trace-normalizes
-        assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite: {eigs}"
+    if check >= 1:
+        assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite: {eigs[:5]} ..."
     return entropy(eigs)
 
-def entanglement_entropy(state, subsystem_qubits, check=True):
-    """Calculate the entanglement entropy of a quantum state (density matrix or vector) with respect to the given subsystem."""
+def entanglement_entropy(state, subsystem_qubits, check=2):
+    """ Calculate the entanglement entropy of a quantum state (density matrix or vector) with respect to the given subsystem. """
     return von_neumann_entropy(partial_trace(state, subsystem_qubits), check=check)
 
-def mutual_information_quantum(state, subsystem_qubits, check=True):
+def mutual_information_quantum(state, subsystem_qubits, check=2):
+    state = as_state(state, check=check)
     n = count_qubits(state)
     S_AB = von_neumann_entropy(state, check=check)
-    S_A = entanglement_entropy(state, subsystem_qubits, check=False)
+    S_A = entanglement_entropy(state, subsystem_qubits, check=0)
     B = [i for i in range(n) if i not in subsystem_qubits]
-    S_B = entanglement_entropy(state, B, check=False)
+    S_B = entanglement_entropy(state, B, check=0)
     return S_A + S_B - S_AB
 
-def fidelity(state1, state2):
-    """Calculate the fidelity between two quantum states."""
-    state1 = np.asarray(state1)
-    state2 = np.asarray(state2)
+def fidelity(state1, state2, check=1):
+    """ Calculate the fidelity between two quantum states. """
+    state1 = as_state(state1, check=check)
+    state2 = as_state(state2, check=check)
 
     if len(state1.shape) == 1 and len(state2.shape) == 1:
         return np.abs(state1 @ state2.conj())**2
@@ -52,15 +52,15 @@ def fidelity(state1, state2):
     else:
         raise ValueError(f"Can't calculate fidelity between {state1.shape} and {state2.shape}")
 
-def trace_distance(rho1, rho2):
+def trace_distance(rho1, rho2, check=1):
     """Calculate the trace distance between two density matrices."""
     # convert to density matrices if necessary
-    rho1, rho2 = dm(rho1, renormalize=False), dm(rho2, renormalize=False)
+    rho1, rho2 = dm(rho1, check=check), dm(rho2, check=check)
     return 0.5 * trace_norm(rho1 - rho2)
 
-def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps=1e-10):
+def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps=1e-10, check=2):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
-    state = np.asarray(state)
+    state = as_state(state, check=check)
     n = count_qubits(state)
 
     assert len(state.shape) == 1, f"State must be a vector, but has shape: {state.shape}"

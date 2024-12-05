@@ -13,7 +13,7 @@ def Fourier_matrix(n, n_is_qubits=True):
         n = 2**n
     return 1/np.sqrt(n) * np.array([[np.exp(2j*np.pi*i*j/n) for j in range(n)] for i in range(n)], dtype=complex)
 
-def parse_unitary(unitary):
+def parse_unitary(unitary, check=2):
     """Parse a string representation of a unitary into its matrix representation. The result is guaranteed to be unitary.
     A universal set of quantum gates is given with 'H', 'T', 't', and 'CX'.
 
@@ -91,7 +91,8 @@ def parse_unitary(unitary):
         # print("chunk", chunk, unitary, chunk_matrix)
         U = U @ chunk_matrix
 
-    assert is_unitary(U), f"Result is not unitary: {U, U @ U.conj().T}"
+    if check >= 2:
+        assert is_unitary(U), f"Result is not unitary: {U, U @ U.conj().T}"
 
     return U
 
@@ -169,6 +170,7 @@ try:
                     # diagonalize, if necessary
                     if self.n >= 12:
                         warnings.warn(f"Diagonalizing a {self.n}-qubit matrix", stacklevel=2)
+                    assert is_hermitian(H), "Hamiltonian must be hermitian"
                     self.D, self.U = np.linalg.eigh(H)
             # auxiliary variables
             try:

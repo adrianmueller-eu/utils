@@ -62,12 +62,14 @@ def is_complex(a):
         return np.issubdtype(a.dtype, complex)
     return np.iscomplex(a).any()
 
-def is_psd(a, eigs=None, rtol=1e-05, atol=1e-08):
-    if not is_hermitian(a, rtol=rtol, atol=atol):
+def is_psd(a, eigs=None, check=3, rtol=1e-05, atol=1e-08):
+    if check >= 2 and not is_hermitian(a, rtol=rtol, atol=atol):
         return False
     if eigs is None:
-        eigs = np.linalg.eigvalsh(a)
-        return np.all(eigs >= -atol)
+        if check >= 3:
+            eigs = np.linalg.eigvalsh(a)
+            return np.all(eigs >= -atol)
+        return True
     # tol = len(eigs)*sys.float_info.epsilon
     return np.all(eigs.real >= -atol) and np.all(np.abs(eigs.imag) < atol)
 
@@ -261,9 +263,9 @@ def polar(A, kind='left'):  # a bit faster than scipy.linalg.polar
 #     D, T = np.linalg.eig(J)
 #     return S @ T, np.diag(D), T.conj().T
 
-# def cholesky(A, check=True):  # very slow, use scipy.linalg.cholesky or np.linalg.cholesky
+# def cholesky(A, check=3):  # very slow, use scipy.linalg.cholesky or np.linalg.cholesky
 #     """ Cholesky decomposition of a PSD matrix into a lower triangular matrix $A = LL^*$ """
-#     if check and not is_psd(A):
+#     if is_psd(A, check=check):
 #         raise ValueError('Cholesky decomposition works only for PSD matrices!')
 #     L = np.zeros_like(A)
 #     for i in range(A.shape[0]):
