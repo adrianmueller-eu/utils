@@ -1,6 +1,7 @@
 import numpy as np
 import itertools
 from functools import reduce
+from math import sqrt, sin, cos, log2
 
 from ..mathlib import matexp
 from .state import ket
@@ -29,7 +30,7 @@ T_gate = np.array([ # avoid overriding T = True
     [1,  0],
     [0,  np.sqrt(1j)]
 ], dtype=complex)
-H = H_gate = 1/np.sqrt(2) * np.array([ # Fourier_matrix(2) = f2*(X + Z) = 1j*f2*(Rx(pi) + Rz(pi))
+H = H_gate = f2 * np.array([ # Fourier_matrix(2) = f2*(X + Z) = 1j*f2*(Rx(pi) + Rz(pi))
     [1,  1],
     [1, -1]
 ], dtype=complex)
@@ -38,12 +39,12 @@ def R_(gate, theta):
    return matexp(-1j*gate*theta/2)
 
 def Rx(theta):
-    ct = np.cos(theta/2)
-    st = -1j*np.sin(theta/2)
+    ct = cos(theta/2)
+    st = -1j*sin(theta/2)
     return np.array([[ct, st], [st, ct]], dtype=complex)
 def Ry(theta):  # beam splitter
-    ct = np.cos(theta/2)
-    st = np.sin(theta/2)
+    ct = cos(theta/2)
+    st = sin(theta/2)
     return np.array([[ct, -st], [st, ct]], dtype=complex)
 def Rz(theta):  # phase shift
     jt2 = 1j*theta/2
@@ -51,8 +52,8 @@ def Rz(theta):  # phase shift
 
 def Rot(phi, theta, lam):
     # return Rz(lam) @ Ry(theta) @ Rz(phi)  # 2x slower
-    ct = np.cos(theta/2)
-    st = np.sin(theta/2)
+    ct = cos(theta/2)
+    st = sin(theta/2)
     ppl = 1j*(phi + lam)/2
     pml = 1j*(phi - lam)/2
     return np.array([
@@ -67,7 +68,7 @@ for i in [2,3]:
 def C_(A, reverse=False, negative=False):
     if not hasattr(A, 'shape'):
         A = np.asarray(A, dtype=complex)
-    n = int(np.log2(A.shape[0]))
+    n = int(log2(A.shape[0]))
     op0, op1 = [[1,0],[0,0]], [[0,0],[0,1]]
     if negative:
         op0, op1 = op1, op0

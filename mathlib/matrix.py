@@ -2,6 +2,8 @@ import warnings, sys
 import numpy as np
 import itertools
 import scipy.sparse as sp
+from functools import reduce
+from math import log2, sin, cos, sqrt
 
 from .basic import series
 from ..models import Polynomial
@@ -293,10 +295,11 @@ if not sage_loaded:
         """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
         def rotmat(i, j, phi):
             a = np.eye(n)
-            a[i,i] = np.cos(phi)
-            a[j,j] = np.cos(phi)
-            a[i,j] = -np.sin(phi)
-            a[j,i] = np.sin(phi)
+            cp, sp = cos(phi), sin(phi)
+            a[i,i] = cp
+            a[j,j] = cp
+            a[i,j] = -sp
+            a[j,i] = sp
             return a
         return [lambda phi: rotmat(i, j, phi) for i,j in itertools.combinations(range(n), 2)]
 
@@ -328,7 +331,7 @@ if not sage_loaded:
                 identity[i,i] = 1
             if normalize:
                 # factor 2 to get norm sqrt(2), too
-                identity = np.sqrt(2/n) * identity
+                identity = sqrt(2/n) * identity
             basis.append(identity)
 
         # Generate the off-diagonal matrices
@@ -351,12 +354,12 @@ if not sage_loaded:
                 m[j,j] = 1
             m[i,i] = -i
             if i > 1:
-                m = np.sqrt(2/(i*(i+1))) * m
+                m = sqrt(2/(i*(i+1))) * m
             basis.append(m)
 
         if normalize:
             # su have norm sqrt(2) by default
-            basis = [m/np.sqrt(2) for m in basis]
+            basis = [m/sqrt(2) for m in basis]
         if sparse:
             # convert to csr format for faster arithmetic operations
             return [sp.csr_matrix(m) for m in basis]
@@ -424,7 +427,7 @@ def random_unitary(size, kind='haar'):
         raise ValueError(f"Unknown kind '{kind}'.")
 
 def random_psd(size, params=(0,1), complex=True):
-    params = (params[0], np.sqrt(params[1]))  # eigs scale with variance
+    params = (params[0], sqrt(params[1]))  # eigs scale with variance
     a = random_square(size, params=params, complex=complex, kind='normal')
     return a @ a.conj().T
 

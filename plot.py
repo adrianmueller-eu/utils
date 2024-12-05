@@ -2,7 +2,7 @@ import warnings
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
-from math import log2
+from math import log2, sqrt
 from .mathlib import is_complex, is_symmetric, int_sqrt
 from .utils import *
 
@@ -131,7 +131,7 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None)
 # # basics, no log
 # def hist(data, bins=None, xlabel="", title="", density=False):
 #     def bins_sqrt(data):
-#         return int(np.ceil(np.sqrt(len(data))))
+#         return int(np.ceil(sqrt(len(data))))
 #
 #     plt.figure(figsize=(10,5))
 #

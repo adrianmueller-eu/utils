@@ -241,7 +241,7 @@ class QuantumComputer:
             return self
         probs = self._probs(qubits)  # also moves qubits to the front and reshapes
         outcome = np.random.choice(2**q, p=probs)
-        keep = self.state[outcome] / np.sqrt(probs[outcome])
+        keep = self.state[outcome] / sqrt(probs[outcome])
         self.state = np.zeros_like(self.state)
         self.state[outcome] = keep
         return self
@@ -511,7 +511,7 @@ class QuantumComputer:
                 ancilla_basis = I_(n_ancillas)
                 new_state = np.zeros(2**(self.n + n_ancillas), dtype=complex)
                 for i, p in enumerate(probs):
-                    new_state += np.sqrt(p) * np.kron(kets[i], ancilla_basis[i])
+                    new_state += sqrt(p) * np.kron(kets[i], ancilla_basis[i])
 
             # find n_ancillas integers that are not in self.qubits
             ancillas = []
@@ -561,7 +561,7 @@ class QuantumComputer:
             m1 = state.conj().T @ obs @ state
             m2 = state.conj().T @ obs @ obs @ state
         var = m2 - m1**2
-        std = np.sqrt(var.real)
+        std = sqrt(var.real)
         if return_ev:
             return std, m1
         return std

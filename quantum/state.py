@@ -1,6 +1,7 @@
 import psutil
 import numpy as np
 import matplotlib.pyplot as plt
+from math import log2
 
 from ..utils import is_int, duh, is_from_assert
 from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd
@@ -544,7 +545,7 @@ def count_qubits(obj):
     if hasattr(obj, 'n'):
         return obj.n
     if hasattr(obj, '__len__'):
-        n = int(np.log2(len(obj)))
+        n = int(log2(len(obj)))
         # assert len(obj) == 2**n, f"Dimension must be a power of 2, but was {len(obj)}"
         return n
     if hasattr(obj, 'num_qubits'):
