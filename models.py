@@ -1,9 +1,10 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from numpy.polynomial.polynomial import polyfit, polyval, polyroots, polyadd, polysub, polyder, polyint, polymul
 from abc import ABC, abstractmethod
 
 # convenience functions
-def pm(x, y=None, deg=1, plot=True):
+def pm(x, y=None, deg=1, plot=True, xlog=False, ylog=False):
     if y is None:
         if 1950 < x[0] < 2050 and all(1950 < x_i < 2050 for x_i in x[::2]):
             y = x[1::2]
@@ -19,7 +20,11 @@ def pm(x, y=None, deg=1, plot=True):
         x_ = np.linspace(min(x), max(x), 200)
         ax = poly.plot(x_)
         ax.scatter(x,y, marker=".")
-        #plt.show()
+        if xlog:
+            ax.set_xscale('log')
+        if ylog:
+            ax.set_yscale('log')
+        plt.show()
     return poly
     #return lambda x0: polyval(np.asarray(x0), coeffs)
 
