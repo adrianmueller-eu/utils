@@ -82,6 +82,7 @@ def random_p(size=100, kind='uniform'):
         p = np.random.random(size)
         p /= np.sum(p, axis=-1, keepdims=True)
     elif kind == 'dirichlet':
+        # see also https://en.wikipedia.org/wiki/Dirichlet_distribution#When_each_alpha_is_1
         o = np.ones(size[-1])
         p = np.random.dirichlet(o, size=size[:-1])
     else:
