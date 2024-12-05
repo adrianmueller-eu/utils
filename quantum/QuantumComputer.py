@@ -6,7 +6,7 @@ import scipy.sparse as sp
 from .constants import *
 from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_state, is_dm, as_state
 from .hamiltonian import parse_hamiltonian
-from .info import von_neumann_entropy, schmidt_decomposition, mutual_information_quantum, correlation_quantum
+from .info import von_neumann_entropy, schmidt_decomposition, mutual_information_quantum, correlation_quantum, is_kraus
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag
 from ..plot import imshow
@@ -818,19 +818,7 @@ class QuantumComputer:
             operators = np.asarray(operators)
         if len(operators.shape) == 3:
             assert len(operators) > 0, "No operators provided"
-            # ensure square
-            for i, K in enumerate(operators):
-                K = np.asarray(K)
-                operators[i] = K
-                assert K.shape[0] == K.shape[1], f"Kraus operator is not square: {K}"
-                if n_qubits is not None:
-                    n_K = count_qubits(K)
-                    assert n_K == n_qubits or n_K == 1, f"Kraus operator has {n_K} qubits, but {n_qubits} qubits were provided"
-            # ensure they all have the same shape
-            assert all(K.shape == operators[0].shape for K in operators), f"Kraus operators have different shapes: {[K.shape for K in operators]}"
-            if check:
-                # ensure trace-preserving
-                assert np.allclose(np.sum([K.conj().T @ K for K in operators], axis=0), np.eye(K.shape[0]))
+            assert is_kraus(operators, check=check), "Operators are not valid Kraus operators"
             return [K for K in operators]
         else:
             # it's probably a unitary!

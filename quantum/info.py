@@ -84,15 +84,48 @@ def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps
     V = V[:len(S), :]
     return S, U.T, V
 
-def correlation_quantum(state, obs_A, obs_B, check=True):
+def correlation_quantum(state, obs_A, obs_B, check=2):
     n_A = count_qubits(obs_A)
     n_B = count_qubits(obs_B)
-    if len(state.shape) == 1:
-        state = ket(state, renormalize=check)
-    else:
-        state = dm(state, renormalize=check, check=check)
+    state = as_state(state, check=check)
 
     obs_AB = np.kron(obs_A, obs_B)
     rho_A = partial_trace(state, list(range(n_A)))
     rho_B = partial_trace(state, list(range(n_A, n_A + n_B)))
-    return ev(obs_AB, state, check) - ev(obs_A, rho_A, check) * ev(obs_B, rho_B, check)
+    return ev(obs_AB, state, check=min(1, check)) - ev(obs_A, rho_A, check) * ev(obs_B, rho_B, check)
+
+def is_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=False, check=3, print_errors=True):
+    """
+    Check if the given operators form a valid Kraus decomposition.
+    Check level 3 only needed for contractivity (`trace_preserving=False`), otherwise level 2 is sufficient.
+    """
+    return is_from_assert(assert_kraus, print_errors)(operators, n_qubits, trace_preserving, orthogonal, check)
+
+def assert_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=False, check=3):
+    """ Check if the given operators form a valid Kraus decomposition."""
+    Ks = np.asarray(operators)
+    # 1. Check shapes
+    assert len(Ks) > 0, f"Need at least one operator, but got: {Ks.shape}"
+    if len(Ks.shape) == 2:
+        Ks = Ks[None, ...]
+    assert len(Ks.shape) == 3 and Ks.shape[1] == Ks.shape[2], f"Kraus operators should be square matrices, but got shape: {Ks.shape[1:]}"
+    # 2. Check size matches n_qubits
+    if n_qubits is not None:
+        if not is_iterable(n_qubits):
+            n_qubits = [n_qubits]
+        n_K = count_qubits(Ks[0])
+        assert n_K in n_qubits, f"Kraus operators need to have {n_qubits} qubits but have {n_K}"
+    if check < 2:
+        return True  # trace and orthogonality checks are expensive
+    # 3. Check trace-preserving / contractive
+    res = np.sum([K.conj().T @ K for K in Ks], axis=0)
+    if trace_preserving:
+        assert np.allclose(res, np.eye(Ks.shape[-1])), f"Operators are not trace-preserving"
+    else:
+        if check >= 3:
+            assert np.max(np.abs(np.linalg.eigvalsh(res))) < 1 + 1e-12, f"Operators are not contractive"
+    # 4. Check orthogonality
+    if orthogonal:
+        for K1, K2 in itertools.combinations(Ks, 2):
+            res = np.trace(K1.conj().T @ K2)
+            assert np.abs(res) < 1e-10, f"Operators are not orthogonal: {res}"
