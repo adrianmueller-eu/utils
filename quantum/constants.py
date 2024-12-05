@@ -3,7 +3,8 @@ import itertools
 from functools import reduce
 from math import sqrt, sin, cos, log2
 
-from ..mathlib import matexp
+from ..mathlib import matexp, pauli_basis
+from ..prob import check_probability_distribution
 from .state import ket
 
 fs = lambda x: 1/np.sqrt(x)
@@ -110,11 +111,19 @@ Bell = [
 ]
 GHZ = GHZ_(3)
 
+def pauli_channel(p, n=1):
+    p = np.asarray(p)
+    basis = np.asarray(pauli_basis(n)[1:])
+    p0 = p > 1e-12
+    p, basis = p[p0], basis[p0]
+    return [sqrt(1 - sum(p)) * I_(n), *np.einsum('i,ijk->ijk', np.sqrt(p), basis)]
+
 noise_models = {
-    'depolarizing': lambda p: [np.sqrt(1 - 3*p/4) * I, np.sqrt(p/4) * X, np.sqrt(p/4) * Y, np.sqrt(p/4) * Z],
-    'bitflip':      lambda p: [np.sqrt(1 - p) * I, np.sqrt(p) * X],
-    'phaseflip':    lambda p: [np.sqrt(1 - p) * I, np.sqrt(p) * Z],
-    'bitphaseflip': lambda p: [np.sqrt(1 - p) * I, np.sqrt(p) * X, np.sqrt(p) * Z, np.sqrt(p) * X @ Z],
-    'amplitude_damping': lambda gamma: [np.array([[1, 0], [0, np.sqrt(1 - gamma)]]), np.sqrt(1 - gamma) * I],
-    'phase_damping':     lambda gamma: [np.array([[1, 0], [0, np.exp(-gamma)    ]]), np.sqrt(1 - gamma) * I],
+    'depolarizing': lambda p: [sqrt(1 - 3*p/4) * I, sqrt(p/4) * X, sqrt(p/4) * Y, sqrt(p/4) * Z],
+    'bitflip':      lambda p: [sqrt(1 - p) * I, sqrt(p) * X],
+    'phaseflip':    lambda p: [sqrt(1 - p) * I, sqrt(p) * Z],
+    'bitphaseflip': lambda p: [sqrt(1 - 2*p/3) * I, np.sqrt(p/3) * X, sqrt(p/3) * Z],
+    'pauli':        lambda p, n=1: pauli_channel(p, n),
+    'amplitude_damping': lambda p: [np.array([[1, 0], [0, sqrt(1 - p)]]), np.array([[0, sqrt(p)], [0, 0]])],
+    'phase_damping':     lambda p: [sqrt(1 - p) * I, np.array([[sqrt(p), 0], [0, 0]]), np.array([[0, 0], [0, sqrt(p)]])],
 }
