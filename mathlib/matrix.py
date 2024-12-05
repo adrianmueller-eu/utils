@@ -286,7 +286,7 @@ def gram_schmidt(A, normalized=True):
     return np.array(basis)
 
 #######################
-### Rotation groups ###
+### Hermitian bases ###
 #######################
 
 if not sage_loaded:
@@ -372,6 +372,80 @@ if not sage_loaded:
             D, U = np.linalg.eigh(G)
             return lambda phi: U @ (np.exp(-1j*phi/2*D)[:,None] * U.conj().T)
         return [rotmat(G) for G in generators]
+
+def pauli_basis(n, kind='np', normalize=False):
+    """ Generate the pauli basis of hermitian 2**n x 2**n matrices. This basis is orthonormal and, except for the identity, traceless. They are also unitary and therefore involutory.
+
+    E.g. for n = 2, the basis is [II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ]
+
+    Parameters
+        n (int): Number of qubits
+        kind (str): 'np' for numpy arrays (default), 'sp' for scipy sparse matrices, or 'str' for strings
+        normalize (bool): Whether to normalize the basis elements (default False)
+
+    Returns
+        list[ np.ndarray | scipy.sparse.csr_matrix | str ]: The pauli basis
+    """
+    def reduce_norm(f, l, normalize):
+        if normalize:
+            # apply norm sqrt(2**n) to the first element, and reduce the rest
+            first = l[0]/sqrt(2**n)
+            if len(l) == 1:
+                return first
+            rest = reduce(f, l[1:])
+            return f(first, rest)
+        else:
+            return reduce(f, l)
+
+    if kind == 'str':
+        norm_str = f"{1/sqrt(2**n)}*" if normalize else ""
+        return [norm_str + ''.join(i) for i in itertools.product(['I', 'X', 'Y', 'Z'], repeat=n)]
+    I, X, Y, Z = np.eye(2), np.array([[0, 1], [1, 0]]), np.array([[0, -1j], [1j, 0]]), np.array([[1, 0], [0, -1]])
+    if kind == 'np':
+        return [reduce_norm(np.kron, i, normalize) for i in itertools.product([I,X,Y,Z], repeat=n)]
+    elif kind == 'sp':
+        basis = [sp.csr_array(b) for b in [I,X,Y,Z]]
+        return [reduce_norm(sp.kron, i, normalize) for i in itertools.product(basis, repeat=n)]
+    else:
+        raise ValueError(f"Unknown kind: {kind}")
+
+# from https://docs.pennylane.ai/en/stable/code/api/pennylane.pauli_decompose.html
+def pauli_decompose(H, eps=1e-5):
+    r"""Decomposes a Hermitian matrix into a linear combination of Pauli operators.
+
+    Parameters
+        H (ndarray): Hermitian matrix of shape ``(2**n, 2**n)``
+        eps (float): Threshold to include a term in the decomposition. Set to 0 to include all terms.
+
+    Returns
+        tuple[list[float], list[str]]: the coefficients and the Pauli operator strings
+
+    Example
+    >>> H = np.array([[-2, -2+1j, -2, -2], [-2-1j,  0,  0, -1], [-2,  0, -2, -1], [-2, -1, -1,  0]])
+    >>> pauli_decompose(H)
+    ([-1.0, -1.5, -0.5, -1.0, -1.5, -1.0, -0.5, 1.0, -0.5, -0.5],
+     ['II', 'IX', 'IY', 'IZ', 'XI', 'XX', 'XZ', 'YY', 'ZX', 'ZY'])
+    """
+    n = int(log2(H.shape[0]))
+    N = 2**n
+
+    if H.shape != (N, N):
+        raise ValueError(f"The matrix should have shape (2**n, 2**n), for a number of qubits n>=1, but is {H.shape}")
+
+    assert is_hermitian(H), f"The matrix is not Hermitian:\n{H}"
+
+    obs_lst = []
+    coeffs = []
+
+    for term, basis_matrix in zip(pauli_basis(n, kind='str'), pauli_basis(n, kind='np')):
+        coeff = np.trace(basis_matrix @ H) / N  # project H onto the basis matrix
+        coeff = np.real_if_close(coeff).item()
+
+        if abs(coeff) >= eps:
+            coeffs.append(coeff)
+            obs_lst.append(term)
+
+    return coeffs, obs_lst
 
 ##############
 ### Random ###

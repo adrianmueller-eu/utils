@@ -3,9 +3,8 @@ import numpy as np
 from functools import reduce
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
-from .state import dm, count_qubits, plotQ
-from .hamiltonian import pauli_decompose
-from ..mathlib import is_unitary
+from .state import dm, count_qubits, plotQ, reverse_qubit_order
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose
 
 def Fourier_matrix(n, n_is_qubits=True):
     """Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT)."""
