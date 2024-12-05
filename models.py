@@ -186,7 +186,7 @@ class Polynomial(Function):
                 import matplotlib.pyplot as plt
                 ax = plt.gca()
             ax.axhline(0, color='grey', linewidth=.5)
-        super().plot(x, ax, label=label)
+        return super().plot(x, ax, label=label)
 
     def __add__(self, other):
         if isinstance(other, Polynomial):
