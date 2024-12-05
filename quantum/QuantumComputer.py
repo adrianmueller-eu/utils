@@ -530,7 +530,7 @@ class QuantumComputer:
         Convert state vector to density matrix representation.
         """
         if self.is_matrix_mode():
-            warnings.warn("State is already a density matrix", stacklevel=2)
+            # warnings.warn("State is already a density matrix", stacklevel=2)
             return self
         # RAM check
         RAM_required = 2**(2*self.n)*16*2
