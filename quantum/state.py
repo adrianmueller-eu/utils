@@ -511,18 +511,18 @@ def is_state(state, check=3):
     except:
         return False
 
-def is_pure_dm(rho, check=3):
+def is_pure_dm(rho, check=3, tol=1e-12):
     """ Check if matrix `rho` is a pure density matrix. """
     if not is_dm(rho, check=check):
         return False
     # return np.linalg.matrix_rank(rho) == 1
     if check >= 2:
-        return abs(np.trace(rho @ rho) - 1) < 1e-12
+        return abs(np.trace(rho @ rho) - 1) < tol
 
-def is_eigenstate(psi, H):
+def is_eigenstate(psi, H, tol=1e-10):
     psi = normalize(psi)
     psi2 = normalize(H @ psi)
-    return abs(abs(psi2 @ psi) - 1) < 1e-10
+    return abs(abs(psi2.conj() @ psi) - 1) < tol
 
 def gibbs(H, beta=1, check=2):
     """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
