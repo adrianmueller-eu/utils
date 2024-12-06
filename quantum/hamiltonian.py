@@ -1,7 +1,7 @@
 import psutil, warnings
 import numpy as np
 import scipy.sparse as sp
-from scipy.linalg import eigh
+from scipy.linalg import eigh, eigvalsh
 import itertools
 from functools import reduce
 
@@ -681,9 +681,9 @@ def get_H_energies(H, expi=False, k=None):
     if type(H) == str:
         H = parse_hamiltonian(H, sparse=k is not None)
     if isinstance(H, np.ndarray):
-        energies = np.linalg.eigvalsh(H)
+        energies = eigvalsh(H)
         if k is not None:
-            energies = energies[...,:k]  # allow batching for dense matrices
+            energies = energies[...,:k]
     else:
         energies = sp.linalg.eigsh(H, k=k, which='SA', return_eigenvectors=False)[::-1]  # smallest eigenvalues first
     if expi:
