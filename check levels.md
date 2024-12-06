@@ -50,10 +50,12 @@ Level 2: Medium overhead, deactivate if used often
 Level 3: Severe overhead, active only for interactive or critical calls
 | function | time (ms) |
 --|--
+| inv | 200
 | qr | 250
 | eigvalsh | 550
 | is_dm | 620
 | eigh | 850
 | svd | 1320
+| pinv | 1370
 | eigvals | 2700
 | eig | 3750

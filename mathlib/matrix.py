@@ -109,7 +109,7 @@ def matfunc(A, f, not_hermitian=False):
     if not not_hermitian and is_hermitian(A):  # is_hermitian takes a small fraction of the timing difference between eig and eigh
         return matfunch(A, f)
     D, T = np.linalg.eig(A)
-    return T @ (f(D.astype(complex))[:,None] * np.linalg.pinv(T))
+    return T @ (f(D.astype(complex))[:,None] * inv(T))
 
 try:
     from scipy.linalg import expm as matexp
@@ -172,6 +172,19 @@ def matpowh_psd(A, n):
 def matsqrth_psd(A):
     """ Matrix square root for PSD matrices using SVD """
     return matfunch_psd(A, np.sqrt)
+
+def inv(A, singular=False):
+    """
+    Matrix inverse. Set `singular=True` if the matrix is very likely to be singular.
+    """
+    A = np.asarray(A)
+    if not singular:
+        try:
+            return np.linalg.inv(A)
+        except np.linalg.LinAlgError:
+            # not square or singular
+            pass
+    return np.linalg.pinv(A)
 
 def normalize(a, p=2, axis=0):
     """
@@ -525,7 +538,7 @@ def random_projection(size, rank=None, orthogonal=True, complex=True):
     #     # P^2 = P, but almost never P = P^H
     #     A = random_square(size, complex=True)
     #     D = np.random.permutation([1]*rank + [0]*(size-rank))
-    #     return A @ (D[:,None] * np.linalg.pinv(A))
+    #     return A @ (D[:,None] * inv(A))
 
     # much faster for rank << size
     A = random_vec((size, rank), complex=complex)
@@ -533,4 +546,4 @@ def random_projection(size, rank=None, orthogonal=True, complex=True):
         B = A.conj().T
     else:
         B = random_vec((rank, size), complex=complex)
-    return A @ np.linalg.pinv(B @ A) @ B
+    return A @ inv(B @ A) @ B
