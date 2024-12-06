@@ -5,7 +5,7 @@ import scipy.sparse as sp
 from functools import reduce
 from math import log2, sin, cos, sqrt
 
-from .basic import series
+from .basic import series, sequence
 from ..models import Polynomial
 
 sage_loaded = False
@@ -297,6 +297,16 @@ def gram_schmidt(A, normalized=True):
         if (w > 1e-10).any():
             basis.append(normalize(w) if normalized else w)
     return np.array(basis)
+
+def power_iteration(A, eps=1e-8):
+    """ Power iteration algorithm. If A has a real, positive, unique eigenvalue of largest magnitude, this outputs it and the associated eigenvector."""
+    eigvec = sequence(
+        lambda i, b: normalize(A @ b),
+        start_value=random_vec(A.shape[1]),
+        eps=eps
+    )
+    eigval = eigvec.T.conj() @ A @ eigvec
+    return eigval, eigvec
 
 #######################
 ### Hermitian bases ###
