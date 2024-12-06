@@ -485,6 +485,15 @@ class QuantumComputer:
             return True
         return np.isclose(np.trace(rho @ rho), 1)
 
+    def rank(self, qubits='all', obs=None):
+        qubits = self._check_qubit_arguments(qubits, False)
+        if len(qubits) == self.n:
+            if self.is_matrix_mode():
+                state = self.get_state(qubits, obs)
+                return np.linalg.matrix_rank(state)
+            return 1
+        return self.schmidt_number(qubits, obs)  # faster than matrix_rank
+
     def ensemble(self, obs=None, filter_eps=1e-12):
         """
         Returns a minimal ensemble of orthnormal kets.
