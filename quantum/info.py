@@ -108,8 +108,8 @@ def is_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=False, 
     """
     return is_from_assert(assert_kraus, print_errors)(operators, n_qubits, trace_preserving, orthogonal, check)
 
-def assert_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=False, check=3):
-    """ Check if the given operators form a valid Kraus decomposition."""
+def assert_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=False, check=3, tol=1e-10):
+    """ Check if the given operators form a valid Kraus decomposition. """
     Ks = np.asarray(operators)
     # 1. Check shapes
     assert len(Ks) > 0, f"Need at least one operator, but got: {Ks.shape}"
