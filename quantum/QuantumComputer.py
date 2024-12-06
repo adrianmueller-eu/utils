@@ -868,11 +868,11 @@ class QuantumComputer:
         UD, UU = eig(U)
         # eig unfortunately doesn't necessarily output a unitary if the input is unitary
         # see https://github.com/numpy/numpy/issues/15461
-        if is_unitary(UU):
-            UU_inv = UU.T.conj()
-        else:
+        if self.check_level >= 2 and not is_unitary(UU):
             warnings.warn("Eigendecomposition of the unitary didn't yield unitary transformation matrix. Using inverse instead.", stacklevel=2)
             UU_inv = inv(UU)  # transformation matrix is always invertible
+        else:
+            UU_inv = UU.conj().T
         for j, q in enumerate(energy):
             U_2j = UU @ (UD[:,None]**(2**j) * UU_inv)
             self.c(U_2j, q, state)
