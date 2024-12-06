@@ -182,18 +182,26 @@ def matsqrth_psd(A):
     """ Matrix square root for PSD matrices using SVD """
     return matfunch_psd(A, np.sqrt)
 
-def inv(A, likely_singular=False):
+def sinv(A, likely_singular=False, tol=1e-12):
     """
     Matrix inverse.
     """
     A = np.asarray(A)
     if not likely_singular:
         try:
-            return np.linalg.inv(A)
-        except np.linalg.LinAlgError:
+            A_inv = inv(A)
+            diff = A @ A_inv - np.eye(A.shape[0])
+            if allclose0(diff, tol=tol):
+                # detA = det(A)
+                # if not np.isnan(detA) and np.abs(detA) < 1e-3:
+                #     print(detA)
+                return A_inv  # success!
+            print(f"inv failed! {np.max(np.abs(diff))}")
+        except:
+            print("inv failed!")
             # not square or singular
             pass
-    return np.linalg.pinv(A)
+    return pinv(A)
 
 def normalize(a, p=2, axis=0):
     """
@@ -565,4 +573,4 @@ def random_projection(size, rank=None, orthogonal=True, complex=True):
         B = A.conj().T
     else:
         B = random_vec((rank, size), complex=complex)
-    return A @ inv(B @ A) @ B
+    return A @ sinv(B @ A, tol=size*1e-9) @ B
