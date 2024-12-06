@@ -1,12 +1,12 @@
 import psutil, warnings
 import numpy as np
 import scipy.sparse as sp
+from scipy.linalg import eigh
 import itertools
 from functools import reduce
 
-from ..mathlib import normalize, sequence, softmax, random_vec, is_hermitian, pauli_basis
+from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0
 from ..utils import duh
-from .constants import I,X,Y,Z
 from .state import random_ket
 
 def ground_state_exact(hamiltonian):

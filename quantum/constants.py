@@ -4,7 +4,6 @@ from functools import reduce
 from math import sqrt, sin, cos, log2
 
 from ..mathlib import matexp, pauli_basis
-from ..prob import check_probability_distribution
 from .state import ket
 
 fs = lambda x: 1/np.sqrt(x)
