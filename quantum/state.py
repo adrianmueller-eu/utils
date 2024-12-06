@@ -365,7 +365,7 @@ def unket(state, as_dict=False, prec=5):
     n = count_qubits(state)
     if as_dict:
         # cast to float if imaginary part is zero
-        if np.all(state < 1e-12):
+        if np.all(np.abs(state.imag) < 1e-12):
             state = state.real
         return {binstr_from_int(i, n): state[i] for i in range(2**n) if np.abs(state[i]) > eps}
 
