@@ -5,7 +5,7 @@ import scipy.sparse as sp
 from scipy.linalg import eig, eigh, inv
 
 from .constants import *
-from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_state, is_dm, as_state
+from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, is_dm, as_state
 from .hamiltonian import parse_hamiltonian
 from .info import von_neumann_entropy, schmidt_decomposition, mutual_information_quantum, correlation_quantum, is_kraus
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
@@ -292,7 +292,10 @@ class QuantumComputer:
     def random(self, n=None):
         n = n or self.n
         assert n, 'No qubits have been allocated yet'
-        self.init(random_ket(n))
+        if self.is_matrix_mode():
+            self.init(random_dm(n))
+        else:
+            self.init(random_ket(n))
         return self
 
     def add(self, qubits, state=None):
