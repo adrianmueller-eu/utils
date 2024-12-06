@@ -91,8 +91,8 @@ def correlation_quantum(state, obs_A, obs_B, check=2):
     state = as_state(state, check=check)
 
     obs_AB = np.kron(obs_A, obs_B)
-    rho_A = partial_trace(state, list(range(n_A)))
-    rho_B = partial_trace(state, list(range(n_A, n_A + n_B)))
+    rho_A = partial_trace(state, list(range(n_A)), reorder=False)
+    rho_B = partial_trace(state, list(range(n_A, n_A + n_B)), reorder=False)
     return ev(obs_AB, state, check=min(1, check)) - ev(obs_A, rho_A, check) * ev(obs_B, rho_B, check)
 
 def is_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=False, check=3, print_errors=True):

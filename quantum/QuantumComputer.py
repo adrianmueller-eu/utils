@@ -132,7 +132,7 @@ class QuantumComputer:
             a = getattr(self, prop)
             if len(qubits) == self.n:
                 return a
-            return partial_trace(a, [self.qubits.index(q) for q in qubits])
+            return partial_trace(a, [self.qubits.index(q) for q in qubits], reorder=False)
 
     @contextmanager
     def observable(self, obs=None, qubits='all', return_energies=False):
@@ -334,7 +334,7 @@ class QuantumComputer:
                     idcs = slice(outcome*2**(self.n-q), (outcome+1)*2**(self.n-q))
                     self.state = self.state[idcs, idcs] / probs[outcome]
                 else:
-                    self.state = partial_trace(self.state, retain)
+                    self.state = partial_trace(self.state, retain, reorder=False)
             else:
                 if collapse or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
                     # if no entanglement with others, just remove it
@@ -348,7 +348,7 @@ class QuantumComputer:
                     if len(retain) > self.MATRIX_BREAK:
                         warnings.warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
                         # return self.remove(qubits, collapse=True)
-                    self.state = partial_trace(self.state, retain)
+                    self.state = partial_trace(self.state, retain, reorder=False)
 
         self.qubits = [q for q in self.qubits if q not in qubits]
         self.original_order = [q for q in self.original_order if q not in qubits]

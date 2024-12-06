@@ -35,10 +35,10 @@ def reverse_qubit_order(state):
     """So the last will be first, and the first will be last."""
     return transpose_qubit_order(state, -1)
 
-def partial_trace(state, retain_qubits):
+def partial_trace(state, retain_qubits, reorder=False):
     """
     Trace out all qubits not specified in `retain_qubits` and returns the reduced density matrix (or a scalar, if all qubits are traced out).
-    The order of the qubits in `retain_qubits` also specifies the order of the qubits in the resulting reduced density matrix.
+    If `reorder=True` (default: False), order the output according to `retain_qubits`.
     """
     state = np.asarray(state)
     n = count_qubits(state)
@@ -57,9 +57,11 @@ def partial_trace(state, retain_qubits):
             # Tr(|p><p|) = <p|p>
             return state @ state.conj()
         elif len(trace_out) == 0:
+            if reorder:
+                state = transpose_qubit_order(state, retain_qubits)
             return np.outer(state, state.conj())
-        st  = state.reshape([2]*n)
-        state = np.tensordot(st, st.conj(), axes=(trace_out,trace_out))
+        state = state.reshape([2]*n)
+        state = np.tensordot(state, state.conj(), axes=(trace_out,trace_out))
     # if trace out all qubits, just return the normal trace
     elif len(trace_out) == n:
         return np.trace(state).reshape(1,1)
@@ -72,13 +74,14 @@ def partial_trace(state, retain_qubits):
             n -= 1         # one qubit less
             trace_out -= 1 # rename the axes (only "higher" ones are left)
 
-    # transpose the axes of the remaining qubits to the desired order
-    new_order = np.argsort(list(retain_qubits))
-    state = state.transpose(new_order.tolist() + (new_order+len(new_order)).tolist())
+    if reorder:
+        # transpose the axes of the remaining qubits to the desired order
+        new_order = np.argsort(list(retain_qubits))
+        state = state.transpose(new_order.tolist() + (new_order+len(new_order)).tolist())
 
     return state.reshape([2**len(retain_qubits)]*2)
 
-def state_trace(state, retain_qubits):
+def state_trace(state, retain_qubits, reorder=True):
     """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical 
     meaning of its output, but it was at times helpful to visualize and interpret subsystems, especially when 
     the density matrix was out of reach (or better: out of memory)."""
@@ -112,6 +115,10 @@ def state_trace(state, retain_qubits):
 
     probs = probs.reshape(-1)
     assert np.abs(np.sum(probs) - 1) < 1e-5, np.sum(probs) # sanity check
+
+    if reorder:
+        state = transpose_qubit_order(state, retain_qubits)
+        probs = transpose_qubit_order(probs, retain_qubits)
 
     return state, probs
 
@@ -179,9 +186,9 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
         #print(memory_requirement / 1024**2, "MB") # rho.nbytes
         if memory_requirement > psutil.virtual_memory().available:
             raise ValueError(f"Too much memory required ({duh(memory_requirement)}) to calulate the density matrix!")
-        rho = np.outer(state, state.conj())
-        rho = partial_trace(rho, retain_qubits=showqubits)
-    state, probs = state_trace(state, showqubits)
+        rho = partial_trace(rho, retain_qubits=showqubits, reorder=True)
+
+    state, probs = state_trace(state, showqubits, reorder=True)
 
     if showcoeff and showprobs and showrho:
         if figsize is None:

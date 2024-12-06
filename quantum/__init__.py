@@ -489,6 +489,9 @@ def _test_partial_trace():
     rhoA_expect = rhoA
     rhoA_actual = partial_trace(rho, [0,1])
     assert np.allclose(rhoA_actual, rhoA_expect), f"rho_actual = {rhoA_actual}\nrho_expect = {rhoA_expect}"
+    rhoA_actual = partial_trace(rho, [1,0], reorder=True)  # test order
+    rhoA_expect = reverse_qubit_order(rhoA)
+    assert np.allclose(rhoA_actual, rhoA_expect), f"rho_actual = {rhoA_actual}\nrho_expect = {rhoA_expect}"
 
     # two separable state vectors
     psiA = random_ket(2)
