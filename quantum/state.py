@@ -232,7 +232,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
     plt.show()
 
 def random_ket(n=1):
-    """Generate a random state vector ($2^{n+1}-2$ degrees of freedom). Normalized and without global phase."""
+    """Generate a random state vector ($2^{n+1}-1$ degrees of freedom)."""
     assert is_int(n), f"n needs to be an integer, but was: {n}"
     real = np.random.random(2**n)
     imag = np.random.random(2**n)
@@ -240,7 +240,8 @@ def random_ket(n=1):
 
 def random_dm(n=1, rank='full'):
     """
-    Generate a random density matrix ($2^{n+1}-1$ degrees of freedom). Normalized and without global phase.
+    Generate a random density matrix ($rank*2^{n+1}-1$ degrees of freedom).
+    `rank` can be an integer between 1 and 2^n, or one of 'pure' or 'full'.
     """
     assert is_int(n), f"n needs to be an integer, but was: {n}"
     if rank == 'pure':
