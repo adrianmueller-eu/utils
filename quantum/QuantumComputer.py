@@ -135,17 +135,24 @@ class QuantumComputer:
             return partial_trace(a, [self.qubits.index(q) for q in qubits])
 
     @contextmanager
-    def observable(self, obs=None, qubits='all'):
+    def observable(self, obs=None, qubits='all', return_energies=False):
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
             obs = self.parse_hermitian(obs, len(qubits), check=self.check_level)
             # if obs is diagonal, use identity as basis (convention clash: computational basis ordering breaks order by ascending eigenvalues)
             diagonal = is_diag(obs)
-            if not diagonal:
-                U = np.linalg.eigh(obs)[1]
+            if diagonal:
+                D = np.diag(obs)
+            else:
+                D, U = eigh(obs)
                 self(U.T.conj(), qubits)  # basis change
+        else:
+            D = None
         try:
-            yield qubits
+            if return_energies:
+                yield qubits, D
+            else:
+                yield qubits
         finally:
             if obs is not None and not diagonal:
                 self(U, qubits)  # back to standard basis
@@ -165,9 +172,9 @@ class QuantumComputer:
                 return probs
             return np.sum(probs, axis=1)
 
-    def measure(self, qubits='all', collapse=True, obs=None):
-        self._reset_unitary()
-        with self.observable(obs, qubits) as qubits:
+    def measure(self, qubits='all', collapse=True, obs=None, return_as='binstr'):
+        with self.observable(obs, qubits, return_energies=True) as (qubits, energies):
+            self._reset_unitary()
             probs = self._probs(qubits)
             q = len(qubits)
             if self.is_matrix_mode():
@@ -219,7 +226,13 @@ class QuantumComputer:
 
         if not collapse:
             return self
-        return binstr_from_int(outcome, len(qubits))
+        if return_as == 'energy' and energies is not None:
+            return energies[outcome]
+        elif return_as == 'energy':
+            print("Warning: No observable provided for return_as_energy=True. Returning as outcome index instead.", stacklevel=2)
+        elif return_as == 'binstr':
+            return binstr_from_int(outcome, len(qubits))
+        return outcome
 
     def reset(self, qubits=None, collapse=True):
         if qubits is not None:
