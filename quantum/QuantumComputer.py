@@ -21,9 +21,9 @@ class QuantumComputer:
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
     """
-    def __init__(self, qubits=None, state=None, track_unitary='auto', check_level=2):
+    def __init__(self, qubits=None, state=None, track_unitary='auto', check=2):
         self.track_unitary = track_unitary
-        self.check_level = check_level
+        self.check_level = check
 
         self.clear()
 
@@ -60,6 +60,7 @@ class QuantumComputer:
         qc.qubits = self.qubits.copy()
         qc.original_order = self.original_order.copy()
         qc.track_unitary = self.track_unitary
+        qc.check_level = self.check_level
         if self._track_unitary:
             qc.U = self.U.copy()
         return qc
