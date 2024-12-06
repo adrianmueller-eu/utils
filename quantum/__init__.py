@@ -686,7 +686,7 @@ def _test_ising():
 
     H_str = ising((3,3), J=1.5, h=1.1, g=0.5, offset=0.5, kind='2d', circular=True)
     expect = "1.5*(ZIIZIIIII + ZZIIIIIII + IZIIZIIII + IZZIIIIII + IIZIIZIII + ZIZIIIIII + IIIZIIZII + IIIZZIIII + IIIIZIIZI + IIIIZZIII + IIIIIZIIZ + IIIZIZIII + IIIIIIZZI + ZIIIIIZII + IIIIIIIZZ + IZIIIIIZI + IIZIIIIIZ + IIIIIIZIZ) + 1.1*(ZIIIIIIII + IZIIIIIII + IIZIIIIII + IIIZIIIII + IIIIZIIII + IIIIIZIII + IIIIIIZII + IIIIIIIZI + IIIIIIIIZ) + 0.5*(XIIIIIIII + IXIIIIIII + IIXIIIIII + IIIXIIIII + IIIIXIIII + IIIIIXIII + IIIIIIXII + IIIIIIIXI + IIIIIIIIX) + 0.5"
-    assert np.allclose(ph(H_str, sparse=True), ph(expect, sparse=True)), f"\nH_str  = {H_str}\nexpect = {expect}"
+    assert np.allclose(ph(H_str, sparse=True).data, ph(expect, sparse=True).data), f"\nH_str  = {H_str}\nexpect = {expect}"
 
     # 3d
     H_str = ising((2,2,3), kind='3d', J=1.2, h=0, g=0, offset=0, circular=True)

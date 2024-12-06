@@ -292,7 +292,10 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
                 raise ValueError("Complex scalars would make the Hamiltonian non-Hermitian!")
             weight = weight.real
             # weight = np.array(weight, dtype=dtype)  # only relevant for int dtype
-            chunk_matrix = np.eye(2**n, dtype=dtype)
+            if sparse:
+                chunk_matrix = sp.eye(2**n, dtype=dtype)
+            else:
+                chunk_matrix = np.eye(2**n, dtype=dtype)
         elif len(chunk) != n:
             raise ValueError(f"Gate count must be {n} but was {len(chunk)} for chunk \"{chunk}\"")
         else:
