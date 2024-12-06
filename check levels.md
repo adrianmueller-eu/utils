@@ -11,8 +11,8 @@ Level 0: Virtually instant, no restriction
 | A.real | 0.00005
 | A.reshape([2]*20) | 0.0004
 | L.conj() | 0.0005
-| L @ L | 0.0008
 | np.diag(A) | 0.0006
+| L @ L | 0.0008
 | np.trace | 0.0013
 | L.conj() @ L | 0.0014
 | np.sum(L) | 0.0016
@@ -26,7 +26,7 @@ Level 0: Virtually instant, no restriction
 Level 1: Minimal burden, disable only for high performance
 | function | time (ms) |
 --|--
-| np.all(A > 0) | 0.4 | float
+| np.all(A.real > 0) | 0.45
 | A.conj() | 0.6
 | is_eigenstate(L, A) | 0.8
 | L[:,None] * A | 1
@@ -34,14 +34,15 @@ Level 1: Minimal burden, disable only for high performance
 | norm(A) | 1.3
 | A/1 | 1.4
 | np.abs(A) | 3
+| is_diag(A) | 3.5
 | normalize(A) | 4
-| np.all(A > 0) | 5 | complex
+| np.all(A > 0) | 5
 
 Level 2: Medium overhead, deactivate if used often
 | function | time (ms) |
 --|--
 | np.allclose(A, A) | 9
-| np.allclose(A, A.conj().T) | 19  (why???)
+| np.allclose(A, A.conj().T) | 19 (why??)
 | is_hermitian | 19
 | A @ A | 45
 | is_unitary | 50
