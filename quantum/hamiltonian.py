@@ -29,7 +29,7 @@ def ground_state_exact(hamiltonian):
 def get_E0(H):
     return ground_state_exact(H)[0]
 
-def ground_state_ITE(H, tau=5, eps=1e-6):  # eps=1e-6 gives almost perfect precision in the energy
+def ground_state_ITE(H, tau=5, eps=1e-6, check=2):  # eps=1e-6 gives almost perfect precision in the energy
     """ Calculate the ground state using the Imaginary Time-Evolution (ITE) scheme.
     Since its vanilla form uses diagonalization (to calculate the matrix exponential), it can't be more efficient than diagonalization itself. """
     def evolve(i, psi):
@@ -37,8 +37,10 @@ def ground_state_ITE(H, tau=5, eps=1e-6):  # eps=1e-6 gives almost perfect preci
         return normalize(psi)
 
     # U = matexp(-tau*H)
+    if check >= 2:
+        assert is_hermitian(H)
     D, V = eigh(H)  # this requires diagonalization of H
-    U = V @ np.diag(softmax(D, -tau)) @ V.conj().T
+    U = V @ (softmax(D, -tau)[:,None] * V.conj().T)
     n = int(np.log2(H.shape[0]))
     ground_state = sequence(evolve, start_value=random_ket(n), eps=eps)
     ground_state_energy = (ground_state.conj().T @ H @ ground_state).real
