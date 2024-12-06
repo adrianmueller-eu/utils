@@ -4,6 +4,7 @@ from .hamiltonian import *
 from .unitary import *
 from .info import *
 from .QuantumComputer import *
+from .misc import *
 
 ###############
 ### Aliases ###
