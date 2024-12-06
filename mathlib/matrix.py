@@ -173,12 +173,12 @@ def matsqrth_psd(A):
     """ Matrix square root for PSD matrices using SVD """
     return matfunch_psd(A, np.sqrt)
 
-def inv(A, singular=False):
+def inv(A, likely_singular=False):
     """
-    Matrix inverse. Set `singular=True` if the matrix is very likely to be singular.
+    Matrix inverse.
     """
     A = np.asarray(A)
-    if not singular:
+    if not likely_singular:
         try:
             return np.linalg.inv(A)
         except np.linalg.LinAlgError:
