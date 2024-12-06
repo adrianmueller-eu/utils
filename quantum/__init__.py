@@ -20,7 +20,7 @@ qc = QuantumComputer()
 #############
 
 from numpy.random import randint
-from ..mathlib import is_involutory, anticommute, float_from_binstr, random_hermitian, random_unitary
+from ..mathlib import is_involutory, anticommute, float_from_binstr, random_hermitian, random_unitary, trace_product
 
 def test_quantum_all():
     tests = [
@@ -370,6 +370,11 @@ def _test_QuantumComputer():
 
     qc = QuantumComputer('00 + 01')
     assert np.allclose(qc.schmidt_coefficients([1]), [1])
+    qc = QC('00 + 01 + 11')
+    assert np.isclose(trace_product(qc[0], qc[0]), 7/9)
+    assert np.isclose(trace_product(qc[1], qc[1]), 7/9)
+    qc = QC(3, 'random')
+    assert np.isclose(np.sum(qc.schmidt_coefficients([0])**2), 1)
 
     # more complex test
     qc = QuantumComputer(15)

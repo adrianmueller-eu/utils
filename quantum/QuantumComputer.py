@@ -607,16 +607,19 @@ class QuantumComputer:
                 raise ValueError("Entanglement entropy requires a bipartition of the qubits")
             return self.von_neumann_entropy(qubits)
 
-    def entanglement_entropies(self, qubits='all', obs=None):
+    def _entanglement_entropy_gen(self, qubits='all', obs=None):
         """
         Calculate the entanglement entropy of all bipartitions.
         """
         with self.observable(obs, qubits) as qubits:
+            if len(qubits) == 1:
+                print("No bipartitions can be generated from a single qubit")
+                return
             for i, o in bipartitions(qubits, unique=self.is_pure()):
                 yield i, o, self.entanglement_entropy(i)
 
-    def entanglement_entropy_pp(self, sort=None, head=100, precision=7, obs=None):
-        res = self.entanglement_entropies(obs=obs)
+    def _gen_pp(self, gen, qubits, sort, head, title, formatter):
+        qubits = self._check_qubit_arguments(qubits, False)
         if sort == None:
             skey = None
             word = ""
@@ -637,19 +640,27 @@ class QuantumComputer:
         else:
             raise ValueError(f"Invalid sort parameter: {sort}")
 
-        howmany = "All" if head is None or head + 1 >= 2**self.n - 1 else f"{word}{head}"
-        print(howmany + " bipartitions:\n" + "-"*(self.n*2+3))
+        howmany = "All" if head is None or head + 1 >= 2**len(qubits) - 1 else f"{word}{head}"
+        print(f"{howmany} bipartitions:\n" + "-"*(sum(len(str(q)) + 1 for q in qubits) + 3) + f" \t{title}")
         if skey is not None:
-            res = sorted(res, key=skey)
-        for i, (part_in, part_out, entanglement) in enumerate(res):
-            if head is not None and i >= head:
-                break
-            part_in  = [str(i) for i in part_in]
-            part_out = [str(i) for i in part_out]
-            print(f"{' '.join(part_in)}  |  {' '.join(part_out)} \t{entanglement:.{precision}f}".rstrip('0'))
+            gen = sorted(gen, key=skey)
+        for part_in, part_out, *c in gen:
+            if head is not None:
+                if head == 0:
+                    break
+                head -= 1
+            print(f"{' '.join(str(s) for s in part_in)}  |  {' '.join(str(s) for s in part_out)} \t{formatter(c)}")
+        return head is None or head > 0
+
+    def entanglement_entropy_pp(self, qubits='all', sort=None, head=300, precision=7, obs=None):
+        qubits = self._check_qubit_arguments(qubits, False)
+        gen = self._entanglement_entropy_gen(qubits, obs)
+        if len(qubits) > 10 and sort is not None or len(qubits) >= 12:
+            warnings.warn("This may take a while", stacklevel=2)
+        printed_all = self._gen_pp(gen, qubits, sort, head, "Entropy", lambda x: f"{x[0]:.{precision}f}".rstrip('0'))
         # add full state entropy
-        if howmany == "All":
-            print(f"\nFull state (i.e. classical) entropy: {self.von_neumann_entropy():.{precision}f}".rstrip('0'))
+        if printed_all:
+            print(f"\nFull state (i.e. classical) entropy: {self.von_neumann_entropy(qubits):.{precision}f}".rstrip('0'))
 
     def schmidt_decomposition(self, qubits='all', coeffs_only=False, obs=None, filter_eps=1e-10):
         """
@@ -664,8 +675,35 @@ class QuantumComputer:
             idcs = [self.qubits.index(q) for q in qubits]
             return schmidt_decomposition(self.state.reshape(-1), idcs, coeffs_only, filter_eps, check=0)
 
-    def schmidt_coefficients(self, qubits='all', obs=None):
-        return self.schmidt_decomposition(qubits, coeffs_only=True, obs=obs)
+    def schmidt_coefficients(self, qubits='all', obs=None, filter_eps=1e-10):
+        return self.schmidt_decomposition(qubits, coeffs_only=True, obs=obs, filter_eps=filter_eps)
+
+    def _schmidt_coefficients_gen(self, obs=None, filter_eps=1e-10):
+        if self.is_matrix_mode():
+            print("Error: Schmidt coefficients are not available for density matrices")
+        if self.n == 0:
+            print("Error: No bipartitions can be generated from a single qubit")
+            return
+        state = self.get_state(obs=obs)
+        for i, o in bipartitions(self.qubits, unique=self.is_pure()):
+            idcs = [self.qubits.index(q) for q in i]
+            coeffs = schmidt_decomposition(state, idcs, True, filter_eps, check=0)
+            yield i, o, len(coeffs), coeffs
+
+    def schmidt_coefficients_pp(self, sort=None, head=300, obs=None, filter_eps=1e-5, show_coeffs=True):
+        gen = self._schmidt_coefficients_gen(obs, filter_eps)
+        if show_coeffs:
+            formatter = lambda x: f"{x[0]}: {x[1]}"
+            title = "Schmidt number: Schmidt coefficients"
+        else:
+            formatter = lambda x: f"{x[0]}"
+            title = "Schmidt number"
+        if self.n >= 14 and sort is not None or self.n >= 20:
+            warnings.warn("This may take a while", stacklevel=2)
+        self._gen_pp(gen, self.qubits, sort, head, title, formatter)
+
+    def schmidt_number(self, qubits='all', obs=None):
+        return len(self.schmidt_coefficients(qubits, obs))
 
     def correlation(self, qubits_A, qubits_B, obs_A, obs_B):
         """
