@@ -271,13 +271,34 @@ def frobenius_norm(A):
     return np.linalg.norm(A, ord='fro')
     # return np.sqrt(np.trace(A.T.conj() @ A))
 
-def polar(A, kind='right', hermitian=False):
+def polar(A, kind='right', hermitian=False, force_svd=False):
     """
     Polar decomposition of *any* matrix into a unitary and a PSD matrix: `A = UJ` ('right') or `A = KU` ('left'),
     where `J = sqrt(A^H A)` and `K = sqrt(A A^H)`. If `A` is invertible, then `J` and `K` are positive definite
     and `U = A J^(-1) = K^(-1) A` is unitary.
     """
-    # eigh + @ is faster than svd, but J^(-1) and K^(-1) don't exist for singular matrices
+    # eigh + 4x@ is faster than svd + 2x@ for invertible square matrices
+    A = np.asarray(A)
+    if not force_svd and A.shape[-2] == A.shape[-1] and np.nan_to_num(det(A)) > 1e-6:
+        def _get(S):
+            D, U_S = eigh(S)
+            D_sqrt = np.sqrt(D)[:,None]
+            assert np.all(D > 0), f"Matrix is not invertible: {D}"
+            J = U_S @ (D_sqrt * U_S.conj().T)
+            J_inv = U_S @ (1/D_sqrt * U_S.conj().T)
+            return J, J_inv
+
+        AH = A if hermitian else A.T.conj()
+        if kind == 'right':
+            J, J_inv = _get(AH @ A)
+            U = A @ J_inv
+            return U, J
+        elif kind == 'left':
+            K, K_inv = _get(A @ AH)
+            U = K_inv @ A
+            return K, U
+        raise ValueError(f"Unknown kind '{kind}'.")
+
     # see https://en.wikipedia.org/wiki/Polar_decomposition#General_derivation
     W, S, Vh = svd(A, full_matrices=False)
     U = W @ Vh
