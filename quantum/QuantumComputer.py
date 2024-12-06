@@ -486,6 +486,9 @@ class QuantumComputer:
         return np.isclose(np.trace(rho @ rho), 1)
 
     def ensemble(self, obs=None, filter_eps=1e-12):
+        """
+        Returns a minimal ensemble of orthnormal kets.
+        """
         self._reorder(self.original_order)
 
         with self.observable(obs):
@@ -512,7 +515,8 @@ class QuantumComputer:
 
     def purify(self, sample=False, obs=None):
         """
-        Convert density matrix to a state vector representation by purification, either by doubling the number of qubits or by sampling from the eigenstates.
+        Convert density matrix to a state vector representation by purification.
+        `sample=True` will sample from the ensemble, otherwise a deterministic purification is performed.
         """
         if not self.is_matrix_mode():
             warnings.warn("State is already a vector", stacklevel=2)
