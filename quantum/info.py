@@ -75,12 +75,18 @@ def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps
         state = state.reshape([2]*n).transpose(subsystem_qubits + other_qubits)
     a_jk = state.reshape([2**len(subsystem_qubits), 2**len(other_qubits)])
 
+    def filterS(S):
+        S = S[S > filter_eps]
+        if check >= 1:
+            assert np.isclose(np.sum(S**2), 1), f"Schmidt coefficients are not normalized: {np.sum(S**2)} {S}"
+        return S
+
     # calculate the Schmidt coefficients and basis using SVD
     if coeffs_only:
         S = np.linalg.svd(a_jk, compute_uv=False)
-        return S[S > filter_eps]
+        return filterS(S)
     U, S, V = np.linalg.svd(a_jk, full_matrices=False)
-    S = S[S > filter_eps]
+    S = filterS(S)
     U = U[:, :len(S)]
     V = V[:len(S), :]
     return S, U.T, V
