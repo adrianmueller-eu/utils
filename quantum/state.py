@@ -1,5 +1,6 @@
 import psutil
 import numpy as np
+from scipy.linalg import eigh
 import matplotlib.pyplot as plt
 from math import log2
 
@@ -425,7 +426,7 @@ def dm(specification1, specification2=None, n=None, check=2, obs=None):
     if obs is not None:
         if check >= 2:
             assert is_hermitian(obs), "The given observable is not Hermitian"
-        _, U = np.linalg.eigh(obs)
+        U = eigh(obs)[1]
         s1 = U @ s1
     if specification2 is None:
         s2 = s1
@@ -521,7 +522,7 @@ def gibbs(H, beta=1, check=2):
     if check >= 2:
         assert is_hermitian(H), "Hamiltonian must be Hermitian"
     assert beta >= 0, f"Inverse temperature must be positive, but was {beta}"
-    E, U = np.linalg.eigh(H)
+    E, U = eigh(H)
     E = softmax(E, -beta)
     return U @ (E[:,None] * U.conj().T)
 

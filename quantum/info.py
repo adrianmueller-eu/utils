@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import itertools
+from scipy.linalg import svd, eigvalsh
 
 from .state import count_qubits, partial_trace, dm, ev, as_state, assert_dm
 from ..mathlib import trace_norm, matsqrth_psd
@@ -12,7 +13,7 @@ def von_neumann_entropy(state, check=2):
     state = as_state(state, check=check)
     if len(state.shape) == 1:
         return 0  # pure state
-    eigs = np.linalg.eigvalsh(state)
+    eigs = eigvalsh(state)
     if check >= 1:
         assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite: {eigs[:5]} ..."
     return entropy(eigs)
@@ -42,12 +43,12 @@ def fidelity(state1, state2, check=1):
     elif len(state1.shape) == 1 and len(state2.shape) == 2:
         return np.abs(state1.conj() @ state2 @ state1)
     elif len(state1.shape) == 2 and len(state2.shape) == 2:
-        # state1_sqrt = matsqrt(state1)
-        # return np.trace(matsqrt(state1_sqrt @ state2 @ state1_sqrt))**2  # textbook formula
-        # return np.sum(np.sqrt(np.linalg.eigvals(state1 @ state2)))**2  # this is correct and faster
+        # state1_sqrt = matsqrth_psd(state1)
+        # return np.trace(matsqrth(state1_sqrt @ state2 @ state1_sqrt))**2  # textbook formula
+        # return np.sum(np.sqrt(eigvals(state1 @ state2)))**2  # this is correct and faster
         state1_sqrt = matsqrth_psd(state1)
         state2_sqrt = matsqrth_psd(state2)
-        S = np.linalg.svd(state1_sqrt @ state2_sqrt, compute_uv=False) # this is in between in efficiency, but the more stable
+        S = svd(state1_sqrt @ state2_sqrt, compute_uv=False) # this is in between in efficiency, but the more stable
         return np.sum(S)**2
     else:
         raise ValueError(f"Can't calculate fidelity between {state1.shape} and {state2.shape}")
@@ -120,10 +121,10 @@ def assert_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=Fal
     # 3. Check trace-preserving / contractive
     res = np.sum([K.conj().T @ K for K in Ks], axis=0)
     if trace_preserving:
-        assert np.allclose(res, np.eye(Ks.shape[-1])), f"Operators are not trace-preserving"
+        assert allclose0(res - np.eye(Ks.shape[-1]), tol), f"Operators are not trace-preserving"
     else:
         if check >= 3:
-            assert np.max(np.abs(np.linalg.eigvalsh(res))) < 1 + 1e-12, f"Operators are not contractive"
+            assert np.max(np.abs(eigvalsh(res))) < 1 + tol, f"Operators are not contractive"
     # 4. Check orthogonality
     if orthogonal:
         for K1, K2 in itertools.combinations(Ks, 2):

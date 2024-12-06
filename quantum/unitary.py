@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 from functools import reduce
+from scipy.linalg import eig, eigh
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .state import dm, count_qubits, plotQ, reverse_qubit_order
@@ -170,7 +171,7 @@ try:
                     if self.n >= 12:
                         warnings.warn(f"Diagonalizing a {self.n}-qubit matrix", stacklevel=2)
                     assert is_hermitian(H), "Hamiltonian must be hermitian"
-                    self.D, self.U = np.linalg.eigh(H)
+                    self.D, self.U = eigh(H)
             # auxiliary variables
             try:
                 self.k = int(k)
@@ -223,14 +224,14 @@ try:
     def get_pe_energies(U):
         if isinstance(U, QuantumCircuit):
             U = get_unitary(U)
-        eigvals, eigvecs = np.linalg.eig(U)
+        eigvals = eig(U)[0]
         energies = np.angle(eigvals)/(2*np.pi)
         return energies
 
     def show_eigenvecs(U, showrho=False):
         if isinstance(U, QuantumCircuit):
             U = get_unitary(U)
-        eigvals, eigvecs = np.linalg.eig(U)
+        eigvecs = eig(U)[1]
         print(np.round(eigvecs, 3))
         for i in range(eigvecs.shape[1]):
             plotQ(eigvecs[:,i], figsize=(12,2), showrho=showrho)

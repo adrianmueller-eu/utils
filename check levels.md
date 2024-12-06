@@ -51,12 +51,13 @@ Level 2: Medium overhead, deactivate if used often
 | is_unitary | 50
 
 Level 3: Severe overhead, active only for interactive or critical calls
+(Functions are mostly from scipy.linalg)
 | function | time (ms) |
 --|--
 | inv | 200
 | qr | 250
 | eigvalsh | 550
-| is_dm | 620
+| is_dm | 560
 | eigh | 850
 | svd | 1300
 | pinv | 1350

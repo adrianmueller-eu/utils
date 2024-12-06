@@ -2,6 +2,7 @@ import psutil, warnings
 from contextlib import contextmanager
 import numpy as np
 import scipy.sparse as sp
+from scipy.linalg import eig, eigh, inv
 
 from .constants import *
 from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, plotQ, is_state, is_dm, as_state
@@ -476,7 +477,7 @@ class QuantumComputer:
                     probs = np.diag(self.state).real
                     kets = I_(self.n)
                     return probs, kets
-                probs, kets = np.linalg.eigh(self.state)
+                probs, kets = eigh(self.state)
                 # filter out zero eigenvalues
                 mask = probs > filter_eps
                 probs = probs[mask]

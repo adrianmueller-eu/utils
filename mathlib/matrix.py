@@ -1,9 +1,15 @@
 import warnings, sys
 import numpy as np
 import itertools
-import scipy.sparse as sp
 from functools import reduce
 from math import log2, sin, cos, sqrt
+import scipy.sparse as sp
+from scipy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
+from scipy.linalg import expm as matexp
+from scipy.linalg import logm as _matlog
+# for use when importing utils
+from scipy.linalg import fractional_matrix_power as matpow
+from scipy.linalg import sqrtm as matsqrt
 
 from .basic import series, sequence
 from ..models import Polynomial
@@ -69,7 +75,7 @@ def is_psd(a, eigs=None, check=3, tol=1e-12):
         return False
     if eigs is None:
         if check >= 3:
-            eigs = np.linalg.eigvalsh(a)
+            eigs = eigvalsh(a)
             return np.all(eigs >= -tol)
         return True
     # tol = len(eigs)*sys.float_info.epsilon
@@ -80,12 +86,13 @@ def is_normal(a, tol=1e-12):
         a @ a.conj().T, a.conj().T @ a
     ), tol)
 
-def is_projection(a, tol=1e-12):
+def is_projection(a, tol=1e-9):
+    a = np.asarray(a)
     return _sq_matrix_allclose(a, lambda a: (
         a @ a, a
-    ), tol)
+    ), a.shape[0]*tol)
 
-def is_projection_orthogonal(a, tol=1e-12):
+def is_projection_orthogonal(a, tol=1e-9):
     return is_projection(a, tol=tol) and is_hermitian(a, tol)
 
 def is_diag(a, tol=1e-12):
@@ -114,39 +121,32 @@ def allclose0(a, tol=1e-12):
 def matfunc(A, f, not_hermitian=False):
     if not not_hermitian and is_hermitian(A):  # is_hermitian takes a small fraction of the timing difference between eig and eigh
         return matfunch(A, f)
-    D, T = np.linalg.eig(A)
+    D, T = eig(A)
     D = np.asarray(f(D))
     if not is_complex(T) and allclose0(D.imag):
         D = D.real
     return T @ (D[:,None] * inv(T))
 
-try:
-    from scipy.linalg import expm as matexp
-    from scipy.linalg import logm as _matlog
-    from scipy.linalg import sqrtm as matsqrt
-    from scipy.linalg import fractional_matrix_power as matpow
+def matlog(A, base=np.e):
+    return _matlog(A) / np.log(base)
 
-    def matlog(A, base=np.e):
-        return _matlog(A) / np.log(base)
-except:
-    def matexp(A, not_h=False):
-        return matfunc(A, np.exp, not_h)
+# def matexp(A, not_h=False):
+#     return matfunc(A, np.exp, not_h)
 
-    def matexp_series(A):
-        return np.eye(A.shape[0]) + series(lambda n, A_pow: A_pow @ A / n, start_value=A, start_index=1)
+def matexp_series(A):
+    return np.eye(A.shape[0]) + series(lambda n, A_pow: A_pow @ A / n, start_value=A, start_index=1)
 
-    def matlog(A, base=np.e, not_h=False):
-        return matfunc(A, lambda x: np.log(x) / np.log(base), not_h)
+# def matlog(A, base=np.e, not_h=False):
+#     return matfunc(A, lambda x: np.log(x) / np.log(base), not_h)
 
-    def matpow(A, n, not_h=False):
-        return matfunc(A, lambda x: x**n, not_h)
+# def matpow(A, n, not_h=False):
+#     return matfunc(A, lambda x: x**n, not_h)
 
-    def matsqrt(A, not_h=False):
-        return matfunc(A, np.sqrt, not_h)
+# def matsqrt(A, not_h=False):
+#     return matfunc(A, np.sqrt, not_h)
 
-# eigh got a huge speedup on MacOS in numpy 2.0
 def matfunch(A, f):
-    D, U = np.linalg.eigh(A)
+    D, U = eigh(A)
     D = np.asarray(f(D.astype(complex)))
     return U @ (D[:,None] * U.conj().T)
 
@@ -162,12 +162,11 @@ def matpowh(A, n):
 def matsqrth(A):
     return matfunch(A, np.sqrt)
 
-# faster than scipy and eigh in numpy 1.24
 def matfunch_psd(A, f):
     if np.__version__ >= '2.0' and sys.platform == 'darwin':
         # warnings.warn("For numpy >= 2.0, eigh has better performance than svd for PSD matrix functions.", stacklevel=2)
         return matfunch(A, f)
-    u, s, vh = np.linalg.svd(A)
+    u, s, vh = svd(A)
     return u @ (f(s)[:,None] * vh)
 
 def matexph_psd(A):
@@ -226,11 +225,11 @@ def permanent(A):
 def determinant(A):
     if A.shape[0] >= 10:
         raise ValueError("Please use a proper method like np.linalg.det.")
-    # np.prod(np.linalg.eigvals(A))  # O(n^3)
-    return immanant(A, -1)           # O(n!)
+    # np.prod(eigvals(A))   # O(n^3)
+    return immanant(A, -1)  # O(n!)
 
 def characteristic_polynomial(A):
-    D = np.linalg.eigvals(A)
+    D = eigvals(A)
     p = Polynomial.from_roots(D)
     return p
 
@@ -272,7 +271,7 @@ def polar(A, kind='right', hermitian=False):
     """
     # eigh + @ is faster than svd, but J^(-1) and K^(-1) don't exist for singular matrices
     # see https://en.wikipedia.org/wiki/Polar_decomposition#General_derivation
-    W, S, Vh = np.linalg.svd(A, hermitian=hermitian, full_matrices=False)
+    W, S, Vh = svd(A, full_matrices=False)
     U = W @ Vh
     # A = W S V^H = U(V S V^H) = (W S W^H)U
     if kind == 'right':
@@ -285,7 +284,7 @@ def polar(A, kind='right', hermitian=False):
 
 # def svd2(A):
 #     S, J = polar(A, kind='right')
-#     D, T = np.linalg.eig(J)
+#     D, T = eig(J)
 #     return S @ T, np.diag(D), T.conj().T
 
 # def cholesky(A, check=3):  # very slow, use scipy.linalg.cholesky or np.linalg.cholesky
@@ -402,7 +401,7 @@ if not sage_loaded:
         """ Special unitary group. Returns n^2-1 functions that take an angle and return the corresponding complex rotation matrix """
         generators = su(n)
         def rotmat(G):
-            D, U = np.linalg.eigh(G)
+            D, U = eigh(G)
             return lambda phi: U @ (np.exp(-1j*phi/2*D)[:,None] * U.conj().T)
         return [rotmat(G) for G in generators]
 
@@ -523,7 +522,7 @@ def random_unitary(size, kind='haar'):
         return Q * L[None,:]
     elif kind == 'polar':  # fastest for very small and slowest for very large matrices
         A = random_square(size, complex=True, kind='normal')
-        D, U = np.linalg.eigh(A.T.conj() @ A)
+        D, U = eigh(A.T.conj() @ A)
         D_sqrt = np.sqrt(D)[:,None]
         J_inv = U @ (1/D_sqrt * U.conj().T)
         return A @ J_inv

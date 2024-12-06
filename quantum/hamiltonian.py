@@ -21,7 +21,7 @@ def ground_state_exact(hamiltonian):
     if sp.issparse(H):
         evals, evecs = sp.linalg.eigsh(H, k=1, which='SA')
     else:
-        evals, evecs = np.linalg.eigh(H) # way faster, but only dense matrices
+        evals, evecs = eigh(H) # way faster, but only dense matrices
     ground_state_energy = evals[0]
     ground_state = evecs[:,0]
     return ground_state_energy, ground_state
@@ -37,7 +37,7 @@ def ground_state_ITE(H, tau=5, eps=1e-6):  # eps=1e-6 gives almost perfect preci
         return normalize(psi)
 
     # U = matexp(-tau*H)
-    D, V = np.linalg.eigh(H)  # this requires diagonalization of H
+    D, V = eigh(H)  # this requires diagonalization of H
     U = V @ np.diag(softmax(D, -tau)) @ V.conj().T
     n = int(np.log2(H.shape[0]))
     ground_state = sequence(evolve, start_value=random_ket(n), eps=eps)

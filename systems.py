@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp, quad
 from scipy.optimize import fsolve
+from scipy.linalg import eigvals, det
 from itertools import product, combinations
 from tqdm.auto import tqdm as tq
 
@@ -212,7 +213,7 @@ def classify_fixed_point(f, fp, eps, verbose=True):
         return "Unknown", False
     # all 2-combinations of the eigenvalues (use itertools.combinations)
     if dims == 2:
-        cls, info = classify_fixed_point_2D(*np.linalg.eigvals(J), J)
+        cls, info = classify_fixed_point_2D(*eigvals(J), J)
         if verbose:
             print(f"Fixed point {fp}: {cls} ({np.round(ffp,3)}), tr={info['tr']}, det={info['det']}, dis={info['dis']}")
         return cls, info['stable']
@@ -222,7 +223,7 @@ def classify_fixed_point(f, fp, eps, verbose=True):
     stable = True
     if verbose:
         print(f"Fixed point {fp}: ({np.round(ffp,3)})")
-    for dims, (l1, l2) in zip(combinations(range(len(fp)), 2), combinations(np.linalg.eigvals(J), 2)):
+    for dims, (l1, l2) in zip(combinations(range(len(fp)), 2), combinations(eigvals(J), 2)):
         cls, info = classify_fixed_point_2D(l1, l2)
         if verbose:
             print(f"  {dims}: {cls}, tr={info['tr']}, det={info['det']}, dis={info['dis']}")
@@ -885,11 +886,11 @@ def stability_diagram(f, x0s, a_range, b_range, res=100, fp_filter_eps=1e-5, fp_
                         continue
                     if 'dis' in kind or 'logdis' in kind:
                         tr = np.trace(J)
-                        det = np.linalg.det(J)
-                        dis = tr**2 - 4*det
+                        det_ = det(J)
+                        dis = tr**2 - 4*det_
                         diss.append(dis)
-                        # print(i, j, a, b, tr, det, dis)
-                    evs = np.linalg.eigvals(J).real
+                        # print(i, j, a, b, tr, det_, dis)
+                    evs = eigvals(J).real
                     dfs.append(evs[np.argmin(np.abs(evs))])
                     # print(i, j, a, b, evs)
             # print(i, j, a, b, dfs)
@@ -1141,11 +1142,11 @@ def classify_fixed_point_discrete(f, fp, eps=1e-6):
         eta = eps*np.eye(dims)[:,i]
         J[:, i] = (f(fp + eta) - f(fp - eta))/(2*eps)
     # Calculate the eigenvalues
-    eigvals = np.linalg.eigvals(J)
+    evals = eigvals(J)
     # Check the stability
-    stable = np.all(np.abs(eigvals) < 1)
+    stable = np.all(np.abs(evals) < 1)
     classes = []
-    for e in eigvals:
+    for e in evals:
         if np.abs(e) < 1e-6:
             classes.append('superstable')
         elif np.abs(e - 1) < 1e-6 or np.abs(e + 1) < 1e-6:
@@ -1154,7 +1155,7 @@ def classify_fixed_point_discrete(f, fp, eps=1e-6):
             classes.append('stable')
         else:
             classes.append('unstable')
-    return {'multipliers': eigvals, 'cls': classes, 'is_stable': stable}, stable
+    return {'multipliers': evals, 'cls': classes, 'is_stable': stable}, stable
 
 def coweb(f, x0s, max_iter=1000, eps=1e-6, xlim=None, ylim=None, title=None, figsize=(8,5), linewidth=.5,
           fp_res=100, fp_filter_eps=1e-6, fp_stability_eps=1e-6, fp_distance_eps=1e-3, verbose=True, show=True):
