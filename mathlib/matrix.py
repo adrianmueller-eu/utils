@@ -19,43 +19,43 @@ except ImportError:
 ### Property checks ###
 #######################
 
-def _sq_matrix_allclose(a, f, rtol=1e-05, atol=1e-08):
+def _sq_matrix_allclose(a, f, tol=1e-12):
     a = np.asarray(a)
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         return False
     # a[np.isnan(a)] = 0
     a, b = f(a)
-    return np.allclose(a, b, rtol=rtol, atol=atol)
+    return allclose0(a-b, tol)
 
-def is_symmetric(a, rtol=1e-05, atol=1e-08):
+def is_symmetric(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a, a.T
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
-def is_hermitian(a, rtol=1e-05, atol=1e-08):
+def is_hermitian(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a, a.conj().T
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
-def is_antihermitian(a, rtol=1e-05, atol=1e-08):
+def is_antihermitian(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a, -a.conj().T
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
-def is_orthogonal(a, rtol=1e-05, atol=1e-08):
+def is_orthogonal(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a @ a.T, np.eye(a.shape[0])
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
-def is_unitary(a, rtol=1e-05, atol=1e-08):
+def is_unitary(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a @ a.conj().T, np.eye(a.shape[0])
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
-def is_involutory(a, rtol=1e-05, atol=1e-08):
+def is_involutory(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a @ a, np.eye(a.shape[0])
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
 def is_complex(a):
     if hasattr(a, 'dtype'):
@@ -64,42 +64,48 @@ def is_complex(a):
         return np.issubdtype(a.dtype, complex)
     return np.iscomplex(a).any()
 
-def is_psd(a, eigs=None, check=3, rtol=1e-05, atol=1e-08):
-    if check >= 2 and not is_hermitian(a, rtol=rtol, atol=atol):
+def is_psd(a, eigs=None, check=3, tol=1e-12):
+    if check >= 2 and not is_hermitian(a, tol):
         return False
     if eigs is None:
         if check >= 3:
             eigs = np.linalg.eigvalsh(a)
-            return np.all(eigs >= -atol)
+            return np.all(eigs >= -tol)
         return True
     # tol = len(eigs)*sys.float_info.epsilon
-    return np.all(eigs.real >= -atol) and np.all(np.abs(eigs.imag) < atol)
+    return np.all(eigs.real >= -tol) and allclose0(eigs.imag, tol)
 
-def is_normal(a, rtol=1e-05, atol=1e-08):
+def is_normal(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a @ a.conj().T, a.conj().T @ a
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
-def is_projection(a, rtol=1e-05, atol=1e-08):
+def is_projection(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a @ a, a
-    ), rtol=rtol, atol=atol)
+    ), tol)
 
-def is_projection_orthogonal(a, rtol=1e-05, atol=1e-08):
-    return is_projection(a, rtol=rtol, atol=atol) and is_hermitian(a, rtol=rtol, atol=atol)
+def is_projection_orthogonal(a, tol=1e-12):
+    return is_projection(a, tol=tol) and is_hermitian(a, tol)
 
-def is_diag(a, eps=1e-12):
+def is_diag(a, tol=1e-12):
     # return _sq_matrix_allclose(a, lambda a: (
     #     np.diag(np.diag(a)), a
     # ), rtol=rtol, atol=atol)
-    if abs(a[0,-1]) > eps:  # shortcut
+    if abs(a[0,-1]) > tol:  # shortcut
         return False
 
     # a[np.isnan(a)] = 0
     a = a.reshape(-1)[:-1].reshape(a.shape[0]-1, a.shape[1]+1)[:,1:]  # remove diagonal
-    if eps == 0 and a.shape[0] > 100:
-        return np.array_equal(a, np.zeros_like(a))
-    return np.all(np.abs(a) <= eps)
+    return allclose0(a, tol=tol)
+
+def allclose0(a, tol=1e-12):
+    if tol == 0:
+        return np.all(a == 0)
+    a = np.asarray(a)
+    if is_complex(a):
+        return np.all(np.abs(a.real) <= tol) and np.all(np.abs(a.imag) <= tol)
+    return np.all(np.abs(a) <= tol)
 
 ########################
 ### Matrix functions ###
@@ -109,7 +115,10 @@ def matfunc(A, f, not_hermitian=False):
     if not not_hermitian and is_hermitian(A):  # is_hermitian takes a small fraction of the timing difference between eig and eigh
         return matfunch(A, f)
     D, T = np.linalg.eig(A)
-    return T @ (f(D.astype(complex))[:,None] * inv(T))
+    D = np.asarray(f(D))
+    if not is_complex(T) and allclose0(D.imag):
+        D = D.real
+    return T @ (D[:,None] * inv(T))
 
 try:
     from scipy.linalg import expm as matexp
@@ -120,25 +129,26 @@ try:
     def matlog(A, base=np.e):
         return _matlog(A) / np.log(base)
 except:
-    def matexp(A):
-        return matfunc(A, np.exp)
+    def matexp(A, not_h=False):
+        return matfunc(A, np.exp, not_h)
 
     def matexp_series(A):
         return np.eye(A.shape[0]) + series(lambda n, A_pow: A_pow @ A / n, start_value=A, start_index=1)
 
-    def matlog(A, base=np.e):
-        return matfunc(A, lambda x: np.log(x) / np.log(base))
+    def matlog(A, base=np.e, not_h=False):
+        return matfunc(A, lambda x: np.log(x) / np.log(base), not_h)
 
-    def matpow(A, n):
-        return matfunc(A, lambda x: x**n)
+    def matpow(A, n, not_h=False):
+        return matfunc(A, lambda x: x**n, not_h)
 
-    def matsqrt(A):
-        return matfunc(A, np.sqrt)
+    def matsqrt(A, not_h=False):
+        return matfunc(A, np.sqrt, not_h)
 
 # eigh got a huge speedup on MacOS in numpy 2.0
 def matfunch(A, f):
     D, U = np.linalg.eigh(A)
-    return U @ (f(D.astype(complex))[:,None] * U.conj().T)
+    D = np.asarray(f(D.astype(complex)))
+    return U @ (D[:,None] * U.conj().T)
 
 def matexph(A):
     return matfunch(A, np.exp)
@@ -227,16 +237,16 @@ def characteristic_polynomial(A):
 def commutator(A, B):
     return A @ B - B @ A
 
-def commute(A, B):
+def commute(A, B, tol=1e-10):
     """ Check if two matrices commute. """
-    return np.allclose(commutator(A, B), 0)
+    return allclose0(commutator(A, B), tol=tol)
 
 def anticommutator(A, B):
     return A @ B + B @ A
 
-def anticommute(A, B):
+def anticommute(A, B, tol=1e-10):
     """ Check if two matrices anticommute. """
-    return np.allclose(anticommutator(A, B), 0)
+    return allclose0(anticommutator(A, B), tol=tol)
 
 def trace_product(A, B):
     """Hilbert-Schmidt product or trace inner product of two matrices."""

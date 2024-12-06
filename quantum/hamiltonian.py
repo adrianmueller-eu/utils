@@ -316,7 +316,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
 
     if check >= 2:
         if sparse:
-            assert np.allclose(H.data, H.conj().T.data), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H.data}"
+            assert allclose0(H.data - H.conj().T.data), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H.data}"
         else:
             assert is_hermitian(H), f"The given Hamiltonian {hamiltonian} is not Hermitian: {H}"
 

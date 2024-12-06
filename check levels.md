@@ -18,7 +18,8 @@ Level 0: Virtually instant, no restriction
 | np.sum(L) | 0.0016
 | L/1 | 0.0019
 | np.all(L > 0) | 0.0025
-| is_ket(L) | 0.003
+| is_ket(L) | 0.0028
+| allclose0(L) | 0.003
 | norm(L) | 0.0048
 | normalize(L) | 0.0052
 | np.allclose(L, L) | 0.015
@@ -28,22 +29,24 @@ Level 1: Minimal burden, disable only for high performance
 --|--
 | np.all(A.real > 0) | 0.45
 | A.conj() | 0.6
+| allclose0(A, 0) | 0.7
 | is_eigenstate(L, A) | 0.8
 | L[:,None] * A | 1
 | L @ A | 1
+| allclose0(A) | 1.25
 | norm(A) | 1.3
 | A/1 | 1.4
 | np.abs(A) | 3
-| is_diag(A) | 3.5
+| is_diag(A) | 3.2
 | normalize(A) | 4
 | np.all(A > 0) | 5
 
 Level 2: Medium overhead, deactivate if used often
 | function | time (ms) |
 --|--
+| is_hermitian | 8
 | np.allclose(A, A) | 9
 | np.allclose(A, A.conj().T) | 19 (why??)
-| is_hermitian | 19
 | A @ A | 45
 | is_unitary | 50
 
