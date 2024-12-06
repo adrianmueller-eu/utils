@@ -86,7 +86,8 @@ class QuantumComputer:
                 self.to_dm()
 
         # rotate axes of state vector to have the `qubits` first
-        self._reorder(qubits)
+        if qubits != self.qubits or self.state.shape[0] != 2**len(qubits):
+            self._reorder(qubits)
 
         if isunitary:
             # update unitary if tracked
@@ -819,12 +820,12 @@ class QuantumComputer:
         """
         Ensures `operators` form a valid CPTP map. Returns a list of np.ndarray.
         """
-        if isinstance(operators, (list, np.ndarray)):
+        if isinstance(operators, list):
             operators = np.asarray(operators)
         if len(operators.shape) == 3:
             assert len(operators) > 0, "No operators provided"
             assert is_kraus(operators, check=check), "Operators are not valid Kraus operators"
-            return [K for K in operators]
+            return operators
         else:
             # it's probably a unitary!
             U = QuantumComputer.parse_unitary(operators, n_qubits, check)
@@ -832,7 +833,9 @@ class QuantumComputer:
 
     @staticmethod
     def parse_unitary(U, n_qubits=None, check=2):
-        if isinstance(U, (list, np.ndarray)):
+        if isinstance(U, np.ndarray):
+            pass
+        elif isinstance(U, list):
             U = np.asarray(U)
         elif isinstance(U, str):
             U = parse_unitary(U)
