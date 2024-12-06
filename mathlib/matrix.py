@@ -264,27 +264,27 @@ def frobenius_norm(A):
     return np.linalg.norm(A, ord='fro')
     # return np.sqrt(np.trace(A.T.conj() @ A))
 
-def polar(A, kind='left'):  # a bit faster than scipy.linalg.polar
-    """Polar decomposition of *any* matrix into a unitary and a PSD matrix: $A = UJ$ or $A = KU$."""
-    def _get(S):
-        D, U = np.linalg.eigh(S)
-        D_sqrt = np.sqrt(D)[:,None]
-        J = U @ (D_sqrt * U.conj().T)
-        J_inv = U @ (1/D_sqrt * U.conj().T)
-        return J, J_inv
-
-    if kind == 'left':
-        J, J_inv = _get(A.T.conj() @ A)
-        U = A @ J_inv
+def polar(A, kind='right', hermitian=False):
+    """
+    Polar decomposition of *any* matrix into a unitary and a PSD matrix: `A = UJ` ('right') or `A = KU` ('left'),
+    where `J = sqrt(A^H A)` and `K = sqrt(A A^H)`. If `A` is invertible, then `J` and `K` are positive definite
+    and `U = A J^(-1) = K^(-1) A` is unitary.
+    """
+    # eigh + @ is faster than svd, but J^(-1) and K^(-1) don't exist for singular matrices
+    # see https://en.wikipedia.org/wiki/Polar_decomposition#General_derivation
+    W, S, Vh = np.linalg.svd(A, hermitian=hermitian, full_matrices=False)
+    U = W @ Vh
+    # A = W S V^H = U(V S V^H) = (W S W^H)U
+    if kind == 'right':
+        J = Vh.conj().T @ (S[:,None] * Vh)
         return U, J
-    elif kind == 'right':
-        K, K_inv = _get(A @ A.T.conj())
-        U = K_inv @ A
+    elif kind == 'left':
+        K = W @ (S[:,None] * W.conj().T)
         return K, U
     raise ValueError(f"Unknown kind '{kind}'.")
 
-# def svd(A):  # use np.linalg.svd
-#     S, J = polar(A, kind='left')
+# def svd2(A):
+#     S, J = polar(A, kind='right')
 #     D, T = np.linalg.eig(J)
 #     return S @ T, np.diag(D), T.conj().T
 

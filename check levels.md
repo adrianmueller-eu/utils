@@ -58,7 +58,8 @@ Level 3: Severe overhead, active only for interactive or critical calls
 | eigvalsh | 550
 | is_dm | 620
 | eigh | 850
-| svd | 1320
-| pinv | 1370
+| svd | 1300
+| pinv | 1350
+| polar | 1390
 | eigvals | 2700
 | eig | 3750
