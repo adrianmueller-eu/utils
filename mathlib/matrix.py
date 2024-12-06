@@ -163,11 +163,13 @@ def matsqrth(A):
     return matfunch(A, np.sqrt)
 
 def matfunch_psd(A, f):
-    if np.__version__ >= '2.0' and sys.platform == 'darwin':
-        # warnings.warn("For numpy >= 2.0, eigh has better performance than svd for PSD matrix functions.", stacklevel=2)
+    # check if eigh is from scipy.linalg or numpy.linalg
+    if hasattr(eigh, '__module__') and eigh.__module__.startswith('scipy'):
+        # warnings.warn("In scipy, eigh has better performance than svd for PSD matrix functions.", stacklevel=2)
         return matfunch(A, f)
-    u, s, vh = svd(A)
-    return u @ (f(s)[:,None] * vh)
+    V, S, Vh = svd(A)
+    S = np.asarray(f(S))
+    return V @ (S[:,None] * Vh)
 
 def matexph_psd(A):
     return matfunch_psd(A, np.exp)
