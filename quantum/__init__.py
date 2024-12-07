@@ -538,6 +538,14 @@ def _test_partial_trace():
     assert rho_tr.shape == rho.shape, f"rho_tr.shape = {rho_tr.shape} ≠ rho.shape = {rho.shape}"
     assert np.allclose(rho_tr, rho), f"rho_tr = {rho_tr} ≠ rho = {rho}"
 
+    # batch dimension
+    kets = random_kets(3, 10)
+    rhos = partial_trace(kets, [0,1])
+    assert np.allclose(np.trace(rhos, axis1=-2, axis2=-1), np.ones(10))
+    rhos_rev  = partial_trace(kets, [1,0], reorder=True)
+    rhos_rev2 = reverse_qubit_order(rhos)
+    assert np.allclose(rhos_rev, rhos_rev2)
+
 def _test_is_eigenstate():
     H = parse_hamiltonian('XX + YY + ZZ')
     assert is_eigenstate(ket('00'), H)
