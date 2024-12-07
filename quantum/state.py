@@ -174,7 +174,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
             ax.set_yticks(range(rho.shape[0]), basis)
             ax.tick_params(axis="x", rotation=45)
 
-    state = np.asarray(state)
+    state = ket(state)
 
     # trace out unwanted qubits
     if showqubits is None:
