@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from math import log2
 
 from ..utils import is_int, duh, is_from_assert
-from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd
+from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec
 from ..plot import colorize_complex
 from ..prob import random_p
 
@@ -232,11 +232,28 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
     plt.show()
 
 def random_ket(n=1):
-    """Generate a random state vector ($2^{n+1}-1$ degrees of freedom)."""
-    assert is_int(n), f"n needs to be an integer, but was: {n}"
-    real = np.random.random(2**n)
-    imag = np.random.random(2**n)
-    return normalize(real + 1j*imag)
+    """ Generate a random state vector ($2^{n+1}-1$ degrees of freedom). """
+    return random_kets(n, 1, kind='haar')[0]
+
+def random_kets(n, size=1, kind='haar'):
+    assert is_int(n) and n >= 1, f"n should be an integer >= 1, but was: {n}"
+    assert is_int(size) and size >= 1, f"size should be an integer >= 1, but was: {size}"
+    if kind == 'fast':
+        kets = random_vec((size, 2**n), complex=True, kind='normal')
+        return normalize(kets, axis=1)
+    elif kind == 'haar':
+        if size > 2**n:
+            res = [random_kets(n, 2**n) for _ in range(size // 2**n)]
+            if size % 2**n != 0:
+                res += [random_kets(n, size % 2**n, 'haar')]
+            return np.concatenate(res, axis=0)
+        kets = random_vec((2**n, min(size, 2**n)), complex=True, kind='normal')
+        Q, R = np.linalg.qr(kets)
+        Rd = np.diag(R)
+        L = Rd / np.abs(Rd)
+        return L[:,None] * Q.T
+    else:
+        raise ValueError(f"Unknown kind: {kind}")
 
 def random_dm(n=1, rank='full'):
     """
@@ -256,8 +273,7 @@ def random_dm(n=1, rank='full'):
         return np.outer(state, state.conj())
 
     probs = random_p(rank, kind='uniform')
-    kets = np.array([random_ket(n) for _ in range(rank)]).conj().T
-    kets = np.linalg.qr(kets)[0]  # same speed as random_unitary for full rank, but much faster for rank << n_dim
+    kets = random_kets(n, rank, kind='haar')
     return kets @ (probs[:,None] * kets.conj().T)
 
 def ket_from_int(d, n=None):

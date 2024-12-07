@@ -229,7 +229,15 @@ def _test_random_ket():
     n_qubits = np.random.randint(1, 10)
     psi = random_ket(n_qubits)
     assert psi.shape == (2**n_qubits,)
-    assert np.allclose(np.linalg.norm(psi), 1)
+    assert np.isclose(np.linalg.norm(psi), 1)
+    kets = random_kets(5, 1)
+    assert kets.shape == (1, 2**5)
+    assert np.isclose(np.linalg.norm(kets[0]), 1)
+    kets = random_kets(2, 1000)
+    assert kets.shape == (1000, 2**2)
+    assert np.allclose(np.linalg.norm(kets, axis=1), 1)
+    # check the kets are haar distributed
+    assert allclose0(np.mean(kets, axis=0), tol=0.05)
 
 def _test_dm():
     assert np.allclose(dm(0),   [[1,0], [0,0]])
