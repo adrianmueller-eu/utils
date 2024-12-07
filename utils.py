@@ -162,7 +162,7 @@ def is_from_assert(func, print_error=True):
             return True
         except AssertionError as e:
             if print_error:
-                print(f"AssertionError: {e}")
+                warnings.warn(f"AssertionError: {e}", stacklevel=3)
             return False
     return inner
 
