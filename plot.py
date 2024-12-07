@@ -188,7 +188,7 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
         print(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
 
     n, bins = histogram(data.ravel(), bins=bins, xlog=xlog, density=density)
-    if len(data.shape) > 1 and data.shape[0] < 10: # not more than 10 distributions
+    if len(data.shape) > 1 and 1 < data.shape[0] < 10: # not more than 10 distributions
         for i, d in enumerate(data):
             if hasattr(labels, '__len__') and len(labels) == data.shape[0]:
                 label = labels[i]
