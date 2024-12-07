@@ -495,13 +495,17 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     if show:
         plt.show()
 
-def complex_colorbar(figsize=(2,2)):
+def complex_colorbar(figsize=(2,2), colorizer=colorize_complex):
     """Show the color reference plot for complex numbers."""
+    if not isinstance(figsize, (tuple, list)):
+        figsize = (figsize, figsize)
+    assert isinstance(figsize[0], (int, float)), "figsize must be a number or a tuple"
+    assert callable(colorizer), "colorizer must be a callable function"
 
     imag, real = np.mgrid[-1:1:0.01,-1:1:0.01]
     imag = imag[::-1] # convention: turn counter-clockwise
     x = real + 1j*imag
-    c = colorize_complex(x)
+    c = colorizer(x)
     plt.figure(figsize=figsize)
     plt.imshow(c)
     plt.xticks(np.linspace(0,200,5), np.linspace(-1,1,5))
