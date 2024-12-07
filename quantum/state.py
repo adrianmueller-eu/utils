@@ -4,44 +4,91 @@ from scipy.linalg import eigh
 import matplotlib.pyplot as plt
 from math import log2
 
-from ..utils import is_int, duh, is_from_assert
+from ..utils import is_int, duh, is_from_assert, shape_it
 from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec
 from ..plot import colorize_complex
 from ..prob import random_p
 
-def transpose_qubit_order(state, new_order):
+def transpose_qubit_order(state, new_order, assume_square=True):
     state = np.asarray(state)
     n = count_qubits(state)
+
+    # infer batch shape
+    if len(state.shape) == 2 and state.shape[0] == state.shape[1]:  # state is not necessarily a density matrix or ket (e.g. hamiltonian, unitary)
+        if assume_square:
+            batch_shape = ()
+        else:  # kets
+            batch_shape = state.shape[:1]
+    elif len(state.shape) >= 2 and state.shape[-2] != state.shape[-1]:
+        batch_shape = state.shape[:-1]
+    elif len(state.shape) >= 3 and state.shape[-2] == state.shape[-1]:
+        batch_shape = state.shape[:-2]
+    else:
+        batch_shape = ()
+    batch_shape = list(batch_shape)
+
+    # parse new_order
     if new_order == -1:
         new_order = list(range(n)[::-1])
     else:
         new_order = list(new_order)
 
+    # transpose
+    batch_idcs = list(range(len(batch_shape)))
     new_order_all = new_order + [q for q in range(n) if q not in new_order]
-    if len(state.shape) == 1:
-        state = state.reshape([2]*n)
-        state = state.transpose(new_order_all)
-        state = state.reshape(-1)
-    elif len(state.shape) == 2 and state.shape[0] == state.shape[1]:
-        state = state.reshape([2,2]*n)
+    new_order_all = [q + len(batch_idcs) for q in new_order_all]  # move after batch dimensions
+    if len(state.shape) == 1 + len(batch_shape):
+        state = state.reshape(batch_shape + [2]*n)
+        state = state.transpose(batch_idcs + new_order_all)
+        state = state.reshape(batch_shape + [2**n])
+    elif len(state.shape) == 2 + len(batch_shape) and state.shape[-2] == state.shape[-1]:
+        state = state.reshape(batch_shape + [2,2]*n)
         new_order_all = new_order_all + [i + n for i in new_order_all]
-        state = state.transpose(new_order_all)
-        state = state.reshape([2**n, 2**n])
+        state = state.transpose(batch_idcs + new_order_all)
+        state = state.reshape(batch_shape + [2**n, 2**n])
     else:
         raise ValueError(f"Not a valid shape: {state.shape}")
     return state
 
-def reverse_qubit_order(state):
-    """So the last will be first, and the first will be last."""
-    return transpose_qubit_order(state, -1)
+def reverse_qubit_order(state, assume_square=True):
+    """ So the last will be first, and the first will be last. """
+    return transpose_qubit_order(state, -1, assume_square)
 
-def partial_trace(state, retain_qubits, reorder=False):
+def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
     """
     Trace out all qubits not specified in `retain_qubits` and returns the reduced density matrix (or a scalar, if all qubits are traced out).
     If `reorder=True` (default: False), order the output according to `retain_qubits`.
     """
     state = np.asarray(state)
     n = count_qubits(state)
+
+    # add a dummy axis to make it a batch if necessary
+    isket = None
+    if len(state.shape) == 1:
+        state = state[None,:]
+        remove_batch = True
+        isket = True
+    elif len(state.shape) == 2 and state.shape[0] == state.shape[1]:
+        if assume_square:
+            state = state[None,:,:]
+            remove_batch = True
+            isket = False
+        else:
+            remove_batch = False
+            isket = True
+    else:
+        remove_batch = False
+
+    if isket is None:
+        isket = is_ket(state[...,0,:], False)
+    elif isket:
+        assert is_ket(state[...,0,:], True)
+    if isket:
+        batch_shape = state.shape[:-1]
+    else:
+        assert len(state.shape) >= 3 and state.shape[-2] == state.shape[-1], f"Invalid state shape {state.shape}"
+        batch_shape = state.shape[:-2]
+    batch_shape = list(batch_shape)
 
     # pre-process retain_qubits
     if is_int(retain_qubits):
@@ -51,35 +98,45 @@ def partial_trace(state, retain_qubits, reorder=False):
     # get qubits to trace out
     trace_out = np.array(sorted(set(range(n)) - set(retain_qubits)))
 
-    # if rho is a state vector
-    if len(state.shape) == 1:
+    if isket:
         if len(trace_out) == n:
-            # Tr(|p><p|) = <p|p>
-            return state @ state.conj()
+            # Tr(|p><p|) = <p|p> -> inner product
+            return np.linalg.norm(state, axis=-1)
         elif len(trace_out) == 0:
             if reorder:
-                state = transpose_qubit_order(state, retain_qubits)
-            return np.outer(state, state.conj())
-        state = state.reshape([2]*n)
-        state = np.tensordot(state, state.conj(), axes=(trace_out,trace_out))
+                state = transpose_qubit_order(state, retain_qubits, False)
+            res = state[...,None] * state.conj()[...,None,:]  # outer product
+            if remove_batch:
+                return res[0]
+            return res
+        state = state.reshape(batch_shape + [2]*n)
+        res   = np.zeros(batch_shape + [2]*len(retain_qubits)*2, dtype=state.dtype)
+        for idcs in shape_it(batch_shape, progress=False):
+            res[idcs] = np.tensordot(state[idcs], state[idcs].conj(), axes=(trace_out,trace_out))
+        state = res.reshape(batch_shape + [2**len(retain_qubits)]*2)
     # if trace out all qubits, just return the normal trace
     elif len(trace_out) == n:
-        return np.trace(state).reshape(1,1)
+        res = np.trace(state, axis1=-2, axis2=-1).reshape(batch_shape)
+        if remove_batch:
+            return res[0]
+        return res
     else:
-        assert state.shape[0] == state.shape[1], f"Can't trace a non-square matrix {state.shape}"
+        assert state.shape[-2] == state.shape[-1], f"Can't trace a non-square matrix {state.shape}"
 
-        state = state.reshape([2]*(2*n))
+        state = state.reshape(batch_shape + [2]*(2*n))
+        trace_out = np.array(trace_out) + len(batch_shape)
         for qubit in trace_out:
             state = np.trace(state, axis1=qubit, axis2=qubit+n)
             n -= 1         # one qubit less
             trace_out -= 1 # rename the axes (only "higher" ones are left)
+        state = state.reshape(batch_shape + [2**n, 2**n])
 
     if reorder:
-        # transpose the axes of the remaining qubits to the desired order
-        new_order = np.argsort(list(retain_qubits))
-        state = state.transpose(new_order.tolist() + (new_order+len(new_order)).tolist())
+        state = transpose_qubit_order(state, retain_qubits, True)
 
-    return state.reshape([2**len(retain_qubits)]*2)
+    if remove_batch:
+        return state[0]
+    return state
 
 def state_trace(state, retain_qubits, reorder=True):
     """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical 
