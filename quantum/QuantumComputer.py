@@ -464,7 +464,6 @@ class QuantumComputer:
         if self._track_unitary:
             self.U = _reorder(self.U, axes_new, True)
 
-    @reissue_warnings
     def decohere(self, qubits='all', obs=None):
         return self.measure(qubits, collapse=False, obs=obs)
 
