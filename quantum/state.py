@@ -63,7 +63,6 @@ def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
     n = count_qubits(state)
 
     # add a dummy axis to make it a batch if necessary
-    isket = None
     if len(state.shape) == 1:
         state = state[None,:]
         remove_batch = True
@@ -78,12 +77,10 @@ def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
             isket = True
     else:
         remove_batch = False
-
-    if isket is None:
         isket = is_ket(state[...,0,:], False)
-    elif isket:
-        assert is_ket(state[...,0,:], True)
+
     if isket:
+        assert is_ket(state[...,0,:], True)
         batch_shape = state.shape[:-1]
     else:
         assert len(state.shape) >= 3 and state.shape[-2] == state.shape[-1], f"Invalid state shape {state.shape}"
@@ -100,19 +97,14 @@ def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
 
     if isket:
         if len(trace_out) == n:
-            # Tr(|p><p|) = <p|p> -> inner product
-            return np.linalg.norm(state, axis=-1)
+            return np.linalg.norm(state, axis=-1)  # Tr(|p><p|) = <p|p> -> inner product
         elif len(trace_out) == 0:
-            if reorder:
-                state = transpose_qubit_order(state, retain_qubits, False)
             res = state[...,None] * state.conj()[...,None,:]  # outer product
-            if remove_batch:
-                return res[0]
-            return res
-        state = state.reshape(batch_shape + [2]*n)
-        res   = np.zeros(batch_shape + [2]*len(retain_qubits)*2, dtype=state.dtype)
-        for idcs in shape_it(batch_shape, progress=False):
-            res[idcs] = np.tensordot(state[idcs], state[idcs].conj(), axes=(trace_out,trace_out))
+        else:
+            state = state.reshape(batch_shape + [2]*n)
+            res   = np.zeros(batch_shape + [2]*len(retain_qubits)*2, dtype=state.dtype)
+            for idcs in shape_it(batch_shape, progress=False):
+                res[idcs] = np.tensordot(state[idcs], state[idcs].conj(), axes=(trace_out,trace_out))
         state = res.reshape(batch_shape + [2**len(retain_qubits)]*2)
     # if trace out all qubits, just return the normal trace
     elif len(trace_out) == n:
