@@ -551,6 +551,11 @@ def gibbs(H, beta=1, check=2):
     return U @ (E[:,None] * U.conj().T)
 
 def count_qubits(obj):
+    def asint(x):
+        n = int(log2(x))
+        assert x == 2**n, f"Dimension must be a power of 2, but was {x}"
+        return n
+
     if isinstance(obj, str) or (hasattr(obj, 'dtype') and obj.dtype.kind == 'U'):  # after conversion to numpy array
         if hasattr(obj, 'item'):
             obj = obj.item()
@@ -569,10 +574,12 @@ def count_qubits(obj):
             return len(re.search('\\S+', obj)[0])
     if hasattr(obj, 'n'):
         return obj.n
+    if hasattr(obj, 'shape'):
+        return asint(obj.shape[-1])
     if hasattr(obj, '__len__'):
-        n = int(log2(len(obj)))
-        # assert len(obj) == 2**n, f"Dimension must be a power of 2, but was {len(obj)}"
-        return n
+        return asint(len(obj))
+    if is_int(obj):
+        return asint(obj)
     if hasattr(obj, 'num_qubits'):
         return obj.num_qubits
     if hasattr(obj, 'qubits'):
