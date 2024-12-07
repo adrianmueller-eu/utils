@@ -737,7 +737,7 @@ class QuantumComputer:
 
                 state = self.get_state(qubits_A + qubits_B)
                 A_idcs = list(range(len(qubits_A)))
-                return mutual_information_quantum(state, A_idcs, check=False)
+                return mutual_information_quantum(state, A_idcs, check=0)
 
     def noise(self, noise_model=None, qubits='all', p=0.1, obs=None):
         """
