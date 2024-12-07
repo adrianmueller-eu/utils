@@ -231,9 +231,9 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
     fig.tight_layout()
     plt.show()
 
-def random_ket(n=1):
+def random_ket(n=1, kind='haar'):
     """ Generate a random state vector ($2^{n+1}-1$ degrees of freedom). """
-    return random_kets(n, 1, kind='haar')[0]
+    return random_kets(n, 1, kind=kind)[0]
 
 def random_kets(n, size=1, kind='haar'):
     assert is_int(n) and n >= 1, f"n should be an integer >= 1, but was: {n}"
@@ -255,7 +255,7 @@ def random_kets(n, size=1, kind='haar'):
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
-def random_dm(n=1, rank='full'):
+def random_dm(n=1, rank='full', kind='haar'):
     """
     Generate a random density matrix ($rank*2^{n+1}-1$ degrees of freedom).
     `rank` can be an integer between 1 and 2^n, or one of 'pure' or 'full'.
@@ -269,12 +269,12 @@ def random_dm(n=1, rank='full'):
     assert rank <= 2**n, f"A {n}-qubit density matrix can be at most rank {2**n}, but requested was: {rank}"
 
     if rank == 1:
-        state = random_ket(n)
+        state = random_ket(n, kind=kind)
         return np.outer(state, state.conj())
 
     probs = random_p(rank, kind='uniform')
-    kets = random_kets(n, rank, kind='haar')
-    return kets @ (probs[:,None] * kets.conj().T)
+    kets = random_kets(n, rank, kind=kind)
+    return kets.conj().T @ (probs[:,None] * kets)
 
 def ket_from_int(d, n=None):
     if not n:

@@ -308,6 +308,10 @@ def _test_random_dm():
     n_qubits = np.random.randint(1, 5)
     rho = random_dm(n_qubits)
     assert is_dm(rho)
+    rho = random_dm(6, 42)
+    D = np.linalg.eigvalsh(rho)
+    assert is_psd(rho, D)
+    assert np.sum(D > 1e-12) == 42
 
 def _test_QuantumComputer():
     # test basic functionality
