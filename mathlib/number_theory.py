@@ -114,6 +114,15 @@ if not sage_loaded:
             return a.lcm(b)
         return a * b // gcd(a, b)
 
+    def next_prime(a):
+        """ Find the next prime number after `a`. """
+        if a < 2:
+            return 2
+        a = int(a) + 1
+        while not is_prime(a):
+            a += 1
+        return a
+
 def closest_prime_factors_to(n, m):
     """Find the set of prime factors of n with product closest to m."""
     if not sage_loaded:
