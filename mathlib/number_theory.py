@@ -145,6 +145,17 @@ def int_sqrt(n):
         return n
     return int(np.prod(closest_prime_factors_to(n, sqrt(n))))
 
+def next_good_int_sqrt(n, p=0.1):
+    """ For integer $n$, look for the next larger integer $m$, such that `int_sqrt(m)**2` is between `p*m` and `1/p*m`. """
+    assert 0 < p < 1
+    # try n first
+    if p*n <= int_sqrt(n)**2 < 1/p*n:
+        return n
+    m = n + 2 if n % 2 == 0 else n + 1  # skip primes
+    while not p*m <= int_sqrt(m)**2 < 1/p*m:
+        m += 2
+    return m
+
 def dlog(x,g,n):
     """ Discrete logarithm, using the baby-step giant-step algorithm.
 
