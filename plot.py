@@ -386,11 +386,23 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     """
 
     a = np.asarray(a)
-    is_vector = np.prod(a.shape) == np.max(a.shape)
+    n_samples = np.prod(a.shape)
+    is_vector = n_samples == np.max(a.shape)
 
     # magic reshape
     if magic_reshape and is_vector and max(a.shape) >= 100:
-        best_divisor = int_sqrt(np.prod(a.shape))
+        m = next_good_int_sqrt(n_samples, p=0.1)
+        best_divisor = int_sqrt(m)
+        if m != n_samples:
+            if np.issubdtype(a.dtype, np.integer):
+                fill_val = a.min()
+            else:
+                fill_val = np.nan
+            warnings.warn(f"No good divisor found for magic reshaping {a.shape}. Filling with {m-n_samples}*{[fill_val]} to {m//best_divisor}x{best_divisor}.", stacklevel=2)
+            a = np.pad(a, (0, m-n_samples), 'constant', constant_values=fill_val)
+        # best_divisor = int_sqrt(n_samples)
+        # if best_divisor**2 < n_samples*0.1:
+        #     warnings.warn(f"No good divisor found for reshaping {a.shape} to a square. Using the best one: {best_divisor}x{n_samples//best_divisor}", stacklevel=2)
         a = a.reshape(best_divisor, -1)
         is_vector = False
     if len(a.shape) == 1:
