@@ -13,6 +13,7 @@ from scipy.linalg import sqrtm as matsqrt
 
 from .basic import series, sequence
 from ..models import Polynomial
+from ..utils import is_int, is_iterable
 
 sage_loaded = False
 try:
@@ -218,7 +219,25 @@ def normalize(a, p=2, axis=0):
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
     return a
 
-def permutation_sign(p, base):
+def permutation_matrix(perm, shape):
+    if is_int(shape):
+        shape = int(shape)
+        dims  = shape**len(perm)
+        shape = [shape]*len(perm)
+    elif is_iterable(shape):
+        shape = list(shape)
+        dims  = np.prod(shape)
+    else:
+        raise ValueError(f"Invalid `shape` argument: {shape}")
+    assert len(perm) == len(shape), f"Invalid permutation: {perm}"
+
+    matrix = np.zeros(shape + shape)
+    idcs = np.unravel_index(np.arange(dims), shape)
+    new_idcs = tuple(idcs[perm[j]] for j in range(len(perm)))
+    matrix[new_idcs + idcs] = 1
+    return matrix.reshape(dims, dims)
+
+def permutation_sign(p, base=-1):
     if base == 1:
         return 1
     inversions = sum(i > j for i,j in itertools.combinations(p, 2))
