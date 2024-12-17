@@ -385,14 +385,15 @@ if not sage_loaded:
             return a
         return [lambda phi: rotmat(i, j, phi) for i,j in itertools.combinations(range(n), 2)]
 
-    def su(n, include_identity=False, sparse=False, normalize=False):
-        """ The Lie algebra associated with the Lie group SU(n). Returns the n^2-1 generators (traceless Hermitian matrices) of the group. Use `include_identity = True` to return a complete orthogonal basis of hermitian `n x n` matrices.
+    def su(n, include_identity=False, sparse=False, normalize=False, output_hermitian=True):
+        """ The Lie algebra associated with the Lie group SU(n). Returns the n^2-1 generators (traceless Hermitian matrices) of the group. Use `output_hermitian = True` and `include_identity = True` to return a complete orthogonal basis of hermitian `n x n` matrices.
 
         Parameters
             n (int): The dimension of the matrices.
             include_identity (bool, optional): If True, include the identity matrix in the basis (default: False).
             sparse (bool, optional): If True, return a sparse representation of the matrices (default: False).
             normalize (bool, optional): If True, normalize the matrices to have norm 1 (default: False).
+            output_hermitian (bool, optional): If True, output the Hermitian basis elements `ig` instead.
 
         Returns
             list[ np.ndarray | scipy.sparse.csr_array ]: A list of `n^2-1` matrices that form a basis of the Lie algebra.
@@ -408,9 +409,7 @@ if not sage_loaded:
 
         # Identity matrix, optional
         if include_identity:
-            identity = base.copy()
-            for i in range(n):
-                identity[i,i] = 1
+            identity = sp.eye(n) if sparse else np.eye(n)
             if normalize:
                 # factor 2 to get norm sqrt(2), too
                 identity = sqrt(2/n) * identity
@@ -442,6 +441,8 @@ if not sage_loaded:
         if normalize:
             # su have norm sqrt(2) by default
             basis = [m/sqrt(2) for m in basis]
+        if not output_hermitian:
+            basis = [1j*m for m in basis]
         if sparse:
             # convert to csr format for faster arithmetic operations
             return [sp.csr_matrix(m) for m in basis]
