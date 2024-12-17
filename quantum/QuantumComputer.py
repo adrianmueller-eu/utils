@@ -145,7 +145,7 @@ class QuantumComputer:
                 D = np.diag(obs)
             else:
                 D, U = eigh(obs)
-                self(U.T.conj(), qubits)  # basis change
+                self(U.T.conj(), qubits)  # basis change: Tr(rho @ H) = Tr((U^dagger @ rho @ U) @ D)
         else:
             D = None
         try:
