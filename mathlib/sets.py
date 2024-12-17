@@ -15,15 +15,15 @@ if not sage_loaded:
         s = list(iterable)
         return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
-def bipartitions(iterable, unique=False):
+def bipartitions(iterable, unique=False, include_empty=False):
     """ All bipartitions of an iterable.
     >>> list(bipartitions([0,1,2], unique=True))
     >>> [([0], [1, 2]), ([1], [0, 2]), ([0, 1], [2])]
     """
     s = list(iterable)
     n = len(s)
-    end = 1 << (n-1) if unique else (1 << n) - 1
-    for i in range(1, end):
+    end = 1 << (n-1) if unique else (1 << n) - int(not include_empty)
+    for i in range(int(not include_empty), end):
         part1 = [s[j] for j in range(n) if (i >> j) & 1]
         part2 = [s[j] for j in range(n) if not (i >> j) & 1]
         if unique:
