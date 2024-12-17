@@ -161,6 +161,14 @@ class QuantumComputer:
         with self.observable(obs, qubits) as qubits:
             return self._probs(qubits)
 
+    def probs_pp(self, qubits='all', obs=None, filter_eps=1e-12, precision=7):
+        probs = self.probs(qubits, obs)
+        print("Prob       State")
+        print("-"*25)
+        for i, p in enumerate(probs):
+            if p > filter_eps:
+                print(f"{p:.{precision}f}  {binstr_from_int(i, len(qubits))}")
+
     def _probs(self, qubits='all'):
         if self.is_matrix_mode():
             state = self.get_state(qubits)
