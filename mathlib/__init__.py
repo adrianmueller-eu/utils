@@ -53,6 +53,7 @@ def test_mathlib_all():
         _test_matexp,
         _test_matlog,
         _test_normalize,
+        _test_symmetrization_operator,
         _test_immanant,
         # polynomial
         _test_roots,
@@ -421,6 +422,22 @@ def _test_normalize():
     assert np.isclose(np.linalg.norm(b), 1)
     a = np.array(3 - 4j)
     assert np.isclose(normalize(a), a/5)
+
+def _test_symmetrization_operator():
+    SWAP = np.array([
+        [1, 0, 0, 0],
+        [0, 0, 1, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 1]
+    ], dtype=complex)
+    II = np.eye(4)
+    assert np.allclose(permutation_matrix([1,0], 2), SWAP)
+    assert np.allclose(symmetrization_operator(2), (II + SWAP)/2)
+    assert np.allclose(symmetrization_operator(2, -1), (II - SWAP)/2)
+    n = randint(1,5)
+    Sn = symmetrization_operator(n)
+    assert is_projection_orthogonal(Sn)
+    assert np.linalg.matrix_rank(Sn) == n+1
 
 def _test_immanant():
     A = np.array([[1, 2], [3, 4]])
