@@ -5,9 +5,9 @@ from scipy.linalg import eigh, eigvalsh
 import itertools
 from functools import reduce
 
-from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0
+from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0, is_unitary, binstr_from_float
 from ..utils import duh
-from .state import random_ket
+from .state import random_ket, unket
 
 def ground_state_exact(hamiltonian):
     """ Calculate the ground state using exact diagonalization. """
@@ -691,3 +691,34 @@ def get_H_energies(H, expi=False, k=None):
         energies[energies > 0.5] -= 1
         # energies = np.sort(energies, axis=-1)
     return energies
+
+def print_energies_and_state(H, accuracy=5, r=None, energy_filter=None):
+    if isinstance(H, tuple):
+        energies, eigvecs = H
+    elif is_hermitian(H):
+        energies, eigvecs = eigh(H)
+    elif is_unitary(H):
+        eigvals, eigvecs = np.linalg.eig(H)
+        energies = np.angle(eigvals)/(2*np.pi)
+    else:
+        raise ValueError("`H` must be a Hermitian or unitary matrix or a tuple of energies and eigenvectors!")
+
+    if energy_filter is not None:
+        if isinstance(energy_filter, (int, float)):
+            mask = np.abs(energies) >= energy_filter
+        else:
+            assert callable(energy_filter), "energy_filter must be a callable function!"
+            mask = energy_filter(energies)
+        energies = energies[mask]
+        eigvecs = eigvecs[:,mask]
+
+    if r is None:
+        print(f"Energy\t\tEigenstate")
+        for i, e in enumerate(energies):
+            print(f"{e:8.{accuracy}f}\t{unket(eigvecs[:,i])}")
+    else:
+        print(f"Energy\t\tBinary\t\t\tEigenstate")
+        for i, e in enumerate(energies):
+            s = binstr_from_float(e, r, complement=True)
+            s = " " + s if s[0] != "-" else s
+            print(f"{e:8.{accuracy}f}\t{s}\t{unket(eigvecs[:,i])}")
