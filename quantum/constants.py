@@ -102,6 +102,7 @@ iSWAP = np.array([ # 0.5*(1j*(XX + YY) + ZZ + II), R_(XX+YY, -pi/2)
     [0, 0, 0, 1]
 ], dtype=complex)
 fSWAP = SWAP @ CZ
+Fredkin = CSWAP = C_(SWAP)
 
 ##############
 ### States ###
