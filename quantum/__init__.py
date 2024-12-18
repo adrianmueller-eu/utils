@@ -342,6 +342,7 @@ def _test_QuantumComputer():
     assert qc.std(X) * qc.std(Z) >= abs(qc.ev(1j*(X@Z - Z@X)))/2
 
     # test functions
+    global XX, YY
     qc = QuantumComputer(2)
     qc.h(0)
     qc.cx(0, 1)
@@ -665,6 +666,7 @@ def _test_schmidt_decomposition():
     assert np.allclose(S_actual, S_expect), f"S_expect = {S_expect} ≠ S_actual = {S_actual}"
 
 def _test_correlation_quantum():
+    global XX, ZZ
     assert np.isclose(correlation_quantum(ket('0101 + 0000'), ZZ, ZZ), 1)
     assert np.isclose(correlation_quantum(ket('0101 + 0000'), XX, XX), 0)
     assert np.isclose(correlation_quantum(ket('0101 + 1010'), XX, XX), 1)
