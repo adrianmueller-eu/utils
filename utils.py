@@ -131,13 +131,15 @@ def duh(n, precision=3):
         decimals = 0
     return f"{n:.{decimals}f} {unit}"
 
-def shape_it(shape, progress=True):
+def shape_it(shape, progress=False):
     """ Iterate over all indices of a numpy array. """
     from itertools import product
-    from tqdm.auto import tqdm as tq
+    gen = product(*[list(range(s)) for s in shape])
+    if progress:
+        from tqdm.auto import tqdm as tq
+        gen = tq(gen, total=np.prod(shape))
 
-    for n in tq(product(*[list(range(s)) for s in shape]),
-                        disable=not progress, total=np.prod(shape)):
+    for n in gen:
         yield n
 
 def is_int(x):
