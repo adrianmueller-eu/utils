@@ -77,12 +77,13 @@ def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
             isket = True
     else:
         remove_batch = False
-        isket = is_ket(state[...,0,:], False)
+        isket = is_ket(state[*[0]*len(state.shape[:-2]),0,:], False)
 
     if isket:
-        assert is_ket(state[...,0,:], True)
+        # assert_ket(state[*[0]*len(state.shape[:-2]),0,:])
         batch_shape = state.shape[:-1]
     else:
+        # assert_dm(state[*[0]*len(state.shape[:-3]),0,:,:], check=1)
         assert len(state.shape) >= 3 and state.shape[-2] == state.shape[-1], f"Invalid state shape {state.shape}"
         batch_shape = state.shape[:-2]
     batch_shape = list(batch_shape)
@@ -103,7 +104,7 @@ def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
         else:
             state = state.reshape(batch_shape + [2]*n)
             res   = np.zeros(batch_shape + [2]*len(retain_qubits)*2, dtype=state.dtype)
-            for idcs in shape_it(batch_shape, progress=False):
+            for idcs in shape_it(batch_shape):
                 res[idcs] = np.tensordot(state[idcs], state[idcs].conj(), axes=(trace_out,trace_out))
         state = res.reshape(batch_shape + [2**len(retain_qubits)]*2)
     # if trace out all qubits, just return the normal trace
