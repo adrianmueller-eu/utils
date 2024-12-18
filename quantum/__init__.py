@@ -367,7 +367,7 @@ def _test_QuantumComputer():
     assert np.isclose(qc.entanglement_entropy(1), 1)
     assert np.isclose(qc.correlation(0, 1, Z, Z), 1)
     S = qc.schmidt_decomposition(0, coeffs_only=True)
-    assert np.allclose(S, [f2, f2])
+    assert np.allclose(S, [fs2, fs2])
     assert np.isclose(qc.mutual_information(0, 1), 2)
 
     # test density matrix
@@ -798,12 +798,9 @@ def _test_pauli_basis():
         assert np.allclose(A, B.todense()), f"Generator {i} is not the same!"
 
 def _test_pauli_decompose():
-    global f2, H_gate, SWAP
-    H = H_gate
-
-    # H = (X+Z)/sqrt(2)
-    coeff, basis = pauli_decompose(H)
-    assert np.allclose(coeff, [f2]*2), f"coeff = {coeff} ≠ [{f2}]*2"
+    # H_gate = (X+Z)/sqrt(2)
+    coeff, basis = pauli_decompose(H_gate)
+    assert np.allclose(coeff, [fs2]*2), f"coeff = {coeff} ≠ [{fs2}]*2"
     assert basis == ['X', 'Z'], f"basis = {basis} ≠ ['X', 'Z']"
 
     # SWAP = 0.5*(II + XX + YY + ZZ)

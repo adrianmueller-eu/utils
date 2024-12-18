@@ -7,7 +7,12 @@ from ..mathlib import matexp, pauli_basis
 from .state import ket
 
 fs = lambda x: 1/np.sqrt(x)
-f2 = fs(2)
+fs2 = fs(2)
+
+#################
+### Unitaries ###
+#################
+
 I_ = lambda n: np.eye(2**n)
 I = I_(1)
 X = np.array([ # 1j*Rx(pi)
@@ -30,7 +35,7 @@ T_gate = np.array([ # avoid overriding T = True
     [1,  0],
     [0,  np.sqrt(1j)]
 ], dtype=complex)
-H = H_gate = f2 * np.array([ # Fourier_matrix(2) = f2*(X + Z) = 1j*f2*(Rx(pi) + Rz(pi))
+H = H_gate = fs2 * np.array([ # Fourier_matrix(2) = fs2*(X + Z) = 1j*fs2*(Rx(pi) + Rz(pi))
     [1,  1],
     [1, -1]
 ], dtype=complex)
@@ -98,17 +103,25 @@ iSWAP = np.array([ # 0.5*(1j*(XX + YY) + ZZ + II), R_(XX+YY, -pi/2)
 ], dtype=complex)
 fSWAP = SWAP @ CZ
 
+##############
+### States ###
+##############
+
 def GHZ_(n):
     a = np.zeros(2**n)
-    a[0] = a[-1] = f2
+    a[0] = a[-1] = fs2
     return a
 Bell = [
     ket('00 + 11'),  # GHZ_(2)
     ket('00 - 11'),
     ket('01 + 10'),
-    ket('01 - 10')
+    ket('01 - 10')   # singlet
 ]
 GHZ = GHZ_(3)
+
+############################
+### Non-unitary channels ###
+############################
 
 def pauli_channel(p, n=1):
     p = np.asarray(p)
