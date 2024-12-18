@@ -2,7 +2,7 @@ import warnings, sys
 import numpy as np
 import itertools
 from functools import reduce
-from math import log2, sin, cos, sqrt
+from math import log2, sin, cos, sqrt, factorial
 import scipy.sparse as sp
 from scipy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 from scipy.linalg import expm as matexp
@@ -218,6 +218,20 @@ def normalize(a, p=2, axis=0):
         return a/np.linalg.norm(a)
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
     return a
+
+def symmetrization_operator(levels, sign_base=1):
+    """
+    Returns the symmetrization operator for quantum systems with levels specified by `levels`. Set `sign_base = -1` for antisymmetrization.
+    E.g. `assert np.allclose(symmetrization_operator([2,2]), (II + SWAP)/2)`.
+    """
+    if is_int(levels):
+        levels = [2]*int(levels)  # default to qubits
+    if sign_base == -1 and all(l == 2 for l in levels) and len(levels) > 2:
+        warnings.warn("The antisymmetrization operator for more than 2 qubits is always the zero matrix :)")
+    n = len(levels)
+    return sum(
+        permutation_sign(p, sign_base) * permutation_matrix(p, levels) for p in itertools.permutations(range(n))
+    ) / factorial(n)
 
 def permutation_matrix(perm, shape):
     if is_int(shape):
