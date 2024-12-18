@@ -840,6 +840,9 @@ class QuantumComputer:
     def swap(self, qubit1, qubit2):
         return self(SWAP, [qubit1, qubit2])
 
+    def cswap(self, control, qubit1, qubit2):
+        return self(Fredkin, control, [qubit1, qubit2])
+
     def rx(self, angle, q):
         return self(Rx(angle), q)
 
