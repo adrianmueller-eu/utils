@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
 from math import log2, sqrt
-from .mathlib import is_complex, is_symmetric, int_sqrt
+from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .utils import *
 
 def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", xticks=None, yticks=None, xlog=False, ylog=False, grid=True, show=True, save_file=None, **pltargs):
