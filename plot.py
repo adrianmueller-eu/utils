@@ -177,6 +177,8 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
         ax0 = ax[0]
     elif len(plt.get_fignums()) == 0:
         fig, ax0 = plt.subplots(figsize=figsize)
+    else:
+        ax0 = plt.gca()
 
     # filter nan, -inf, and inf from data
     data = np.asarray(data)
