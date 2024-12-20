@@ -363,6 +363,17 @@ def colorize_complex(z):
     c = np.asarray(c).transpose(1,2,0) # convert shape (3,n,m) -> (n,m,3)
     return c
 
+def auto_figsize(x_shape, y_shape, max_dim=16):
+    if x_shape >= y_shape:
+        ydim = min(max_dim, log2(max(2,x_shape)))
+        # matplotlib automatially scales the other dimension in the figure
+        # but unfortunately not the window when using ipython, so we have to scale it manually
+        xdim = ydim * y_shape / x_shape
+    else:
+        xdim = min(max_dim, log2(max(2,y_shape)))
+        ydim = xdim * x_shape / y_shape
+    return (xdim, ydim)
+
 def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty images from arrays.
 
@@ -412,16 +423,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
 
     # intelligent figsize
     if figsize is None:
-        max_dim = 16
-        if a.shape[0] >= a.shape[1]:
-            ydim = min(max_dim, log2(max(2,a.shape[0])))
-            # matplotlib automatially scales the other dimension in the figure
-            # but unfortunately not the window when using ipython, so we have to scale it manually
-            xdim = ydim * a.shape[1] / a.shape[0]
-        else:
-            xdim = min(max_dim, log2(max(2,a.shape[1])))
-            ydim = xdim * a.shape[0] / a.shape[1]
-        figsize = (xdim, ydim)
+        figsize = auto_figsize(*a.shape)
     fig = plt.figure(figsize=figsize)
 
     iscomplex = is_complex(a)
