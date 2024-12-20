@@ -1,9 +1,11 @@
-from .utils import moving_avg
-from .prob import smooth
-from .systems import fractal
-
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm as tq
+
+from .utils import moving_avg
+from .prob import smooth
+from .systems import fractal, simulate, Subgrid, GoL
+from .plot import imshow_dynamic, plot_dynamic
 
 def climateHockey():
     import pandas as pd
@@ -43,7 +45,7 @@ def fractal_heart():
     f = lambda it, z, z0: z**2 + 0.7 + z0
     fractal(f, 4000, 2000, (-0.79804, -0.79682), (-0.65403, -0.65281), show='open', save_fig='fractal_heart_zoomed')
 
-def mandelbrot(res=2000, iters=120, xlim=(-2, 1), ylim=(-1.5, 1.5), cmap='default'):
+def mandelbrot(res=2000, iters=120, xlim=(-2, 1), ylim=(-1.5, 1.5), cmap='default', dynamic=False):
     if cmap == 'default':
         from matplotlib.colors import LinearSegmentedColormap
         xlim, ylim = (-2, 1), (-1.5, 1.5)
@@ -52,4 +54,106 @@ def mandelbrot(res=2000, iters=120, xlim=(-2, 1), ylim=(-1.5, 1.5), cmap='defaul
         cmap = LinearSegmentedColormap.from_list("mycmap", list(zip(nodes, colors)))
     import warnings; warnings.filterwarnings("ignore")
     f = lambda it, z, z0: z**2 + z0
-    fractal(f, iters, res, xlim, ylim, show='open', save_fig='mandelbrot', cmap=cmap)
+    if dynamic:
+        gen = (g[1] for g in fractal(f, iters, res, xlim, ylim, show='gen', cmap=cmap))
+        def cb(x, im, fig):
+            im.autoscale()
+            return x
+        return imshow_dynamic(gen, figsize=(4,4), sleep=20, cb=cb)
+    else:
+        fractal(f, iters, res, xlim, ylim, show='open', save_fig='mandelbrot', cmap=cmap)
+
+def lorenz(T=2000):
+    def lorenz(x,y,z, sigma=10, rho=28, beta=8/3):
+        return sigma*(y-x), x*(rho-z)-y, x*y-beta*z
+
+    def lorenz_gen(T, dt=0.01):
+        x,y,z,_ = simulate(lorenz, 10*np.random.rand(3), T, dt)
+        for t in tq(range(T)):
+            yield x[t],z[t]
+
+    return plot_dynamic(lorenz_gen(T), (5,5), xlim=(-30,30), ylim=(-5,55), linewidth=0.3)
+
+def game_of_life(rules='conway', T=255, size=256, sleep=50):
+    """
+    Generalized Game of Life simulation with different rulesets: 'conway', 'highlife', 'rule30', 'rule90', 'sierpinski', or 'ising'.
+    Use a matplotlib backend suitable for interactive plotting, e.g. `%matplotlib qt`.
+    """
+    conway_kernel = np.array([
+        [1,1,1],
+        [1,0,1],
+        [1,1,1]
+    ], dtype='i1')
+
+    def init_seeds(n_seeds):
+        def _init(rows, cols):
+            grid = np.zeros((rows, cols), dtype='i1')
+            for _ in range(n_seeds):
+                i, j = np.random.randint(1,rows-2), np.random.randint(1,cols-2)
+                grid[i:i+3,j:j+3] = np.random.randint(2, size=(3,3), dtype='i1')
+            return grid
+        return _init
+
+    def init_dot(rows, cols):
+        grid = np.zeros((rows, cols), dtype='i1')
+        grid[-1, cols//2] = 1
+        return grid
+
+    if rules == 'conway':
+        def f(t, grid):
+            n = Subgrid(grid)(conway_kernel)
+            survi =  grid & (n == 2) | (n == 3)  # Survival with 2 or 3 neighbors
+            birth = ~grid & (n == 3)             # Birth with 3 neighbors
+            return survi | birth
+        seed_frac = 0.1
+    elif rules == 'highlife':
+        def f(t, grid):
+            n = Subgrid(grid)(conway_kernel)
+            survi =  grid & (n == 2) | (n == 3)  # Survival with 2 or 3 neighbors
+            birth = ~grid & (n == 3) | (n == 6)  # Birth with 3 or 6 neighbors
+            return survi | birth
+        seed_frac = 0.01
+    elif rules == 'rule30':
+        def f(t, grid):
+            s = Subgrid(grid)
+            r1d = s.E ^ (s.C | s.W)
+            return r1d | s.N
+    elif rules == 'rule90' or rules == 'sierpinski':
+        def f(t, grid):
+            s = Subgrid(grid)
+            r1d = s.W ^ s.E  # XOR of left and right neighbors
+            return r1d | s.N
+    elif rules == 'ising':
+        def ising2d(temperature, update_frac):
+            def ising2d(t, grid):
+                E = Subgrid(grid)(np.array([
+                    [0,1,0],
+                    [1,0,1],
+                    [0,1,0]
+                ], dtype='i1'))
+                # select a random subset of the grid to update
+                mask = np.random.rand(*grid.shape) < update_frac
+                dE = (E[mask] - 2) * (grid[mask]*2 - 1)  # rescale E to -2, 2 and grid to -1, 1
+                flip = dE < 0
+                if temperature > 0:
+                    flip |= np.random.rand(*dE.shape) < np.exp(-(4/temperature) * dE)
+                grid[mask] ^= flip
+                return grid
+            return ising2d
+
+        def ising_cb(i, x, im, fig):
+            fig.suptitle(f'{i}, magnetization: {2*np.mean(x)-1:.2f}')
+            fig.canvas.draw()
+
+        def ising_initializer(p):
+            return lambda rows, cols: np.random.choice([0,1], size=(rows, cols), p=[1-p, p])
+
+        return imshow_dynamic(GoL(size,size, T=T, rule=ising2d(temperature=2.27, update_frac=.1), init=ising_initializer(0.75)), 
+                    figsize=(6,6), sleep=sleep, skip=0, cb=ising_cb)
+    else:
+        raise ValueError(f"Invalid rules: {rules}. Choose from 'conway', 'highlife', 'rule30', 'rule90', 'sierpinski', or 'ising'.")
+
+    if rules in ['conway', 'highlife']:
+        return imshow_dynamic(GoL(size,size, T=T, rule=f, init=init_seeds(int(size**2*seed_frac))), figsize=(6,6), sleep=sleep, skip=0)
+    elif rules in ['rule30', 'rule90']:
+        return imshow_dynamic(GoL(size,2*size-1, T=T, rule=f, init=init_dot), figsize=(6,6), sleep=sleep, skip=0)
