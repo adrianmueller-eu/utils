@@ -14,7 +14,7 @@ from .info import von_neumann_entropy, schmidt_decomposition, mutual_information
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag
 from ..plot import imshow
-from ..utils import is_int, duh, reissue_warnings
+from ..utils import is_int, duh
 from ..prob import entropy
 
 class QuantumComputer:
