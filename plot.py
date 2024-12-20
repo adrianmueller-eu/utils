@@ -1,6 +1,7 @@
 import warnings
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from matplotlib.animation import FuncAnimation
 import numpy as np
 from math import log2, sqrt
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
@@ -517,6 +518,113 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
         plt.savefig(save_file, bbox_inches='tight')
     if show:
         plt.show()
+
+def plot_dynamic(gen, figsize=None, sleep=0, cb=None, skip=0, xlim=None, ylim=None, linewidth=1, dot=None):
+    """ Plot a dynamic function.
+
+    Args:
+        gen: The generator that yields the next function values.
+        figsize: The size of the figure.
+        sleep: The time to sleep between frames.
+        cb: A callback function that is called for each frame. It can return the modified function values.
+        skip: The number of iterations to skip between two frames.
+
+    Returns:
+        The animation object.
+    """
+    # close all previous figures
+    plt.close('all')
+
+    if figsize is None:
+        figsize = (6,4)
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    fig.tight_layout()
+
+    if xlim is not None:
+        ax.set_xlim(xlim)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+
+    xs, ys = [], []
+    line, = ax.plot([], [], linewidth=linewidth)
+    if dot is not None:
+        dot, = ax.plot([], [], dot, markersize=3)
+
+    t = 0
+    def animate(x):
+        nonlocal xs, ys, t
+        x, y = x
+        if skip > 0:
+            for _ in range(skip):
+                xs.append(x)
+                ys.append(y)
+                x, y = next(gen)
+        xs.append(x)
+        ys.append(y)
+        if cb is not None:
+            r = cb(t, xs, ys, ax, fig)
+            t += 1
+            if r is not None:
+                xs, ys = r
+        line.set_data(xs, ys)
+        if dot is not None:
+            dot.set_data([x], [y])
+        return line,
+
+    return FuncAnimation(fig, animate, frames=gen, interval=sleep, blit=True, repeat=False, cache_frame_data=False)
+
+def imshow_dynamic(gen, figsize=None, sleep=0, cb=None, skip=0):
+    """Plot a dynamic image sequence.
+
+    Args:
+        gen: The generator that yields the images.
+        figsize: The size of the figure.
+        sleep: The time to sleep between frames.
+        cb: A callback function that is called for each frame. It can return the modified image.
+        skip: The number of iterations to skip between two frames.
+
+    Returns:
+        The animation object.
+    """
+    # close all previous figures
+    plt.close('all')
+    first = next(gen)
+
+    if figsize is None:
+        figsize = auto_figsize(*np.asarray(first).shape)
+
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    fig.tight_layout()
+
+    im = ax.imshow(first, cmap='hot')
+    ax.axis('off')
+    plt.show()
+
+    t = 0
+    if cb is not None:
+        x = cb(t, first, im, fig)
+        t += 1
+        if x is not None:
+            im.set_data(x)
+
+    def animate(x):
+        nonlocal t
+        if skip > 0:
+            for _ in range(skip):
+                x = next(gen)
+        if cb is not None:
+            r = cb(t, x, im, fig)
+            t += 1
+            if r is not None:
+                x = r
+        im.set_data(x)
+        return im,
+
+    return FuncAnimation(fig, animate, frames=gen, interval=sleep, blit=True, repeat=False, cache_frame_data=False)
 
 def complex_colorbar(figsize=(2,2), colorizer=colorize_complex):
     """Show the color reference plot for complex numbers."""
