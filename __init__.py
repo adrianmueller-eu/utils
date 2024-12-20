@@ -3,17 +3,10 @@ from .prob import *
 from .data import *
 from .models import *
 from .mathlib import *
-from .systems import *
-
 from .plot import *
+from .quantum import *
+from .systems import *
 from .examples import *
-
-try:
-    import qiskit
-    from .quantum import *
-except:
-    pass
-
 
 def test_all():
     print_header('mathlib')

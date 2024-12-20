@@ -1,7 +1,10 @@
 import sys
 import numpy as np
 import itertools
-from scipy.linalg import svd, eigvalsh
+try:
+    from scipy.linalg import svd, eigvalsh
+except ImportError:
+    from numpy.linalg import svd, eigvalsh
 
 from .state import count_qubits, partial_trace, dm, ev, as_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0

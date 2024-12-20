@@ -3,13 +3,11 @@ import numpy as np
 import itertools
 from functools import reduce
 from math import log2, sin, cos, sqrt, factorial
-import scipy.sparse as sp
-from scipy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
-from scipy.linalg import expm as matexp
-from scipy.linalg import logm as _matlog
-# for use when importing utils
-from scipy.linalg import fractional_matrix_power as matpow
-from scipy.linalg import sqrtm as matsqrt
+try:
+    import scipy.sparse as sp
+    from scipy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
+except ImportError:
+    from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
 from .basic import series, sequence
 from ..models import Polynomial
@@ -119,32 +117,37 @@ def allclose0(a, tol=1e-12):
 ### Matrix functions ###
 ########################
 
-def matfunc(A, f, not_hermitian=False):
-    if not not_hermitian and is_hermitian(A):  # is_hermitian takes a small fraction of the timing difference between eig and eigh
-        return matfunch(A, f)
+def matfunc(A, f):
     D, T = eig(A)
     D = np.asarray(f(D))
     if not is_complex(T) and allclose0(D.imag):
         D = D.real
     return T @ (D[:,None] * inv(T))
 
-def matlog(A, base=np.e):
-    return _matlog(A) / np.log(base)
+try:
+    from scipy.linalg import expm as matexp
+    from scipy.linalg import logm as _matlog
+    # for use when importing utils
+    from scipy.linalg import fractional_matrix_power as matpow
+    from scipy.linalg import sqrtm as matsqrt
 
-# def matexp(A, not_h=False):
-#     return matfunc(A, np.exp, not_h)
+    def matlog(A, base=np.e):
+        return _matlog(A) / np.log(base)
+except ImportError:
+    def matexp(A):
+        return matfunc(A, np.exp)
+
+    def matlog(A, base=np.e):
+        return matfunc(A, lambda x: np.log(x) / np.log(base))
+
+    def matpow(A, n):
+        return matfunc(A, lambda x: x**n)
+
+    def matsqrt(A):
+        return matfunc(A, np.sqrt)
 
 def matexp_series(A):
     return np.eye(A.shape[0]) + series(lambda n, A_pow: A_pow @ A / n, start_value=A, start_index=1)
-
-# def matlog(A, base=np.e, not_h=False):
-#     return matfunc(A, lambda x: np.log(x) / np.log(base), not_h)
-
-# def matpow(A, n, not_h=False):
-#     return matfunc(A, lambda x: x**n, not_h)
-
-# def matsqrt(A, not_h=False):
-#     return matfunc(A, np.sqrt, not_h)
 
 def matfunch(A, f):
     D, U = eigh(A)

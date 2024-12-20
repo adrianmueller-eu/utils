@@ -1,8 +1,11 @@
 import psutil
 import numpy as np
-from scipy.linalg import eigh
 import matplotlib.pyplot as plt
 from math import log2
+try:
+    from scipy.linalg import eigh
+except:
+    from numpy.linalg import eigh
 
 from ..utils import is_int, duh, is_from_assert, shape_it
 from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec

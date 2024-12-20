@@ -1,7 +1,10 @@
 import warnings
 import numpy as np
 from functools import reduce
-from scipy.linalg import eig, eigh
+try:
+    from scipy.linalg import eig, eigh
+except ImportError:
+    from numpy.linalg import eig, eigh
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .state import dm, count_qubits, plotQ, reverse_qubit_order
@@ -221,22 +224,6 @@ try:
             return np.array(U)
         return U
 
-    def get_pe_energies(U):
-        if isinstance(U, QuantumCircuit):
-            U = get_unitary(U)
-        eigvals = eig(U)[0]
-        energies = np.angle(eigvals)/(2*np.pi)
-        return energies
-
-    def show_eigenvecs(U, showrho=False):
-        if isinstance(U, QuantumCircuit):
-            U = get_unitary(U)
-        eigvecs = eig(U)[1]
-        print(np.round(eigvecs, 3))
-        for i in range(eigvecs.shape[1]):
-            plotQ(eigvecs[:,i], figsize=(12,2), showrho=showrho)
-        return eigvecs
-
     def count_gates(qc, decompose_iterations=4, isTranspiled=False):
         if not isTranspiled:
             simulator = Aer.get_backend('aer_simulator')
@@ -248,5 +235,32 @@ try:
         return len(t_circuit._data)
 
 except ModuleNotFoundError:
-    warnings.warn("qiskit not installed! Use `pip install qiskit qiskit_aer pylatexenc`.", stacklevel=2)
-    pass
+    # stubs
+    def _qiskit_not_installed():
+        raise ValueError("qiskit not installed! Use `pip install qiskit qiskit_aer pylatexenc`.")
+
+    def run(circuit, shots=1, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4), title=""):
+        _qiskit_not_installed()
+
+    class exp_i:
+        def __init__(self, H, k=1, use_pauli=False, trotter_steps=3):
+            _qiskit_not_installed()
+
+    def get_unitary(U):
+        _qiskit_not_installed()
+
+def get_pe_energies(U):
+    if "qiskit" in str(type(U)) and isinstance(U, QuantumCircuit):
+        U = get_unitary(U)
+    eigvals = eig(U)[0]
+    energies = np.angle(eigvals)/(2*np.pi)
+    return energies
+
+def show_eigenvecs(U, showrho=False):
+    if "qiskit" in str(type(U)) and isinstance(U, QuantumCircuit):
+        U = get_unitary(U)
+    eigvecs = eig(U)[1]
+    print(np.round(eigvecs, 3))
+    for i in range(eigvecs.shape[1]):
+        plotQ(eigvecs[:,i], figsize=(12,2), showrho=showrho)
+    return eigvecs

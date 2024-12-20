@@ -1,8 +1,11 @@
 import psutil, warnings
 from contextlib import contextmanager
 import numpy as np
-import scipy.sparse as sp
-from scipy.linalg import eig, eigh, inv
+try:
+    import scipy.sparse as sp
+    from scipy.linalg import eig, eigh, inv
+except ImportError:
+    from numpy.linalg import eig, eigh, inv
 
 from .constants import *
 from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, is_dm, as_state
@@ -920,7 +923,7 @@ class QuantumComputer:
             U = np.asarray(U)
         elif isinstance(U, str):
             U = parse_unitary(U)
-        elif sp.issparse(U):
+        elif "scipy" in str(type(U)) and sp.issparse(U):
             U = U.toarray()
         else:
             try:
@@ -941,7 +944,7 @@ class QuantumComputer:
             H = np.asarray(H)
         elif isinstance(H, str):
             H = parse_hamiltonian(H)
-        elif sp.issparse(H):
+        elif "scipy" in str(type(H)) and sp.issparse(H):
             H = H.toarray()
         else:
             raise ValueError(f"Can't process observable of type {type(H)}: {H}")

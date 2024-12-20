@@ -1,9 +1,12 @@
 import psutil, warnings
 import numpy as np
-import scipy.sparse as sp
-from scipy.linalg import eigh, eigvalsh
 import itertools
 from functools import reduce
+try:
+    import scipy.sparse as sp
+    from scipy.linalg import eigh, eigvalsh
+except ImportError:
+    from numpy.linalg import eigh, eigvalsh
 
 from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0, is_unitary, binstr_from_float
 from ..utils import duh
@@ -18,7 +21,7 @@ def ground_state_exact(hamiltonian):
     else:
         H = hamiltonian
 
-    if sp.issparse(H):
+    if "scipy" in str(type(H)) and sp.issparse(H):
         evals, evecs = sp.linalg.eigsh(H, k=1, which='SA')
     else:
         evals, evecs = eigh(H) # way faster, but only dense matrices
@@ -684,8 +687,10 @@ def get_H_energies(H, expi=False, k=None):
         energies = eigvalsh(H)
         if k is not None:
             energies = energies[...,:k]
-    else:
+    elif "scipy" in str(type(H)) and sp.issparse(H):
         energies = sp.linalg.eigsh(H, k=k, which='SA', return_eigenvectors=False)[::-1]  # smallest eigenvalues first
+    else:
+        raise ValueError("H must be a numpy array or a sparse matrix!")
     if expi:
         energies = (energies % (2*np.pi))/(2*np.pi)
         energies[energies > 0.5] -= 1
