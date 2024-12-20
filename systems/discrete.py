@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 try:
     from scipy.linalg import eigvals
+    # from scipy.signal import convolve2d
 except ImportError:
     from numpy.linalg import eigvals
 from tqdm import tqdm as tq
@@ -393,3 +394,95 @@ def fractal(f, max_iters=100, res=1000, xlim=(-2,2), ylim=(-2,2), eps=None, min_
         _plot(img, 'z')
 
     return z, iters
+
+def GoL(rows, cols, T, rule, init='zeros', progress=True):
+    if isinstance(init, str):
+        if init == 'zeros':
+            grid = np.zeros((rows, cols), dtype='i1')
+        elif init == 'ones':
+            grid = np.ones((rows, cols), dtype='i1')
+        elif init == 'random':
+            grid = np.random.randint(2, size=(rows, cols), dtype='i1')
+        else:
+            raise ValueError(f'Invalid initializer: {init}')
+    elif isinstance(init, np.ndarray):
+        grid = init
+    elif callable(init):
+        grid = init(rows, cols)
+    else:
+        raise ValueError(f'Invalid initializer: {init}')
+    assert grid.shape == (rows, cols), f'Invalid grid shape: {grid.shape} ≠ {(rows, cols)}'
+
+    yield grid  # initial state
+    for t in tq(range(T), disable=not progress):
+        grid = rule(t, grid)
+        yield grid
+
+class Subgrid:
+
+    def __init__(self, grid):
+        self.grid = grid
+        self._S, self._N = None, None
+
+    @property
+    def S(self):
+        if self._S is None:
+            self._S = np.roll(self.grid, 1, axis=0)
+        return self._S
+
+    @property
+    def N(self):
+        if self._N is None:
+            self._N = np.roll(self.grid, -1, axis=0)
+        return self._N
+
+    @property
+    def E(self):
+        return np.roll(self.grid, 1, axis=1)
+
+    @property
+    def W(self):
+        return np.roll(self.grid, -1, axis=1)
+
+    @property
+    def NE(self):
+        return np.roll(self.N, 1, axis=1)
+
+    @property
+    def NW(self):
+        return np.roll(self.N, -1, axis=1)
+
+    @property
+    def SE(self):
+        return np.roll(self.S, 1, axis=1)
+
+    @property
+    def SW(self):
+        return np.roll(self.S, -1, axis=1)
+
+    @property
+    def C(self):
+        return self.grid
+
+    def __call__(self, kernel):
+        # return convolve2d(self.grid, kernel, mode='same', boundary='wrap')
+        res = np.zeros_like(self.grid)
+        if kernel[0,0]:
+            res += self.NW
+        if kernel[0,1]:
+            res += self.N
+        if kernel[0,2]:
+            res += self.NE
+        if kernel[1,0]:
+            res += self.W
+        if kernel[1,1]:
+            res += self.grid
+        if kernel[1,2]:
+            res += self.E
+        if kernel[2,0]:
+            res += self.SW
+        if kernel[2,1]:
+            res += self.S
+        if kernel[2,2]:
+            res += self.SE
+        return res
