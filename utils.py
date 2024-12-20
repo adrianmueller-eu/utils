@@ -3,6 +3,7 @@ import numpy as np
 from warnings import warn
 from collections.abc import Iterable
 from copy import deepcopy
+from math import log2
 
 def moving_avg(x, w=3):
     return np.convolve(x, np.ones(w), 'valid') / w
@@ -100,12 +101,14 @@ def nbytes(o):
         finally:
             return sum(nbytes(i) for i in o)
     # numeric types
-    elif isinstance(o, (int, float)):
+    elif isinstance(o, (float)):
         return 8
     elif isinstance(o, (complex)):
         return 16
     elif isinstance(o, (bool)):
-        return 1
+        return 4
+    elif isinstance(o, (int)):
+        return max(8, log2(o))
     else:
         raise TypeError(f"Can't get the size of an object of type {type(o)}")
 
@@ -117,7 +120,7 @@ def duh(n, precision=3):
         n (int | object): The number of bytes or an object the size of which to use (e.g. list, dict, numpy array, pandas dataframe, pytorch tensor)
         precision (int): The number of decimals to use
     """
-    if not is_int(n):
+    if not is_int(n) or n > 1 << 63:
         n = nbytes(n)
     if not is_int(n) or n < 0:
         raise ValueError(f"n must be a positive integer, not {n}")
