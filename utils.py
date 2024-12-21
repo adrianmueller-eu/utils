@@ -145,6 +145,12 @@ def shape_it(shape, progress=False):
     for n in gen:
         yield n
 
+def last(gen):
+    """ Get the last element of a generator. """
+    for x in gen:
+        pass
+    return x
+
 def is_int(x):
     # https://stackoverflow.com/questions/3501382/checking-whether-a-variable-is-an-integer-or-not
     try:
@@ -170,6 +176,12 @@ def is_from_assert(func, print_error=True):
                 warnings.warn(f"AssertionError: {e}", stacklevel=3)
             return False
     return inner
+
+def as_callable(x):
+    if callable(x):
+        return x
+    else:
+        return lambda *args, **kwargs: x
 
 def startfile(filepath):
     import subprocess, os, platform
