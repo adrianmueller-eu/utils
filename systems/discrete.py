@@ -6,7 +6,7 @@ try:
     # from scipy.signal import convolve2d
 except ImportError:
     from numpy.linalg import eigvals
-from tqdm import tqdm as tq
+from tqdm.auto import tqdm as tq
 
 from .ode import get_roots
 from .misc import plt_diagonal

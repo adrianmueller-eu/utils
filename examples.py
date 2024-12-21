@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm as tq
+from tqdm.auto import tqdm as tq
 
 from .utils import moving_avg
 from .prob import smooth
