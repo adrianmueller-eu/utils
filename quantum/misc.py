@@ -6,6 +6,7 @@ from .constants import X, Z
 from .QuantumComputer import QuantumComputer as QC
 from ..mathlib import choice
 from ..quantum import ket, count_qubits, fidelity
+from ..plot import imshow_clean
 
 # simulate Bell experiment (CHSH inequality)
 def bell_experiment(N=10000):
@@ -52,6 +53,18 @@ def swap_test(psi='0', phi='0 + 1', N=1000):
     # perform N swap tests
     outcomes = [perform_swap_test(qc.copy()) for _ in range(N)]
     return 1 - 2*np.mean(outcomes)
+
+def the_arrow(n=1, figsize=None):
+    arrow = np.array([
+        [1, 1, 1, 1],
+        [1, 1, 0, 0],
+        [1, 0, 1, 0],
+        [1, 0, 0, 1]], dtype='i1')*2-1
+    m = reduce(np.kron, [arrow]*n)
+    if figsize is None:
+        fs = max(1, 2**(2*n-4.68188))
+        figsize = (fs, fs)
+    imshow_clean(~m, figsize, cmap='hot')
 
 # TODO: Grover's algorithm
 # TODO: number factorization (Shor's algorithm)
