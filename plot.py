@@ -375,6 +375,9 @@ def auto_figsize(x_shape, y_shape, max_dim=16):
         ydim = xdim * x_shape / y_shape
     return (xdim, ydim)
 
+def imshow_clean(a, figsize=None, title="", cmap='hot', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
+    return imshow(a, axes='off', colorbar=False, figsize=figsize, title=title, cmap=cmap, vmin=vmin, vmax=vmax, magic_reshape=magic_reshape, show=show, save_file=save_file, **pltargs)
+
 def imshow(a, figsize=None, title="", cmap='hot', axes='on', xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty images from arrays.
 
