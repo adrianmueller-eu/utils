@@ -565,13 +565,14 @@ def plot_dynamic(gen, figsize=None, sleep=0, cb=None, skip=0, xlim=None, ylim=No
                 xs.append(x)
                 ys.append(y)
                 x, y = next(gen)
+                t += 1
         xs.append(x)
         ys.append(y)
         if cb is not None:
             r = cb(t, xs, ys, ax, fig)
-            t += 1
             if r is not None:
                 xs, ys = r
+        t += 1
         line.set_data(xs, ys)
         if dot is not None:
             dot.set_data([x], [y])
@@ -619,11 +620,12 @@ def imshow_dynamic(gen, figsize=None, sleep=0, cb=None, skip=0):
         if skip > 0:
             for _ in range(skip):
                 x = next(gen)
+                t += 1
         if cb is not None:
             r = cb(t, x, im, fig)
-            t += 1
             if r is not None:
                 x = r
+        t += 1
         im.set_data(x)
         return im,
 
