@@ -376,9 +376,9 @@ def auto_figsize(x_shape, y_shape, max_dim=16):
     return (xdim, ydim)
 
 def imshow_clean(a, figsize=None, title="", cmap='hot', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
-    return imshow(a, axes='off', colorbar=False, figsize=figsize, title=title, cmap=cmap, vmin=vmin, vmax=vmax, magic_reshape=magic_reshape, show=show, save_file=save_file, **pltargs)
+    return imshow(a, xticks=[], yticks=[], colorbar=False, figsize=figsize, title=title, cmap=cmap, vmin=vmin, vmax=vmax, magic_reshape=magic_reshape, show=show, save_file=save_file, **pltargs)
 
-def imshow(a, figsize=None, title="", cmap='hot', axes='on', xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
+def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xticks_rot=0, xlabel=None, ylabel=None, colorbar='auto', vmin=None, vmax=None, magic_reshape=True, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty images from arrays.
 
     Parameters
@@ -512,7 +512,7 @@ def imshow(a, figsize=None, title="", cmap='hot', axes='on', xticks=None, yticks
         plt.xlabel(xlabel)
     if ylabel is not None:
         plt.ylabel(ylabel)
-    if axes == 'off' or not axes or (xticks is not None and len(xticks) == 0 and yticks is not None and len(yticks) == 0):
+    if xticks is not None and len(xticks) == 0 and yticks is not None and len(yticks) == 0:
         plt.axis('off')
 
     plt.title(title)
