@@ -772,7 +772,7 @@ class QuantumComputer:
         return f"qubits {self.qubits} in state {state}"
 
     def __repr__(self):
-        return self.__str__()
+        return f"{self.__class__.__name__}({self.original_order}) at {hex(id(self))}"
 
     def __getitem__(self, qubits):
         state = self.get_state(qubits)
