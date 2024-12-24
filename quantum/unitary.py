@@ -1,4 +1,4 @@
-import warnings
+import sys, warnings
 import numpy as np
 from functools import reduce
 try:
@@ -250,14 +250,14 @@ except ModuleNotFoundError:
         _qiskit_not_installed()
 
 def get_pe_energies(U):
-    if "qiskit" in str(type(U)) and isinstance(U, QuantumCircuit):
+    if "qiskit" in sys.modules and isinstance(U, QuantumCircuit):
         U = get_unitary(U)
     eigvals = eig(U)[0]
     energies = np.angle(eigvals)/(2*np.pi)
     return energies
 
 def show_eigenvecs(U, showrho=False):
-    if "qiskit" in str(type(U)) and isinstance(U, QuantumCircuit):
+    if "qiskit" in sys.modules and isinstance(U, QuantumCircuit):
         U = get_unitary(U)
     eigvecs = eig(U)[1]
     print(np.round(eigvecs, 3))

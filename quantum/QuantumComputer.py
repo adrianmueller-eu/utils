@@ -1,4 +1,4 @@
-import psutil, warnings
+import sys, psutil, warnings
 from contextlib import contextmanager
 import numpy as np
 try:
@@ -923,7 +923,7 @@ class QuantumComputer:
             U = np.asarray(U)
         elif isinstance(U, str):
             U = parse_unitary(U)
-        elif "scipy" in str(type(U)) and sp.issparse(U):
+        elif "scipy" in sys.modules and sp.issparse(U):
             U = U.toarray()
         else:
             try:
@@ -944,7 +944,7 @@ class QuantumComputer:
             H = np.asarray(H)
         elif isinstance(H, str):
             H = parse_hamiltonian(H)
-        elif "scipy" in str(type(H)) and sp.issparse(H):
+        elif "scipy" in sys.modules and sp.issparse(H):
             H = H.toarray()
         else:
             raise ValueError(f"Can't process observable of type {type(H)}: {H}")

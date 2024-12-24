@@ -1,4 +1,4 @@
-import psutil, warnings
+import sys, psutil, warnings
 import numpy as np
 import itertools
 from functools import reduce
@@ -21,7 +21,7 @@ def ground_state_exact(hamiltonian):
     else:
         H = hamiltonian
 
-    if "scipy" in str(type(H)) and sp.issparse(H):
+    if "scipy" in sys.modules and sp.issparse(H):
         evals, evecs = sp.linalg.eigsh(H, k=1, which='SA')
     else:
         evals, evecs = eigh(H) # way faster, but only dense matrices
@@ -687,7 +687,7 @@ def get_H_energies(H, expi=False, k=None):
         energies = eigvalsh(H)
         if k is not None:
             energies = energies[...,:k]
-    elif "scipy" in str(type(H)) and sp.issparse(H):
+    elif "scipy" in sys.modules and sp.issparse(H):
         energies = sp.linalg.eigsh(H, k=k, which='SA', return_eigenvectors=False)[::-1]  # smallest eigenvalues first
     else:
         raise ValueError("H must be a numpy array or a sparse matrix!")
