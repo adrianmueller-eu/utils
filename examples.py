@@ -4,7 +4,7 @@ from tqdm.auto import tqdm as tq
 
 from .utils import moving_avg
 from .prob import smooth
-from .systems import fractal, simulate, Subgrid, GoL
+from .systems import fractal, simulate, Subgrid, GameOfLife
 from .plot import imshow_dynamic, plot_dynamic
 
 def climateHockey():
@@ -79,11 +79,13 @@ def game_of_life(rules='conway', T=255, size=256, sleep=50):
     Generalized Game of Life simulation with different rulesets: 'conway', 'highlife', 'rule30', 'rule90', 'sierpinski', or 'ising'.
     Use a matplotlib backend suitable for interactive plotting, e.g. `%matplotlib qt`.
     """
-    conway_kernel = np.array([
+    conway_kernel = [
         [1,1,1],
         [1,0,1],
         [1,1,1]
-    ], dtype='i1')
+    ]
+    def init_random(p):
+        return lambda rows, cols: np.random.choice([0,1], size=(rows, cols), p=[1-p, p])
 
     def init_seeds(n_seeds):
         def _init(rows, cols):
@@ -121,22 +123,21 @@ def game_of_life(rules='conway', T=255, size=256, sleep=50):
     elif rules == 'rule90' or rules == 'sierpinski':
         def f(t, grid):
             s = Subgrid(grid)
-            r1d = s.W ^ s.E  # XOR of left and right neighbors
+            r1d = s.W ^ s.E
             return r1d | s.N
     elif rules == 'ising':
         def ising2d(temperature, update_frac):
             def ising2d(t, grid):
-                E = Subgrid(grid)(np.array([
+                E = Subgrid(grid)([
                     [0,1,0],
                     [1,0,1],
                     [0,1,0]
-                ], dtype='i1'))
-                # select a random subset of the grid to update
-                mask = np.random.rand(*grid.shape) < update_frac
+                ])
+                mask = np.random.rand(*grid.shape) < update_frac  # select a random subset of the grid to update
                 dE = (E[mask] - 2) * (grid[mask]*2 - 1)  # rescale E to -2, 2 and grid to -1, 1
                 flip = dE < 0
                 if temperature > 0:
-                    flip |= np.random.rand(*dE.shape) < np.exp(-(4/temperature) * dE)
+                    flip |= np.random.rand(dE.shape[0]) < np.exp(-(4/temperature) * dE)
                 grid[mask] ^= flip
                 return grid
             return ising2d
@@ -145,15 +146,12 @@ def game_of_life(rules='conway', T=255, size=256, sleep=50):
             fig.suptitle(f'{i}, magnetization: {2*np.mean(x)-1:.2f}')
             fig.canvas.draw()
 
-        def ising_initializer(p):
-            return lambda rows, cols: np.random.choice([0,1], size=(rows, cols), p=[1-p, p])
-
-        return imshow_dynamic(GoL(size,size, T=T, rule=ising2d(temperature=2.27, update_frac=.1), init=ising_initializer(0.75)), 
+        return imshow_dynamic(GameOfLife(size,size, T=T, rule=ising2d(temperature=2.27, update_frac=.1), init=init_random(0.75)),
                     figsize=(6,6), sleep=sleep, skip=0, cb=ising_cb)
     else:
         raise ValueError(f"Invalid rules: {rules}. Choose from 'conway', 'highlife', 'rule30', 'rule90', 'sierpinski', or 'ising'.")
 
     if rules in ['conway', 'highlife']:
-        return imshow_dynamic(GoL(size,size, T=T, rule=f, init=init_seeds(int(size**2*seed_frac))), figsize=(6,6), sleep=sleep, skip=0)
+        return imshow_dynamic(GameOfLife(size,size, T=T, rule=f, init=init_seeds(int(size**2*seed_frac))), figsize=(6,6), sleep=sleep, skip=0)
     elif rules in ['rule30', 'rule90']:
-        return imshow_dynamic(GoL(size,2*size-1, T=T, rule=f, init=init_dot), figsize=(6,6), sleep=sleep, skip=0)
+        return imshow_dynamic(GameOfLife(size,2*size-1, T=T, rule=f, init=init_dot), figsize=(6,6), sleep=sleep, skip=0)

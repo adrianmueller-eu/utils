@@ -395,7 +395,8 @@ def fractal(f, max_iters=100, res=1000, xlim=(-2,2), ylim=(-2,2), eps=None, min_
 
     return z, iters
 
-def GoL(rows, cols, T, rule, init='zeros', progress=True):
+def GameOfLife(rows, cols, T, rule, init='zeros', progress=True):
+    # initialize the grid
     if isinstance(init, str):
         if init == 'zeros':
             grid = np.zeros((rows, cols), dtype='i1')
@@ -413,6 +414,7 @@ def GoL(rows, cols, T, rule, init='zeros', progress=True):
         raise ValueError(f'Invalid initializer: {init}')
     assert grid.shape == (rows, cols), f'Invalid grid shape: {grid.shape} ≠ {(rows, cols)}'
 
+    # run the simulation
     yield grid  # initial state
     for t in tq(range(T), disable=not progress):
         grid = rule(t, grid)
@@ -465,24 +467,27 @@ class Subgrid:
         return self.grid
 
     def __call__(self, kernel):
+        """
+        Give kernel as list (instead of np.ndarray).
+        """
         # return convolve2d(self.grid, kernel, mode='same', boundary='wrap')
         res = np.zeros_like(self.grid)
-        if kernel[0,0]:
+        if kernel[0][0]:
             res += self.NW
-        if kernel[0,1]:
+        if kernel[0][1]:
             res += self.N
-        if kernel[0,2]:
+        if kernel[0][2]:
             res += self.NE
-        if kernel[1,0]:
+        if kernel[1][0]:
             res += self.W
-        if kernel[1,1]:
+        if kernel[1][1]:
             res += self.grid
-        if kernel[1,2]:
+        if kernel[1][2]:
             res += self.E
-        if kernel[2,0]:
+        if kernel[2][0]:
             res += self.SW
-        if kernel[2,1]:
+        if kernel[2][1]:
             res += self.S
-        if kernel[2,2]:
+        if kernel[2][2]:
             res += self.SE
         return res
