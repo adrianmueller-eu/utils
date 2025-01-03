@@ -774,6 +774,12 @@ class QuantumComputer:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.original_order}) at {hex(id(self))}"
 
+    def _repr_pretty_(self, p, cycle):
+        if cycle:
+            p.text(f"{self.__class__.__name__}(...)")
+        else:
+            p.text(str(self))
+
     def __getitem__(self, qubits):
         state = self.get_state(qubits)
         if len(state.shape) == 1:
