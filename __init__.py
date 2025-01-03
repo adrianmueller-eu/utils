@@ -7,6 +7,7 @@ from .plot import *
 from .quantum import *
 from .systems import *
 from .examples import *
+from .misc import *
 
 def test_all():
     print_header('mathlib')
