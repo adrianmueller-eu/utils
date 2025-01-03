@@ -3,7 +3,7 @@ import itertools
 from functools import reduce
 from math import sqrt, sin, cos, log2
 
-from ..mathlib import matexp, pauli_basis
+from ..mathlib import matexp, pauli_basis, su
 from .state import ket
 
 fs = lambda x: 1/np.sqrt(x)
@@ -14,27 +14,15 @@ fs2 = fs(2)
 #################
 
 I_ = lambda n: np.eye(2**n)
-I = I_(1)
-X = np.array([ # 1j*Rx(pi)
-    [0, 1],
-    [1, 0]
-], dtype=complex)
-Y = np.array([ # 1j*Ry(pi)
-    [0, -1j],
-    [1j,  0]
-], dtype=complex)
-Z = np.array([ # 1j*Rz(pi)
-    [1,  0],
-    [0, -1]
-], dtype=complex)
-S = np.array([ # np.sqrt(Z)
+I, X, Y, Z = su(2, True)
+S = np.array([  # matsqrt(Z)
     [1,  0],
     [0, 1j]
-], dtype=complex)
-T_gate = np.array([ # avoid overriding T = True
+])
+T_gate = np.array([  # matsqrt(S)
     [1,  0],
     [0,  np.sqrt(1j)]
-], dtype=complex)
+])
 H = H_gate = fs2 * np.array([ # Fourier_matrix(2) = fs2*(X + Z) = 1j*fs2*(Rx(pi) + Rz(pi))
     [1,  1],
     [1, -1]

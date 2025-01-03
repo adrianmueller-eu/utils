@@ -500,7 +500,7 @@ def pauli_basis(n, kind='np', normalize=False):
     if kind == 'str':
         norm_str = f"{1/sqrt(2**n)}*" if normalize else ""
         return [norm_str + ''.join(i) for i in itertools.product(['I', 'X', 'Y', 'Z'], repeat=n)]
-    I, X, Y, Z = np.eye(2), np.array([[0, 1], [1, 0]]), np.array([[0, -1j], [1j, 0]]), np.array([[1, 0], [0, -1]])
+    I, X, Y, Z = su(2, True)
     if kind == 'np':
         return [reduce_norm(np.kron, i, normalize) for i in itertools.product([I,X,Y,Z], repeat=n)]
     elif kind == 'sp':
