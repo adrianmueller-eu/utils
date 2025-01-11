@@ -1,3 +1,4 @@
+import re
 import numpy as np
 from math import sqrt, ceil
 
@@ -37,67 +38,84 @@ def is_coprime(*a):
     """ Test if the given integers are coprime. """
     return gcd(*a) == 1
 
-if not sage_loaded:
+def smallest_prime_factor(n, start=3):
+    """ Find the smallest prime factor of n (n if prime), starting from the **odd** integer `start`. """
+    if n < 2:
+        return None
+    if n % 2 == 0:
+        return 2
+    for i in range(start, int(n**0.5) + 1, 2):
+        if n % i == 0:
+            return i
+    return n
 
-    def is_prime(n, alpha=1e-20): # only up to 2^54 -> alpha < 1e-16.26 (-> 55 iterations; < 1e-20 is 67 iterations)
-        """ Miller-Rabin test for primality. """
-        if n == 1 or n == 4:
-            return False
-        if n == 2 or n == 3:
-            return True
+def is_prime_brute(n):
+    """ Simple brute-force algorithm to check for primality. """
+    return n == smallest_prime_factor(n)
 
-        def getKM(n):
-            k = 0
-            while n % 2 == 0:
-                k += 1
-                n /= 2
-            return k,int(n)
-
-        p = 1
-        while p > alpha:
-            a = np.random.randint(2,n-2)
-            if gcd(a,n) != 1:
-                # print(n,"is not prime (1)", f"gcd({a},{n}) = {gcd(a,n)}")
-                return False
-            k,m = getKM(n-1)
-            b = pow(a, m, n)
-            if b == 1:
-                p *= 1/2
-                continue
-            for i in range(1,k+1):
-                b_new = pow(b,2,n)
-                # first appearance of b == 1 is enough
-                if b_new == 1:
-                    break
-                b = b_new
-                if i == k:
-                    # print(n,"is not prime (2)")
-                    return False
-            if gcd(b+1,n) == 1 or gcd(b+1,n) == n:
-                p *= 1/2
-            else:
-                # print(n,"is not prime (3)")
-                return False
-
-        # print("%d is prime with alpha=%E (if Carmichael number: alpha=%f)" % (n, p, (3/4)**log(p,1/2)))
+def Miller_Rabin(n, alpha=1e-20): # only up to 2^54 -> alpha < 1e-16.26 (-> 55 iterations; < 1e-20 is 67 iterations)
+    """ Miller-Rabin test for primality. """
+    if n == 1 or n == 4:
+        return False
+    if n == 2 or n == 3:
         return True
 
-    def prime_factors(n):
-        """ Simple brute-force algorithm to find prime factors. """
-        factors = []
-        # remove all factors of 2 first
+    def getKM(n):
+        k = 0
         while n % 2 == 0:
-            factors.append(2)
-            n //= 2
-        i = 3
-        while i * i <= n:
-            if n % i:
-                i += 2
-            else:
-                n //= i
-                factors.append(i)
-        if n > 1:
-            factors.append(n)
+            k += 1
+            n /= 2
+        return k,int(n)
+
+    p = 1
+    while p > alpha:
+        a = np.random.randint(2,n-2)
+        if gcd(a,n) != 1:
+            # print(n,"is not prime (1)", f"gcd({a},{n}) = {gcd(a,n)}")
+            return False
+        k,m = getKM(n-1)
+        b = pow(a, m, n)
+        if b == 1:
+            p *= 1/2
+            continue
+        for i in range(1,k+1):
+            b_new = pow(b,2,n)
+            # first appearance of b == 1 is enough
+            if b_new == 1:
+                break
+            b = b_new
+            if i == k:
+                # print(n,"is not prime (2)")
+                return False
+        if gcd(b+1,n) == 1 or gcd(b+1,n) == n:
+            p *= 1/2
+        else:
+            # print(n,"is not prime (3)")
+            return False
+
+    # print("%d is prime with alpha=%E (if Carmichael number: alpha=%f)" % (n, p, (3/4)**log(p,1/2)))
+    return True
+
+def is_prime_regex(n):
+    """ Using regex `/^1?$|^(11+?)\1+$/` to check for primality. See https://stackoverflow.com/questions/2795065/how-to-determine-if-a-number-is-a-prime-with-regex """
+    return not re.match(r'^1?$|^(11+?)\1+$', '1'*n)
+
+if not sage_loaded:
+
+    def is_prime(n):
+        if n < 5*10**8:
+            return is_prime_brute(n)
+        return Miller_Rabin(n)
+
+    def prime_factors(n):
+        """ Simple algorithm to find prime factors. """
+        factors, p = [], 2
+        while True:
+            p = smallest_prime_factor(n, start=max(3, p))
+            if p is None:
+                break
+            factors.append(p)
+            n //= p
         return factors
 
     def euler_phi(n):
@@ -119,8 +137,10 @@ if not sage_loaded:
         if a < 2:
             return 2
         a = int(a) + 1
-        while not is_prime(a):
+        if a % 2 == 0:
             a += 1
+        while not is_prime(a):
+            a += 2
         return a
 
 def closest_prime_factors_to(n, m):
