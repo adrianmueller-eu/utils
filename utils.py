@@ -137,6 +137,8 @@ def duh(n, precision=3):
 def shape_it(shape, progress=False):
     """ Iterate over all indices of a numpy array. """
     from itertools import product
+    if hasattr(shape, 'shape'):
+        shape = shape.shape
     gen = product(*[list(range(s)) for s in shape])
     if progress:
         from tqdm.auto import tqdm as tq
