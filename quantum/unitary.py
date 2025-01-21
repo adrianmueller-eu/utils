@@ -9,6 +9,7 @@ except ImportError:
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .state import dm, count_qubits, plotQ, reverse_qubit_order
 from ..mathlib import is_unitary, is_hermitian, pauli_decompose
+from ..utils import is_int
 
 def Fourier_matrix(n, n_is_qubits=True):
     """Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT)."""
@@ -176,10 +177,7 @@ try:
                     assert is_hermitian(H), "Hamiltonian must be hermitian"
                     self.D, self.U = eigh(H)
             # auxiliary variables
-            try:
-                self.k = int(k)
-            except:
-                self.k = k
+            self.k = int(k) if is_int(k) else k
             name = "exp^-i" if k < 0 else "exp^i"
             name += "H" if abs(k) == 1 else f"{abs(k)}H"
             super().__init__(self.n, name=name)       # circuit on n qubits
@@ -211,7 +209,7 @@ try:
                 qc = QuantumCircuit(self.n)
                 qc.append(self, self.all_qubits)
                 return get_unitary(qc)
-            return self.U @ np.diag(np.exp(self.k*k*1j*self.D)) @ self.U.T.conj()
+            return self.U @ (np.exp(self.k*k*1j*self.D)[:,None] * self.U.T.conj())
 
     def get_unitary(circ, decimals=None, as_np=True):
         if hasattr(circ, 'get_unitary'):
