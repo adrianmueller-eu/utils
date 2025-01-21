@@ -7,7 +7,7 @@ except ImportError:
     from numpy.linalg import eig, eigh
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
-from .state import dm, count_qubits, plotQ, reverse_qubit_order
+from .state import ket, dm, count_qubits, plotQ, reverse_qubit_order, transpose_qubit_order
 from ..mathlib import is_unitary, is_hermitian, pauli_decompose
 from ..utils import is_int
 
@@ -262,3 +262,22 @@ def show_eigenvecs(U, showrho=False):
     for i in range(eigvecs.shape[1]):
         plotQ(eigvecs[:,i], figsize=(12,2), showrho=showrho)
     return eigvecs
+
+def partial_operation(U, subsystem, env_state='0', check=1):
+    """ Calculate the partial operation of a unitary U acting on a subsystem. Returns a set of Kraus operators. """
+    n = count_qubits(U)
+    subsystem = list(subsystem)
+    q = len(subsystem)
+    env = [i for i in range(n) if i not in subsystem]
+    assert max(subsystem) <= n and min(subsystem) >= 0, f"Subsystem is has invalid qubits: {subsystem}"
+
+    U = transpose_qubit_order(U, subsystem + env)
+    U = U.reshape([2**q, 2**(n-q), 2**q, 2**(n-q)])
+
+    env_state = ket(env_state, n-q, check=check)
+
+    # decompose the resulting state into Kraus operators
+    Kraus = []
+    for i in range(2**(n-q)):
+        Kraus.append(np.tensordot(U[:, i, :, :], env_state, axes=(2, 0)))
+    return Kraus

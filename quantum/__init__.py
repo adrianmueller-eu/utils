@@ -49,6 +49,7 @@ def test_quantum_all():
         _test_trace_distance,
         _test_schmidt_decomposition,
         _test_correlation_quantum,
+        _test_partial_operation,
         _test_ground_state,
         _test_ising,
         _test_pauli_basis,
@@ -673,6 +674,18 @@ def _test_correlation_quantum():
     assert np.isclose(correlation_quantum(ket('0101 + 1010'), ZZ, ZZ), 0)
     assert np.isclose(correlation_quantum(ket('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
     assert np.isclose(correlation_quantum(dm('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
+
+def _test_partial_operation():
+    U = Fourier_matrix(5)
+    subsystem_state = random_ket(2)
+    env_state = random_ket(3)
+    Kraus = partial_operation(U, [0,1], env_state)
+    assert_kraus(Kraus)
+    # st_expect = partial_trace(U @ np.kron(subsystem_state, env_state), [0,1])
+    # st_actual = sum([K @ dm(subsystem_state) @ K.conj().T for K in Kraus])
+    st_expect = QC(np.kron(subsystem_state, env_state))(U)[0,1]
+    st_actual = QC(subsystem_state)(Kraus)[0,1]
+    assert np.allclose(st_actual, st_expect), f"Partial operation failed: {st_actual} != {st_expect}"
 
 def _test_ground_state():
     H = parse_hamiltonian('ZZII + IZZI + IIZZ', dtype=float)
