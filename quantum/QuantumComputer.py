@@ -396,7 +396,7 @@ class QuantumComputer:
             qubits = self.qubits[qubits]
         elif isinstance(qubits, str) and qubits == 'all':
             qubits = self.original_order
-        elif not isinstance(qubits, (list, tuple, np.ndarray)):
+        elif not isinstance(qubits, (list, tuple, np.ndarray, range)):
             qubits = [qubits]
         qubits = list(qubits)
         assert len(qubits) > 0, "No qubits provided"
