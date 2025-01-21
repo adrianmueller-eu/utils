@@ -158,9 +158,11 @@ def state_trace(state, retain_qubits, reorder=True):
 
     cur = 0
     for i in range(n):
-        if i not in retain_qubits:
+        if cur not in retain_qubits:
             state = np.sum(state, axis=cur)
             probs = np.sum(probs, axis=cur)
+            # shift unvisited qubits to the left
+            retain_qubits = [q-1 if q > cur else q for q in retain_qubits]
         else:
             cur += 1
 
