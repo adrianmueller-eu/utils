@@ -551,11 +551,11 @@ def pauli_decompose(H, eps=1e-5):
 ### Random ###
 ##############
 
-def random_vec(size, params=(0,1), complex=False, kind='uniform'):
-    if kind == 'uniform':
-        rng = np.random.uniform
-    elif kind == 'normal':
+def random_vec(size, params=(0,1), complex=False, kind='normal'):
+    if kind == 'normal':
         rng = np.random.normal
+    elif kind == 'uniform':
+        rng = np.random.uniform
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
     if complex:
