@@ -718,12 +718,12 @@ def print_energies_and_state(H, accuracy=5, r=None, energy_filter=None):
         eigvecs = eigvecs[:,mask]
 
     if r is None:
-        print(f"Energy\t\tEigenstate")
+        print(f"Energy" + " "*(accuracy - 9) + "\t\tEigenstate")
         for i, e in enumerate(energies):
-            print(f"{e:8.{accuracy}f}\t{unket(eigvecs[:,i])}")
+            print(f"{e:{accuracy+3}.{accuracy}f}  \t{unket(eigvecs[:,i])}")
     else:
-        print(f"Energy\t\tBinary\t\t\tEigenstate")
+        print(f"Energy" + " "*(accuracy - 9) + "\t\tBinary" + " "*(r-2) + "\tEigenstate")
         for i, e in enumerate(energies):
             s = binstr_from_float(e, r, complement=True)
             s = " " + s if s[0] != "-" else s
-            print(f"{e:8.{accuracy}f}\t{s}\t{unket(eigvecs[:,i])}")
+            print(f"{e:{accuracy+3}.{accuracy}f}  \t{s}  \t{unket(eigvecs[:,i])}")
