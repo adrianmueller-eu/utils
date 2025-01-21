@@ -865,6 +865,7 @@ class QuantumComputer:
         return self(Rot(phi, theta, lam), q)
 
     def qft(self, qubits, inverse=False, do_swaps=True):
+        qubits = self._check_qubit_arguments(qubits, False)
         QFT = Fourier_matrix(n=len(qubits), n_is_qubits=True)
         if inverse:
             QFT = QFT.T.conj()  # unitary!
