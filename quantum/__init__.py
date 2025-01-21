@@ -230,10 +230,10 @@ def _test_random_ket():
     psi = random_ket(n_qubits)
     assert psi.shape == (2**n_qubits,)
     assert np.isclose(np.linalg.norm(psi), 1)
-    kets = random_kets(5, 1)
+    kets = random_ket(5, 1)
     assert kets.shape == (1, 2**5)
     assert np.isclose(np.linalg.norm(kets[0]), 1)
-    kets = random_kets(2, 1000)
+    kets = random_ket(2, 1000)
     assert kets.shape == (1000, 2**2)
     assert np.allclose(np.linalg.norm(kets, axis=1), 1)
     # check the kets are haar distributed
@@ -540,7 +540,7 @@ def _test_partial_trace():
     assert np.allclose(rho_tr, rho), f"rho_tr = {rho_tr} ≠ rho = {rho}"
 
     # batch dimension
-    kets = random_kets(3, 10)
+    kets = random_ket(3, 10)
     rhos = partial_trace(kets, [0,1])
     assert np.allclose(np.trace(rhos, axis1=-2, axis2=-1), np.ones(10))
     rhos_rev  = partial_trace(kets, [1,0], reorder=True)
