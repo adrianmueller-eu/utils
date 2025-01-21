@@ -2,6 +2,7 @@ import psutil
 import numpy as np
 import matplotlib.pyplot as plt
 from math import log2
+from functools import reduce
 try:
     from scipy.linalg import eigh
 except:
@@ -367,14 +368,29 @@ def ket(specification, n=None, check=1):
         if specification == "random":
             return random_ket(n)
         # handle some special cases: |+>, |->, |i>, |-i>
-        if specification == "+":
-            return normalize(np.array([1,1], dtype=complex))
-        elif specification == "-":
-            return normalize(np.array([1,-1], dtype=complex))
-        elif specification == "i":
-            return normalize(np.array([1,1j], dtype=complex))
-        elif specification == "-i":
-            return normalize(np.array([1,-1j], dtype=complex))
+        if specification in ["+", "-", "i", "-i", "0", "1"]:
+            if n == None:
+                n = 1
+            if specification == "+":
+                return np.ones(2**n)/2**(n/2)
+            elif specification == "-":
+                s = [1,-1]
+            elif specification == "i":
+                s = [1,1j]
+            elif specification == "-i":
+                s = [1,-1j]
+            elif specification == "0":
+                s = np.zeros(2**n)
+                s[0] = 1
+                return s
+            elif specification == "1":
+                s = np.zeros(2**n)
+                s[-1] = 1
+                return s
+            else:
+                raise ValueError(f"WTF-Error: {specification}")
+            s = normalize(s)
+            return reduce(np.kron, [s]*n)
 
         # remove whitespace
         specification = specification.replace(" ", "")
