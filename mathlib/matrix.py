@@ -299,15 +299,41 @@ def trace_product(A, B):
 
 hilbert_schmidt_product = trace_product
 
+def spectral_norm(A):
+    """Spectral norm or Schatten ∞-norm of a matrix."""
+    return max(svd(A, compute_uv=False))
+    return np.linalg.norm(A, ord=2)
+
+def spectral_radius(A, is_hermitian=False):
+    """Spectral radius of a matrix."""
+    if is_hermitian:
+        return max(np.abs(eigvalsh(A)))
+    return max(np.abs(eigvals(A)))
+
+def Schatten_norm(A, p):
+    """Schatten norm of a matrix."""
+    return sum(svd(A, compute_uv=False)**p)**(1/p)
+
+def Lpq_norm(A, p, q):
+    """L_{p,q} norm of a matrix."""
+    return sum(sum(np.abs(A)**p)**(q/p))**(1/q)
+
 def trace_norm(A):
-    """Trace norm or nuclear norm of a matrix."""
+    """Trace norm, nuclear norm, or Schatten 1-norm of a matrix."""
+    return sum(svd(A, compute_uv=False))  # Schatten 1-norm
     return np.linalg.norm(A, ord='nuc')
-    # return np.trace(matsqrt(A.T.conj() @ A))
+    return np.trace(matsqrt(A.T.conj() @ A))
+
+nuclear_norm = trace_norm
 
 def frobenius_norm(A):
-    """Frobenius norm or Hilbert-Schmidt norm of a matrix."""
-    return np.linalg.norm(A, ord='fro')
-    # return np.sqrt(np.trace(A.T.conj() @ A))
+    """Frobenius norm, Hilbert-Schmidt, L_{2,2} or Schatten 2-norm of a matrix."""
+    return np.linalg.norm(A)           # defaults to Frobenius norm (ord='fro')
+    return sqrt(np.sum(np.abs(A)**2))  # L_{2,2} norm
+    return Schatten_norm(A, 2)         # Schatten 2-norm
+    return sqrt(trace_product(A, A))   # Hilbert-Schmidt norm
+
+hilbert_schmidt_norm = frobenius_norm
 
 def polar(A, kind='right', hermitian=False, force_svd=False):
     """
