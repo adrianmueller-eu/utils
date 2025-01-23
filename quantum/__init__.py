@@ -38,7 +38,7 @@ def test_quantum_all():
         _test_reverse_qubit_order,
         _test_partial_trace,
         _test_ket_unket,
-        _test_dm,
+        _test_op_dm,
         _test_is_ket,
         _test_is_dm,
         _test_is_eigenstate,
@@ -215,14 +215,15 @@ def _test_ket_unket():
     psi = random_ket(2)
     max_time = 0.01
     start = time.time()
-    for _ in range(60):
-        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/60)"
+
+    for _ in range(150):
+        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/150)"
         for _ in range(100):
             ket(psi, check=0)
 
     start = time.time()
-    for _ in range(15):
-        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/15)"
+    for _ in range(30):
+        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/30)"
         for _ in range(100):
             ket(psi, check=1)
 
@@ -240,41 +241,26 @@ def _test_random_ket():
     # check the kets are haar distributed
     assert allclose0(np.mean(kets, axis=0), tol=0.05)
 
-def _test_dm():
+def _test_op_dm():
+    assert np.allclose(op(0),   [[1,0], [0,0]])
     assert np.allclose(dm(0),   [[1,0], [0,0]])
-    assert np.allclose(dm(0,1), [[0,1], [0,0]])
-    assert np.allclose(dm(1,0), [[0,0], [1,0]])
+    assert np.allclose(op(0,1), [[0,1], [0,0]])
+    assert np.allclose(op(1,0), [[0,0], [1,0]])
+    assert np.allclose(op(1),   [[0,0], [0,1]])
     assert np.allclose(dm(1),   [[0,0], [0,1]])
-    O = dm(0,3,n=2)
+    O = op(0,3,n=2)
     assert O.shape[0] == O.shape[1]
     # dm should be fast enough to return already-density-matrices 1000 times in negligible time
     import time
     rho = random_dm(2)
     max_time = 0.01
 
-    start = time.time()
-    for _ in range(3):
-        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/3)"
-        for _ in range(100):
-            dm(rho, check=3)
-
-    start = time.time()
-    for _ in range(5):
-        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/5)"
-        for _ in range(100):
-            dm(rho, check=2)
-
-    start = time.time()
-    for _ in range(15):
-        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/15)"
-        for _ in range(100):
-            dm(rho, check=1)
-
-    start = time.time()
-    for _ in range(25):
-        assert time.time() - start < max_time, f"dm is too slow (iteration {_}/25)"
-        for _ in range(100):
-            dm(rho, check=0)
+    for n, level in zip([3,10,40,40], [3,2,1,0]):
+        start = time.time()
+        for _ in range(n):
+            assert time.time() - start < max_time, f"dm is too slow (iteration {_}/{n})"
+            for _ in range(100):
+                dm(rho, check=level)
 
 def _test_is_ket():
     assert is_ket([1,0,0,0])

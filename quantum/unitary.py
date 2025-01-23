@@ -7,7 +7,7 @@ except ImportError:
     from numpy.linalg import eig, eigh
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
-from .state import ket, dm, count_qubits, plotQ, reverse_qubit_order, transpose_qubit_order
+from .state import ket, op, count_qubits, plotQ, reverse_qubit_order, transpose_qubit_order
 from ..mathlib import is_unitary, is_hermitian, pauli_decompose
 from ..utils import is_int
 
@@ -38,9 +38,9 @@ def parse_unitary(unitary, check=2):
         for c in chunk:
             # positive and negative controls
             if c == "C":
-                gate = dm(1)
+                gate = op(1)
             elif c == "N":
-                gate = dm(0)
+                gate = op(0)
             # single-qubit gates
             elif c == "T":
                     gate = T_gate
@@ -61,7 +61,7 @@ def parse_unitary(unitary, check=2):
                 if c == "C" or c == "N":
                     part_matrix = np.kron(part_matrix, I_(no_control))
                     no_control = 0
-                    on, off = (dm(1), dm(0)) if c == "C" else (dm(0), dm(1))
+                    on, off = (op(1), op(0)) if c == "C" else (op(0), op(1))
                     chunk_matrix += np.kron(part_matrix, np.kron(off, I_(n-i-1)))
                     part_matrix = np.kron(part_matrix, on)
                 else:

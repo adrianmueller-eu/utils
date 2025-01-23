@@ -11,7 +11,7 @@ except:
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
 from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec
 from ..plot import colorize_complex
-from ..prob import random_p
+from ..prob import random_p, check_probability_distribution
 
 def transpose_qubit_order(state, new_order, assume_square=True):
     state = np.asarray(state)
@@ -230,7 +230,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
             ax.set_yticks(range(rho.shape[0]), basis)
             ax.tick_params(axis="x", rotation=45)
 
-    state = ket(state)
+    state = ket(state, renormalize=False)
 
     # trace out unwanted qubits
     if showqubits is None:
@@ -351,18 +351,17 @@ def ket_from_int(d, n=None):
     res[d] = 1
     return res
 
-def ket(specification, n=None, check=1):
+def ket(specification, n=None, renormalize=False, check=1):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number 
     or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
         n = n or count_qubits(specification) or 1
-        if hasattr(specification, 'shape'):
-            assert specification.shape == (2**n,), f"State vector has wrong shape for {n} qubits: {specification.shape} ≠ {(2**n,)}!"
-        else:
-            assert len(specification) == 2**n, f"State vector has wrong size for {n} qubits: {len(specification)} ≠ {2**n}!"
-        if check >= 1:
+        specification = np.asarray(specification)
+        if len(specification.shape) == 1 and renormalize:
             return normalize(specification)
+        if check >= 1:
+            assert_ket(specification, n)
         return np.asarray(specification)
     if is_int(specification):
         return ket_from_int(specification, n)
@@ -501,51 +500,63 @@ def unket(state, as_dict=False, prec=5):
             res += [f"{weight}*({'+'.join(weights[weight])})"]
     return "+".join(res).replace("+-", "-")
 
-def dm(specification1, specification2=None, n=None, check=2, obs=None):
+def op(specification1, specification2=None, n=None, check=1):
     """
-    Convenience function to generate or verify a density matrix. Also allows to generate other operators, e.g. `dm(0, 1)`.
-    Check level only relevant if a matrix or observable is given.
+    Generate an operator from two state vectors. If only one state vector is given, it will be used for both.
     """
-    # If it's already a matrix, ensure it's a density matrix and return it
-    if isinstance(specification1, (list, np.ndarray)):
-        specification1 = np.asarray(specification1)
-        if len(specification1.shape) > 1:
-            n = n or count_qubits(specification1) or 1
-            assert specification1.shape == (2**n, 2**n), f"Matrix has wrong shape for {n} qubits: {specification1.shape} ≠ {(2**n, 2**n)}"
-            if check >= 1:
-                sp1_trace = np.trace(specification1)
-                # trace normalize it only if it's not already
-                if not abs(sp1_trace - 1) < 1e-8:
-                    specification1 = specification1 / sp1_trace
-            assert_dm(specification1, check=check)
-            return specification1
-    elif specification2 is None:
-        if specification1 == 'random' or specification1 == 'random_mixed' or specification1 == 'random_dm':
-            return random_dm(n, rank='full')
-        elif specification1 == 'random_pure':
-            specification1 = 'random'
-
-    s1 = ket(specification1, n, check=check)
-    if obs is not None:
-        if check >= 2:
-            assert is_hermitian(obs), "The given observable is not Hermitian"
-        U = eigh(obs)[1]
-        s1 = U @ s1
     if specification2 is None:
-        s2 = s1
+        s2 = s1 = ket(specification1, n=n, renormalize=True, check=check)
     else:
-        s2 = ket(specification2, n or count_qubits(s1), check=check)
-        if obs is not None:
-            s2 = U @ s2
+        if is_int(specification1) and is_int(specification2):
+            n = n or int(np.ceil(np.log2(max(specification1, specification2)+1))) or 1
+        s1 = ket(specification1, n=n, renormalize=True, check=check)
+        s2 = ket(specification2, n=n or count_qubits(s1), renormalize=True, check=check)
 
     return np.outer(s1, s2.conj())
 
-def as_state(state, check=2):
+def dm(kets, p=None, n=None, renormalize=False, check=3):
+    """
+    Generate a density matrix from a list of state vectors and probabilities.
+    """
+    if isinstance(kets, (list, np.ndarray)):
+        kets = np.asarray(kets)
+        assert len(kets.shape) < 3, f"Invalid shape for state vectors: {kets.shape}"
+        if kets.shape[0] == 1 or (len(kets.shape) == 2 and kets.shape[1] == 1):
+            kets = kets.ravel()
+        if len(kets.shape) == 2:
+            if p is None:
+                assert kets.shape[0] == kets.shape[1], f"More than 1 ket given, but no probabilities"
+                rho = kets
+                if renormalize:
+                    rho_tr = np.trace(rho)
+                    if not abs(rho_tr - 1) < 1e-8:
+                        rho = rho / rho_tr
+                assert_dm(rho, n, check=check)
+                return rho
+            assert kets.shape[0] == p.shape[0] or kets.shape[1] == p.shape[0], f"Compatible shapes for state vectors and probabilities: {kets.shape} <≠> {p.shape}"
+            p = check_probability_distribution(p, check=check)
+            if kets.shape[0] != p.shape[0]:
+                kets = kets.T
+            if check >= 1:
+                for k in kets:
+                    assert_ket(k, n)
+            rho = kets @ (p[:,None] * kets.conj().T)
+            return rho
+    elif isinstance(kets, str):
+        if kets in ['random', 'random_dm']:
+            return random_dm(n, rank='full')
+        elif kets == 'random_pure':
+            kets = 'random'
+
+    psi = ket(kets, n, renormalize=renormalize, check=check)
+    return np.outer(psi, psi.conj())
+
+def as_state(state, renormalize=True, check=2):
     try:
-        return ket(state, check=check)
+        return ket(state, renormalize=renormalize, check=check)
     except:
         pass
-    return dm(state, check=check)
+    return dm(state, renormalize=renormalize, check=check)
 
 def ev(obs, state, check=2):
     if check >= 2:
@@ -560,11 +571,11 @@ def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
     return np.abs(state)**2
 
-def is_ket(psi, print_errors=True):
+def is_ket(psi, n=None, print_errors=True):
     """Check if `ket` is a valid state vector."""
-    return is_from_assert(assert_ket, print_errors)(psi)
+    return is_from_assert(assert_ket, print_errors)(psi, n)
 
-def assert_ket(psi):
+def assert_ket(psi, n=None):
     """ Check if `ket` is a valid state vector. """
     if isinstance(psi, str):
         try:
@@ -572,24 +583,24 @@ def assert_ket(psi):
         except Exception as e:
             assert False, f"Invalid state vector: {psi}\n{e.__class__.__name__}: {e}"
     psi = np.asarray(psi, dtype=complex)
-    n = count_qubits(psi)
+    n = n or count_qubits(psi)
     assert len(psi.shape) == 1 and psi.shape[0] == 2**n, f"Invalid state vector shape: {psi.shape} ≠ {(2**n,)}"
     assert abs(np.linalg.norm(psi) - 1) < 1e-10, f"State vector is not normalized: {np.linalg.norm(psi)}"
 
-def is_dm(rho, print_errors=True, check=3):
+def is_dm(rho, n=None, print_errors=True, check=3):
     """Check if matrix `rho` is a density matrix."""
-    return is_from_assert(assert_dm, print_errors)(rho, check)
+    return is_from_assert(assert_dm, print_errors)(rho, n, check)
 
-def assert_dm(rho, check=3):
+def assert_dm(rho, n=None, check=3):
     """ Check if matrix `rho` is a density matrix. """
     if isinstance(rho, (int, str)):
         try:
-            rho = dm(rho, check=0)
+            rho = dm(rho, renormalize=False, check=0)
         except Exception as e:
             assert False, f"Invalid density matrix: {rho}\n{e.__class__.__name__}: {e}"
     rho = np.asarray(rho, dtype=complex)
     assert len(rho.shape) == 2 and rho.shape[0] == rho.shape[1], f"Invalid density matrix shape: {rho.shape}"
-    n = count_qubits(rho)
+    n = n or count_qubits(rho)
     assert rho.shape[0] == 2**n, f"Invalid density matrix shape: {rho.shape} should be a power of 2"
     assert abs(np.trace(rho) - 1) < 1e-10, f"Density matrix is not normalized: {np.trace(rho)}"
     assert is_psd(rho, check=check), "Density matrix is not positive semi-definite"
