@@ -302,7 +302,7 @@ class QuantumComputer:
             if self.is_matrix_mode():
                 new_state = dm(state, n=len(qubits), check=self.check_level)
             else:
-                new_state = ket(state, n=len(qubits))
+                new_state = ket(state, n=len(qubits), check=self.check_level)
 
         if qubits == self.qubits:
             self.state = new_state
@@ -939,7 +939,7 @@ class QuantumComputer:
             except:
                 raise ValueError(f"Can't process unitary of type {type(U)}: {U}")
         if check >= 2:
-            assert is_unitary(U), f"Unitary is not unitary: {U}"
+            assert is_unitary(U), f"Matrix is not unitary: {U}"
         if n_qubits is not None:
             n_U = count_qubits(U)
             assert n_U == n_qubits or n_U == 1, f"Unitary has {n_U} qubits, but {n_qubits} qubits were provided"
