@@ -44,6 +44,7 @@ def smallest_prime_factor(n, start=3):
         return None
     if n % 2 == 0:
         return 2
+    # assert start % 2 == 1, f"start must be odd, but was {start}"
     for i in range(start, int(n**0.5) + 1, 2):
         if n % i == 0:
             return i
@@ -109,12 +110,14 @@ if not sage_loaded:
 
     def prime_factors(n):
         """ Simple algorithm to find prime factors. """
-        factors, p = [], 2
+        if n < 2:
+            return []
+        factors, p, n = [], 2, int(n)
         while True:
             p = smallest_prime_factor(n, start=max(3, p))
-            if p is None:
-                break
             factors.append(p)
+            if p == n:
+                break
             n //= p
         return factors
 
