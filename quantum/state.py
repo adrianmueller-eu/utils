@@ -32,7 +32,7 @@ def transpose_qubit_order(state, new_order, assume_square=True):
     batch_shape = list(batch_shape)
 
     # parse new_order
-    if new_order == -1:
+    if isinstance(new_order, int) and new_order == -1:
         new_order = list(range(n)[::-1])
     else:
         new_order = list(new_order)
