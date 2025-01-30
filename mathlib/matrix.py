@@ -299,28 +299,34 @@ def trace_product(A, B):
 
 hilbert_schmidt_product = trace_product
 
-def spectral_norm(A):
+def svs(A, is_hermitian=False):
+    """ Compute the singular values of a matrix. """
+    if is_hermitian:
+        return np.abs(eigvalsh(A))
+    return svd(A, compute_uv=False)
+
+def spectral_norm(A, is_hermitian=False):
     """Spectral norm or Schatten ∞-norm of a matrix."""
-    return max(svd(A, compute_uv=False))
+    return max(svs(A, is_hermitian))
     return np.linalg.norm(A, ord=2)
 
 def spectral_radius(A, is_hermitian=False):
     """Spectral radius of a matrix."""
     if is_hermitian:
-        return max(np.abs(eigvalsh(A)))
+        return max(svs(A, True))
     return max(np.abs(eigvals(A)))
 
-def Schatten_norm(A, p):
+def Schatten_norm(A, p, is_hermitian=False):
     """Schatten norm of a matrix."""
-    return sum(svd(A, compute_uv=False)**p)**(1/p)
+    return sum(svs(A, is_hermitian)**p)**(1/p)
 
 def Lpq_norm(A, p, q):
     """L_{p,q} norm of a matrix."""
     return sum(sum(np.abs(A)**p)**(q/p))**(1/q)
 
-def trace_norm(A):
+def trace_norm(A, is_hermitian=False):
     """Trace norm, nuclear norm, or Schatten 1-norm of a matrix."""
-    return sum(svd(A, compute_uv=False))  # Schatten 1-norm
+    return sum(svs(A, is_hermitian))  # Schatten 1-norm
     return np.linalg.norm(A, ord='nuc')
     return np.trace(matsqrt(A.T.conj() @ A))
 
