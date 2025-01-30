@@ -10,7 +10,7 @@ except ImportError:
 from .constants import *
 from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, is_dm, as_state
 from .hamiltonian import parse_hamiltonian
-from .info import von_neumann_entropy, schmidt_decomposition, mutual_information_quantum, correlation_quantum, is_kraus
+from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag
 from ..plot import imshow
@@ -493,7 +493,7 @@ class QuantumComputer:
         rho = self.get_state(qubits)
         if len(rho.shape) == 1:
             return True
-        return np.isclose(np.trace(rho @ rho), 1)
+        return np.isclose(self.purity(), 1)
 
     def rank(self, qubits='all', obs=None):
         qubits = self._check_qubit_arguments(qubits, False)
@@ -608,35 +608,6 @@ class QuantumComputer:
             return std, m1
         return std
 
-    def von_neumann_entropy(self, qubits='all', obs=None):
-        """
-        Calculate the von Neumann entropy of the reduced density matrix of the given qubits.
-        """
-        state = self.get_state(qubits, obs)
-        return von_neumann_entropy(state, check=0)
-
-    def entanglement_entropy(self, qubits, obs=None):
-        """
-        Calculate the entanglement entropy of the given qubits with respect to the rest of the system.
-
-        Alias for `von_neumann_entropy(qubits)`.
-        """
-        with self.observable(obs, qubits) as qubits:
-            if len(qubits) == self.n:
-                raise ValueError("Entanglement entropy requires a bipartition of the qubits")
-            return self.von_neumann_entropy(qubits)
-
-    def _entanglement_entropy_gen(self, qubits='all', obs=None):
-        """
-        Calculate the entanglement entropy of all bipartitions.
-        """
-        with self.observable(obs, qubits) as qubits:
-            if len(qubits) == 1:
-                print("No bipartitions can be generated from a single qubit")
-                return
-            for i, o in bipartitions(qubits, unique=self.is_pure()):
-                yield i, o, self.entanglement_entropy(i)
-
     def _gen_pp(self, gen, qubits, sort, head, title, formatter):
         qubits = self._check_qubit_arguments(qubits, False)
         if sort == None:
@@ -671,6 +642,35 @@ class QuantumComputer:
             print(f"{' '.join(str(s) for s in part_in)}  |  {' '.join(str(s) for s in part_out)} \t{formatter(c)}")
         return head is None or head > 0
 
+    def von_neumann_entropy(self, qubits='all', obs=None):
+        """
+        Calculate the von Neumann entropy of the reduced density matrix of the given qubits.
+        """
+        state = self.get_state(qubits, obs)
+        return von_neumann_entropy(state, check=0)
+
+    def entanglement_entropy(self, qubits, obs=None):
+        """
+        Calculate the entanglement entropy of the given qubits with respect to the rest of the system.
+
+        Alias for `von_neumann_entropy(qubits)`.
+        """
+        with self.observable(obs, qubits) as qubits:
+            if len(qubits) == self.n:
+                raise ValueError("Entanglement entropy requires a bipartition of the qubits")
+            return self.von_neumann_entropy(qubits)
+
+    def _entanglement_entropy_gen(self, qubits='all', obs=None):
+        """
+        Calculate the entanglement entropy of all bipartitions.
+        """
+        with self.observable(obs, qubits) as qubits:
+            if len(qubits) == 1:
+                print("No bipartitions can be generated from a single qubit")
+                return
+            for i, o in bipartitions(qubits, unique=self.is_pure()):
+                yield i, o, self.entanglement_entropy(i)
+
     def entanglement_entropy_pp(self, qubits='all', sort=None, head=300, precision=7, obs=None):
         qubits = self._check_qubit_arguments(qubits, False)
         gen = self._entanglement_entropy_gen(qubits, obs)
@@ -680,6 +680,20 @@ class QuantumComputer:
         # add full state entropy
         if printed_all:
             print(f"\nFull state (i.e. classical) entropy: {self.von_neumann_entropy(qubits):.{precision}f}".rstrip('0'))
+
+    def purity(self, qubits='all'):
+        return purity(self.get_state(qubits))
+
+    def _purity_gen(self, qubits='all', obs=None):
+        with self.observable(obs, qubits) as qubits:
+            for i, o in bipartitions(qubits, unique=self.is_pure()):
+                yield i, o, self.purity(i)
+
+    def purity_pp(self, qubits='all', sort='in', head=300, precision=7, obs=None):
+        gen = self._purity_gen(qubits, obs)
+        printed_all = self._gen_pp(gen, qubits, sort, head, "Purity", lambda x: f'{x[0]:.{precision}f}'.rstrip('0'))
+        if printed_all:
+            print(f"\nFull state purity: {self.purity():.{precision}f}".rstrip('0'))
 
     def schmidt_decomposition(self, qubits='all', coeffs_only=False, obs=None, filter_eps=1e-10):
         """

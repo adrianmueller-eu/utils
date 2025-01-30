@@ -34,6 +34,15 @@ def mutual_information_quantum(state, subsystem_qubits, check=2):
     S_B = entanglement_entropy(state, B, check=0)
     return S_A + S_B - S_AB
 
+def purity(state):
+    """ Calculate the purity of a quantum state. """
+    if len(state.shape) == 1:
+        return np.abs(state @ state.conj())
+    elif len(state.shape) == 2:
+        return np.trace(state @ state).real
+    else:
+        raise ValueError(f"Can't calculate purity with shape: {state.shape}")
+
 def fidelity(state1, state2, check=1):
     """ Calculate the fidelity between two quantum states. """
     state1 = as_state(state1, check=check)

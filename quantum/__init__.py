@@ -337,6 +337,7 @@ def _test_QuantumComputer():
     qc(I, 0)  # let it reshape to [2,2]
     assert np.allclose(qc[0], I/2)
     assert np.allclose(qc[1], I/2)
+    assert np.isclose(qc.purity(0), 0.5)
     p = qc.probs(obs=XX)  # Bell basis is the basis of XX / YY observable -> deterministic outcome
     assert np.isclose(entropy(p), 0), f"p = {p}"
     with qc.observable(YY):  # test context manager
