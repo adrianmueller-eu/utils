@@ -551,9 +551,10 @@ class QuantumComputer:
                 # construct purification
                 n_ancillas = int(np.ceil(np.log2(len(probs))))
                 ancilla_basis = I_(n_ancillas)
-                new_state = np.zeros(2**(self.n + n_ancillas), dtype=complex)
-                for i, p in enumerate(probs):
-                    new_state += sqrt(p) * np.kron(kets[i], ancilla_basis[i])
+                pkets = np.sqrt(probs)[:, None] * kets
+                # new_state = sum(np.kron(k, a) for k, a in zip(pkets, ancilla_basis))
+                # new_state = np.einsum('ia,ib->ab', pkets, ancilla_basis).reshape(-1)  # even slower!
+                new_state = np.tensordot(pkets, ancilla_basis, axes=(0, 0)).reshape(-1)
 
             # find n_ancillas integers that are not in self.qubits
             ancillas = []
