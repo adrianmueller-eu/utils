@@ -57,6 +57,7 @@ def Rot(phi, theta, lam):
 for i in [2,3]:
     for s, g in zip(itertools.product(['I','X','Y','Z'], repeat=i), itertools.product([I,X,Y,Z], repeat=i)):
         globals()["".join(s)] = reduce(np.kron, g)  # II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ
+del i, s, g
 
 def C_(A, reverse=False, negative=False):
     if not hasattr(A, 'shape'):
