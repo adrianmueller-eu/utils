@@ -512,7 +512,7 @@ class QuantumComputer:
 
         with self.observable(obs):
             if self.is_matrix_mode():
-                if self.n > self.MATRIX_SLOW and is_diag(self.state, eps=0):
+                if self.n > self.MATRIX_SLOW and is_diag(self.state, tol=0):
                     probs = np.diag(self.state).real
                     kets = I_(self.n)
                     return probs, kets
