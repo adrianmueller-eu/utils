@@ -550,7 +550,7 @@ class QuantumComputer:
             else:
                 # construct purification
                 n_ancillas = int(np.ceil(np.log2(len(probs))))
-                ancilla_basis = I_(n_ancillas)
+                ancilla_basis = I_(n_ancillas)[:len(probs)]
                 pkets = np.sqrt(probs)[:, None] * kets
                 # new_state = sum(np.kron(k, a) for k, a in zip(pkets, ancilla_basis))
                 # new_state = np.einsum('ia,ib->ab', pkets, ancilla_basis).reshape(-1)  # even slower!

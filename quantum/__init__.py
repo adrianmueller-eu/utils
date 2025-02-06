@@ -369,6 +369,7 @@ def _test_QuantumComputer():
     assert not qc.is_matrix_mode()
     qc.remove([0])
     qc.remove(1)
+    QC(random_dm(3, rank=3)).purify()
 
     qc = QuantumComputer('00 + 01')
     assert np.allclose(qc.schmidt_coefficients([1]), [1])
