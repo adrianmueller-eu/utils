@@ -311,7 +311,7 @@ def _test_is_unitary():
     A = random_square(randint(2,20), complex=True)
     J = matsqrt(A.T.conj() @ A)
     U = A @ inv(J)  # polar decomposition
-    assert is_unitary(U)
+    assert is_unitary(U, tol=1e-10)
 
     c = a + 1
     assert not is_unitary(c)
