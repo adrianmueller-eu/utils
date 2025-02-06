@@ -149,7 +149,7 @@ def assert_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=Fal
             res = np.trace(K1.conj().T @ K2)
             assert np.abs(res) < 1e-10, f"Operators are not orthogonal: {res}"
 
-def measurement_operator(n, subsystem, outcome):
+def measurement_operator(n, subsystem, outcome, as_matrix=False):
     subsystem = list(subsystem)
     q = len(subsystem)
     assert 0 < q <= n, f"Invalid subsystem: {subsystem}"
@@ -159,7 +159,7 @@ def measurement_operator(n, subsystem, outcome):
     # Pi_order = subsystem + [i for i in range(n) if i not in subsystem]
     # return transpose_qubit_order(Pi, [Pi_order.index(i) for i in range(n)])
 
-    Pi = np.zeros((2**n, 2**n), dtype=complex)
+    Pi = np.zeros(2**n, dtype=complex)  # just store the diagonal
 
     # for i in range(2**n):
     #     subsystem_val = 0
@@ -190,12 +190,14 @@ def measurement_operator(n, subsystem, outcome):
                 full_bits[j] = i_bits[curr_i_bit]
                 curr_i_bit += 1
         idx = int(''.join(full_bits), 2)
-        Pi[idx,idx] = 1
+        Pi[idx] = 1
+    if as_matrix:
+        return np.diag(Pi)
     return Pi
 
-def POVM(n, subsystem):
+def POVM(n, subsystem, as_matrix=False):
     """
     Create the POVM operators for a projective measurement on the given subsystem in the standard basis.
     They form an orthogonal set of orthogonal projectors, as well as a valid quantum channel (Kraus decomposition).
     """
-    return [measurement_operator(n, subsystem, outcome) for outcome in range(2**len(subsystem))]
+    return [measurement_operator(n, subsystem, outcome, as_matrix) for outcome in range(2**len(subsystem))]

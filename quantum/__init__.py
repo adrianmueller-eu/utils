@@ -49,6 +49,7 @@ def test_quantum_all():
         _test_trace_distance,
         _test_schmidt_decomposition,
         _test_correlation_quantum,
+        _test_POVM,
         _test_partial_operation,
         _test_ground_state,
         _test_ising,
@@ -662,6 +663,11 @@ def _test_correlation_quantum():
     assert np.isclose(correlation_quantum(ket('0101 + 1010'), ZZ, ZZ), 0)
     assert np.isclose(correlation_quantum(ket('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
     assert np.isclose(correlation_quantum(dm('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
+
+def _test_POVM():
+    for actual, expected in zip(POVM(2, [0], as_matrix=True), [op('00') + op('01'), op('10') + op('11')]):
+        assert np.allclose(actual, expected), f"actual = {actual} ≠ expected = {expected}"
+    assert np.allclose(measurement_operator(3, [2,1], 3), [0,0,0,1]*2)
 
 def _test_partial_operation():
     U = Fourier_matrix(5)
