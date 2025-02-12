@@ -6,7 +6,7 @@ try:
 except ImportError:
     from numpy.linalg import svd, eigvalsh
 
-from .state import count_qubits, partial_trace, dm, ev, as_state
+from .state import count_qubits, partial_trace, op, dm, ev, as_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0
 from ..prob import entropy
 from ..utils import is_iterable, is_from_assert, is_int
@@ -190,3 +190,9 @@ def POVM(n, subsystem=None, as_matrix=True):
     if subsystem is None:
         subsystem = range(n)
     return [measurement_operator(outcome, n, subsystem, as_matrix) for outcome in range(2**len(subsystem))]
+
+def reset_operator(n, value=0):
+    """
+    Create a set of Kraus operators that reset `n` qubits to `value` in the standard basis.
+    """
+    return [op(value, i, n) for i in range(2**n)]
