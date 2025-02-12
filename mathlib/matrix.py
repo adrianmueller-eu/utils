@@ -62,6 +62,11 @@ def is_involutory(a, tol=1e-12):
         a @ a, np.eye(a.shape[0])
     ), tol)
 
+def is_antiinvolutory(a, tol=1e-12):
+    return _sq_matrix_allclose(a, lambda a: (
+        a @ a, -np.eye(a.shape[0])
+    ), tol)
+
 def is_complex(a):
     if hasattr(a, 'dtype'):
         if a.dtype == complex:
