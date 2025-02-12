@@ -149,55 +149,44 @@ def assert_kraus(operators, n_qubits=None, trace_preserving=True, orthogonal=Fal
             res = np.trace(K1.conj().T @ K2)
             assert np.abs(res) < 1e-10, f"Operators are not orthogonal: {res}"
 
-def measurement_operator(n, subsystem, outcome, as_matrix=False):
+def measurement_operator(outcome, n, subsystem, as_matrix=True):
+    if subsystem is None:
+        subsystem = range(n)
     subsystem = list(subsystem)
     q = len(subsystem)
     assert 0 < q <= n, f"Invalid subsystem: {subsystem}"
     assert is_int(outcome) and 0 <= outcome < 2**q, f"Invalid outcome: {outcome}"
     outcome = int(outcome)
-    # Pi = np.kron(dm(outcome, n=q), I_(n-q))
-    # Pi_order = subsystem + [i for i in range(n) if i not in subsystem]
-    # return transpose_qubit_order(Pi, [Pi_order.index(i) for i in range(n)])
+    Pi = np.zeros((2**q, 2**(n-q)), dtype=complex)  # just the diagonal
+    Pi[outcome] = 1
+    Pi_order = subsystem + [i for i in range(n) if i not in subsystem]
+    Pi_order_inv = [Pi_order.index(i) for i in range(n)]
+    Pi = Pi.reshape([2]*n).transpose(Pi_order_inv).reshape(-1)
 
-    Pi = np.zeros(2**n, dtype=complex)  # just store the diagonal
+    # Pi = np.zeros(2**n, dtype=complex)
+    # outcome_bits = format(outcome, f'0{q}b')
+    # full_bits = ['0']*n
+    # for j, pos in enumerate(subsystem):
+    #     full_bits[pos] = outcome_bits[j]
+    # for i in range(2**(n-q)):
+    #     i_bits = format(i, f'0{n-q}b')
+    #     curr_i_bit = 0
+    #     for j in range(n):
+    #         if j not in subsystem:
+    #             full_bits[j] = i_bits[curr_i_bit]
+    #             curr_i_bit += 1
+    #     idx = int(''.join(full_bits), 2)
+    #     Pi[idx] = 1
 
-    # for i in range(2**n):
-    #     subsystem_val = 0
-    #     for pos in subsystem:
-    #         subsystem_val = (subsystem_val << 1) | (i >> (n-1-pos)) & 1
-    #     if subsystem_val == outcome:
-    #         Pi[i,i] = 1
-    # return Pi
-
-    # outcome = np.array(bincoll_from_int(outcome, q))
-    # powers = 2**np.arange(n)[::-1]
-    # idx_subsystem = outcome @ powers[subsystem]
-    # powers_B = powers[[i for i in range(n) if i not in subsystem]]
-    # for i in shape_it([2]*(n-q)):
-    #     idx = idx_subsystem + i @ powers_B
-    #     Pi[idx,idx] = 1
-    # return Pi
-
-    outcome_bits = format(outcome, f'0{q}b')
-    full_bits = ['0']*n
-    for j, pos in enumerate(subsystem):
-        full_bits[pos] = outcome_bits[j]
-    for i in range(2**(n-q)):
-        i_bits = format(i, f'0{n-q}b')
-        curr_i_bit = 0
-        for j in range(n):
-            if j not in subsystem:
-                full_bits[j] = i_bits[curr_i_bit]
-                curr_i_bit += 1
-        idx = int(''.join(full_bits), 2)
-        Pi[idx] = 1
     if as_matrix:
         return np.diag(Pi)
     return Pi
 
-def POVM(n, subsystem, as_matrix=False):
+def POVM(n, subsystem=None, as_matrix=True):
     """
     Create the POVM operators for a projective measurement on the given subsystem in the standard basis.
     They form an orthogonal set of orthogonal projectors, as well as a valid quantum channel (Kraus decomposition).
     """
-    return [measurement_operator(n, subsystem, outcome, as_matrix) for outcome in range(2**len(subsystem))]
+    if subsystem is None:
+        subsystem = range(n)
+    return [measurement_operator(outcome, n, subsystem, as_matrix) for outcome in range(2**len(subsystem))]
