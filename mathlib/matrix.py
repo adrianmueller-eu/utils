@@ -653,7 +653,7 @@ def random_normal(size, params=(0,1), complex=True):
 
 def random_projection(size, rank=None, orthogonal=True, complex=True):
     if rank is None:
-        rank = np.random.randint(1, size+orthogonal)  # rank == n is always orthogonal (identity)
+        rank = np.random.randint(1, size) #+orthogonal)  # rank == n is always orthogonal (identity)
     else:
         rank = min(rank, size)
 
