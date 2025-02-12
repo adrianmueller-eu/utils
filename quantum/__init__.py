@@ -667,7 +667,7 @@ def _test_correlation_quantum():
 def _test_POVM():
     for actual, expected in zip(POVM(2, [0], as_matrix=True), [op('00') + op('01'), op('10') + op('11')]):
         assert np.allclose(actual, expected), f"actual = {actual} ≠ expected = {expected}"
-    assert np.allclose(measurement_operator(3, [2,1], 3), [0,0,0,1]*2)
+    assert np.allclose(measurement_operator(3, 3, [2,1], as_matrix=False), [0,0,0,1]*2)
 
 def _test_partial_operation():
     U = Fourier_matrix(5)
