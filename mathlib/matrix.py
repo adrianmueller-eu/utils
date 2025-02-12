@@ -210,7 +210,7 @@ def sinv(A, likely_singular=False, tol=1e-12):
             print(f"inv failed! {np.max(np.abs(diff))}")
         except:
             print("inv failed!")
-            # not square or singular
+            # singular or not square
             pass
     return pinv(A)
 
