@@ -584,6 +584,10 @@ def pauli_decompose(H, eps=1e-5):
 
     return coeffs, obs_lst
 
+def str_from_pauli(coeffs, obs_lst, precision=5):
+    """ Convert a Pauli decomposition to a string. """
+    return ' + '.join([f"{coeff:.{precision}f}*{obs}" for coeff, obs in zip(coeffs, obs_lst)])
+
 ##############
 ### Random ###
 ##############
