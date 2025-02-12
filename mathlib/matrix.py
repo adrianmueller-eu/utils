@@ -611,18 +611,38 @@ def random_square(size, params=(0,1), complex=False, kind='normal'):
     return random_vec(size, params=params, complex=complex, kind=kind)
 
 def random_symmetric(size, params=(0,1)):
-    a = random_square(size, params=params)
-    return (a + a.T)/2
+    """
+    Sample a random symmetric matrix from the Gaussian Orthogonal Ensemble (GOE).
+    """
+    a = np.diag(random_vec(size, params=params, complex=False))
+    a[np.triu_indices(size, 1)] = random_vec(size*(size-1)//2, params=params, complex=False)
+    a[a == 0] = a.T[a == 0]
+    return a
 
 def random_orthogonal(size, params=(0,1)):
+    """
+    Sample a random orthogonal matrix according to the real Haar measure.
+    """
     a = random_square(size, params=params, complex=False)
     return np.linalg.qr(a)[0]
 
 def random_hermitian(size, params=(0,1)):
-    a = random_square(size, params=params, complex=True)
-    return (a + a.conj().T)/2
+    """
+    Sample a random Hermitian matrix from the Gaussian Unitary Ensemble (GUE).
+    """
+    a = np.diag(random_vec(size, params=params, complex=False).astype(complex))
+    params = (params[0], params[1]/sqrt(2))  # 2 dof for each off-diagonal element
+    a[np.triu_indices(size, 1)] = random_vec(size*(size-1)//2, params=params, complex=True)
+    a[a == 0] = a.T.conj()[a == 0]
+    return a  # (a + a.T.conj())/2 is both slower and non-GUE
 
 def random_unitary(size, kind='haar'):
+    """
+    Sample a random unitary.
+    `kind = 'haar'` samples from the complex Haar measure (default).
+    `kind = 'hermitian'` samples a GUE matrix and returns `exp(1j*H)`.
+    `kind = 'polar'` is the fastest for very small matrices.
+    """
     if kind == 'haar':
         A = random_square(size, complex=True, kind='normal')
         Q, R = np.linalg.qr(A)
@@ -651,30 +671,40 @@ def random_normal(size, params=(0,1), complex=True):
     D = random_vec(U.shape[0], params=params, complex=complex, kind='normal')
     return U @ (D[:,None] * U.conj().T)
 
-def random_projection(size, rank=None, orthogonal=True, complex=True):
+def random_projection(size, rank=None, orthogonal=True, complex=True, kind='fast'):
+    """
+    Sample a random projection matrix P^2 = P. If `orthogonal = True`, the sample is also hermitian.
+    `kind = uniform` samples uniformly from the space of projectors (only implemented for orthogonal projections).
+    `kind = 'fast'` is faster, especially for rank << size (default).
+    """
     if rank is None:
         rank = np.random.randint(1, size) #+orthogonal)  # rank == n is always orthogonal (identity)
     else:
         rank = min(rank, size)
 
-    # if orthogonal:
-    #     # P^2 = P and P = P^H
-    #     U = random_unitary(size)
-    #     D = np.random.permutation([1]*rank + [0]*(size-rank))
-    #     return U @ (D[:,None] * U.conj().T)
-    # else:
-    #     # P^2 = P, but almost never P = P^H
-    #     A = random_square(size, complex=True)
-    #     D = np.random.permutation([1]*rank + [0]*(size-rank))
-    #     return A @ (D[:,None] * inv(A))
-
-    # much faster for rank << size
-    A = random_vec((size, rank), complex=complex)
-    if orthogonal:
-        B = A.conj().T
+    if kind == 'fast':
+        # much faster for rank << size
+        A = random_vec((size, rank), complex=complex)
+        if orthogonal:
+            B = A.conj().T
+        else:
+            B = random_vec((rank, size), complex=complex)
+        return A @ sinv(B @ A, tol=size*1e-9) @ B
+    elif kind == 'uniform':
+        if orthogonal:
+            # P^2 = P and P = P^H
+            if complex:
+                U = random_unitary(size)
+            else:
+                U = random_orthogonal(size)
+            D = np.random.permutation([1]*rank + [0]*(size-rank))
+            return U @ (D[:,None] * U.conj().T)
+        else:
+            # only P^2 = P
+            warnings.warn("Uniform sampling from non-orthogonal projections is not implemented. Falling back to kind='fast'.")
+            return random_projection(size, rank=rank, orthogonal=orthogonal, complex=complex, kind='fast')
     else:
-        B = random_vec((rank, size), complex=complex)
-    return A @ sinv(B @ A, tol=size*1e-9) @ B
+        raise ValueError(f"Unknown kind '{kind}'.")
 
 def random_involutory(size):
     P = random_projection(size, orthogonal=True, complex=True)
