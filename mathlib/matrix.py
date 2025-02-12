@@ -675,3 +675,7 @@ def random_projection(size, rank=None, orthogonal=True, complex=True):
     else:
         B = random_vec((rank, size), complex=complex)
     return A @ sinv(B @ A, tol=size*1e-9) @ B
+
+def random_involutory(size):
+    P = random_projection(size, orthogonal=True, complex=True)
+    return 2*P - np.eye(size)
