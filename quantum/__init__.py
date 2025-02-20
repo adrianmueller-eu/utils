@@ -788,7 +788,7 @@ def _test_pauli_basis():
     # check normalization
     pauli_n_norm = pauli_basis(n, kind='np', normalize=True)
     for i, A in enumerate(pauli_n_norm):
-        assert np.isclose(np.linalg.norm(A), 1), f"Generator {i} does not have norm 1!"
+        assert np.isclose(np.linalg.norm(A), 1), f"Generator {i} does not have norm 1! {n, np.linalg.norm(A)}"
 
     # check string representation
     pauli_n_str = pauli_basis(n, kind='str')
@@ -796,7 +796,7 @@ def _test_pauli_basis():
 
     # check if all generators are the same
     for i, (A,B) in enumerate(zip(pauli_n, pauli_n_str)):
-        assert np.allclose(A, parse_hamiltonian(B)), f"Generator {i} is not the same!"
+        assert np.allclose(A, parse_hamiltonian(B)), f"Generator {i} is not the same!\n{A}\n≠\n{parse_hamiltonian(B)}"
 
     # check sparse representation
     pauli_n_sp = pauli_basis(n, kind='sp')
