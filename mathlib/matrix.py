@@ -11,7 +11,7 @@ except ImportError:
 
 from .basic import series, sequence
 from ..models import Polynomial
-from ..utils import is_int, is_iterable
+from ..utils import is_int, is_iterable, duh
 
 sage_loaded = False
 try:
@@ -532,26 +532,26 @@ def pauli_basis(n, kind='np', normalize=False):
     Returns
         list[ np.ndarray | scipy.sparse.csr_matrix | str ]: The pauli basis
     """
-    def reduce_norm(f, l, normalize):
+
+    def generate_recursive(stubs, n, basis, extend_fn, normalize=False):
         if normalize:
-            # apply norm sqrt(2**n) to the first element, and reduce the rest
-            first = l[0]/sqrt(2**n)
-            if len(l) == 1:
-                return first
-            rest = reduce(f, l[1:])
-            return f(first, rest)
-        else:
-            return reduce(f, l)
+            stubs = [m/sqrt(2**n) for m in stubs]
+        if n <= 1:
+            return stubs
+        return [m for b in basis for m in generate_recursive([extend_fn(b, s) for s in stubs], n-1, basis, extend_fn)]
 
     if kind == 'str':
         norm_str = f"{1/sqrt(2**n)}*" if normalize else ""
         return [norm_str + ''.join(i) for i in itertools.product(['I', 'X', 'Y', 'Z'], repeat=n)]
-    I, X, Y, Z = su(2, True)
+
+    if n >= 8:
+        warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} Pauli basis matrices for n = {n} may take too much memory ({duh(2**(2*n)*2**n*2**n*8)}).", stacklevel=2)
+    basis = su(2, True)
     if kind == 'np':
-        return [reduce_norm(np.kron, i, normalize) for i in itertools.product([I,X,Y,Z], repeat=n)]
+        return generate_recursive(basis, n, basis, extend_fn=np.kron, normalize=normalize)
     elif kind == 'sp':
-        basis = [sp.csr_array(b) for b in [I,X,Y,Z]]
-        return [reduce_norm(sp.kron, i, normalize) for i in itertools.product(basis, repeat=n)]
+        basis = [sp.csr_array(b) for b in basis]
+        return generate_recursive(basis, n, basis, extend_fn=sp.kron, normalize=normalize)
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
