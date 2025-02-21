@@ -568,7 +568,10 @@ def ev(obs, state, check=2):
     return trace_product(obs, state).real
 
 def probs(state):
-    """Calculate the probabilities of measuring a state vector in the standard basis."""
+    """ Probabilities of outcomes (vector or density matrix) when measuring in the standard basis."""
+    state = np.asarray(state)
+    if len(state.shape) == 2:
+        return np.diag(state).real
     return np.abs(state)**2
 
 def is_ket(psi, n=None, print_errors=True):
