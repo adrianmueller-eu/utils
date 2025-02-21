@@ -770,25 +770,25 @@ def _test_pauli_basis():
 
     # check if no two generators are the same
     for i, (A,B) in enumerate(itertools.combinations(pauli_n,2)):
-        assert not np.allclose(A, B), f"Pair {i} is not different!"
+        assert not np.allclose(A, B), f"Pair {i} (n = {n}) is not different!"
 
     # check if all generators except of the identity are traceless
     assert np.allclose(pauli_n[0], np.eye(2**n)), "First generator is not the identity!"
     for i, A in enumerate(pauli_n[1:]):
-        assert np.isclose(np.trace(A), 0), f"Generator {i} is not traceless!"
+        assert np.isclose(np.trace(A), 0), f"Generator {i} (n = {n}) is not traceless!"
 
     # check if all generators are Hermitian
     for i, A in enumerate(pauli_n):
-        assert is_hermitian(A), f"Generator {i} is not Hermitian!"
+        assert is_hermitian(A), f"Generator {i} (n = {n}) is not Hermitian!"
 
     # check if all generators are orthogonal
     for i, (A,B) in enumerate(itertools.combinations(pauli_n,2)):
-        assert np.allclose(np.trace(A.conj().T @ B), 0), f"Pair {i} is not orthogonal!"
+        assert np.allclose(np.trace(A.conj().T @ B), 0), f"Pair {i} (n = {n}) is not orthogonal!"
 
     # check normalization
     pauli_n_norm = pauli_basis(n, kind='np', normalize=True)
     for i, A in enumerate(pauli_n_norm):
-        assert np.isclose(np.linalg.norm(A), 1), f"Generator {i} does not have norm 1! {n, np.linalg.norm(A)}"
+        assert np.isclose(np.linalg.norm(A), 1), f"Generator {i} (n = {n}) does not have norm 1! {np.linalg.norm(A)}"
 
     # check string representation
     pauli_n_str = pauli_basis(n, kind='str')
@@ -796,7 +796,7 @@ def _test_pauli_basis():
 
     # check if all generators are the same
     for i, (A,B) in enumerate(zip(pauli_n, pauli_n_str)):
-        assert np.allclose(A, parse_hamiltonian(B)), f"Generator {i} is not the same!\n{A}\n≠\n{parse_hamiltonian(B)}"
+        assert np.allclose(A, parse_hamiltonian(B)), f"Generator {i} (n = {n}) is not the same! {B}\n{A}\n≠\n{parse_hamiltonian(B)}"
 
     # check sparse representation
     pauli_n_sp = pauli_basis(n, kind='sp')
@@ -804,7 +804,7 @@ def _test_pauli_basis():
 
     # check if all generators are the same
     for i, (A,B) in enumerate(zip(pauli_n, pauli_n_sp)):
-        assert np.allclose(A, B.todense()), f"Generator {i} is not the same!"
+        assert np.allclose(A, B.todense()), f"Generator {i} (n = {n}) is not the same!"
 
 def _test_pauli_decompose():
     # H_gate = (X+Z)/sqrt(2)
