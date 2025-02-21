@@ -349,10 +349,10 @@ nuclear_norm = trace_norm
 
 def frobenius_norm(A):
     """Frobenius norm, Hilbert-Schmidt, L_{2,2} or Schatten 2-norm of a matrix."""
-    return np.linalg.norm(A)           # defaults to Frobenius norm (ord='fro')
-    return sqrt(np.sum(np.abs(A)**2))  # L_{2,2} norm
-    return Schatten_norm(A, 2)         # Schatten 2-norm
-    return sqrt(trace_product(A, A))   # Hilbert-Schmidt norm
+    return np.linalg.norm(A)                # defaults to Frobenius norm (ord='fro')
+    return sqrt(trace_product(A, A).real)   # Hilbert-Schmidt norm
+    return sqrt(np.sum(np.abs(A)**2))       # L_{2,2} norm
+    return Schatten_norm(A, 2)              # Schatten 2-norm
 
 hilbert_schmidt_norm = frobenius_norm
 
@@ -573,6 +573,7 @@ def pauli_decompose(H, eps=1e-5):
     ([-1.0, -1.5, -0.5, -1.0, -1.5, -1.0, -0.5, 1.0, -0.5, -0.5],
      ['II', 'IX', 'IY', 'IZ', 'XI', 'XX', 'XZ', 'YY', 'ZX', 'ZY'])
     """
+    H = np.asarray(H)
     n = int(log2(H.shape[0]))
     N = 2**n
 
@@ -585,8 +586,7 @@ def pauli_decompose(H, eps=1e-5):
     coeffs = []
 
     for term, basis_matrix in zip(pauli_basis(n, kind='str'), pauli_basis(n, kind='np')):
-        coeff = np.trace(basis_matrix @ H) / N  # project H onto the basis matrix
-        coeff = np.real_if_close(coeff).item()
+        coeff = trace_product(basis_matrix, H).real / N  # project H onto the basis matrix
 
         if abs(coeff) >= eps:
             coeffs.append(coeff)

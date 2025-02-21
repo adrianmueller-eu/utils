@@ -12,7 +12,7 @@ from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, rand
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
-from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag
+from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag, trace_product
 from ..plot import imshow
 from ..utils import is_int, duh
 from ..prob import entropy
@@ -588,7 +588,7 @@ class QuantumComputer:
         state = self.get_state(qubits)
         obs = self.parse_hermitian(obs, len(qubits), check=self.check_level)
         if len(state.shape) == 2:
-            ev = np.trace(state @ obs)
+            ev = trace_product(state, obs)
         else:
             ev = state.conj().T @ obs @ state
         return ev.real
@@ -598,8 +598,8 @@ class QuantumComputer:
         state = self.get_state(qubits)
         obs = self.parse_hermitian(obs, len(qubits), check=self.check_level)
         if len(state.shape) == 2:
-            m1 = np.trace(state @ obs)
-            m2 = np.trace(state @ obs @ obs)
+            m1 = trace_product(state, obs)
+            m2 = trace_product(state, obs @ obs)
         else:
             m1 = state.conj().T @ obs @ state
             m2 = state.conj().T @ obs @ obs @ state

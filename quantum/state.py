@@ -9,7 +9,7 @@ except:
     from numpy.linalg import eigh
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec
+from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
 
@@ -565,7 +565,7 @@ def ev(obs, state, check=2):
         assert_ket(state)
         return (state.conj() @ obs @ state).real
     assert_dm(state, check=check)
-    return np.trace(obs @ state).real
+    return trace_product(obs, state).real
 
 def probs(state):
     """Calculate the probabilities of measuring a state vector in the standard basis."""
@@ -622,8 +622,9 @@ def is_pure_dm(rho, check=3, tol=1e-12):
     if not is_dm(rho, check=check):
         return False
     # return np.linalg.matrix_rank(rho) == 1
-    if check >= 2:
-        return abs(np.trace(rho @ rho) - 1) < tol
+    if check >= 1:
+        return abs(trace_product(rho, rho) - 1) < tol
+    return True
 
 def is_eigenstate(psi, H, tol=1e-10):
     psi = normalize(psi)

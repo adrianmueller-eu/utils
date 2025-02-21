@@ -36,6 +36,7 @@ Level 1: Minimal burden, disable only for high performance
 | allclose0(A) | 1.25
 | norm(A) | 1.3
 | A/1 | 1.4
+| trace_product(A, A) | 2
 | np.abs(A) | 3
 | is_diag(A) | 3.2
 | normalize(A) | 4
