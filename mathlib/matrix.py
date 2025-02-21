@@ -539,11 +539,16 @@ def pauli_basis(n, kind='np', normalize=False):
             stubs = [m/sqrt(2**n) for m in stubs]
         if n <= 1:
             return stubs
-        return [m for b in basis for m in generate_recursive([extend_fn(b, s) for s in stubs], n-1, basis, extend_fn)]
+        return [m for s in stubs for m in generate_recursive([extend_fn(s, b) for b in basis], n-1, basis, extend_fn)]
 
     if kind == 'str':
         norm_str = f"{1/sqrt(2**n)}*" if normalize else ""
         return [norm_str + ''.join(i) for i in itertools.product(['I', 'X', 'Y', 'Z'], repeat=n)]
+        # basis = ['I', 'X', 'Y', 'Z']
+        # res = generate_recursive(basis, n, basis, lambda a, b: a+b, normalize)
+        # if normalize:
+        #     res = [f'{norm_str}({i})' for i in res]
+        # return res
 
     if n >= 8:
         warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} Pauli basis matrices for n = {n} may take too much memory ({duh(2**(2*n)*2**n*2**n*8)}).", stacklevel=2)

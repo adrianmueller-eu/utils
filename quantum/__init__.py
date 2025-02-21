@@ -817,16 +817,15 @@ def _test_pauli_decompose():
     assert np.allclose(coeff, [0.5]*4), f"coeff = {coeff} ≠ [0.5]*4"
     assert basis == ['II', 'XX', 'YY', 'ZZ'], f"basis = {basis} ≠ ['II', 'XX', 'YY', 'ZZ']"
 
-    # random 2-qubit hamiltonian
-    H = random_hermitian(4)
+    # random n-qubit hamiltonian
+    N = 2**randint(1, 5)
+    H = random_hermitian(N)
     coeff, basis = pauli_decompose(H)
-    assert len(coeff) == 16, f"len(coeff) = {len(coeff)} ≠ 16"
-    assert len(basis) == 16, f"len(basis) = {len(basis)} ≠ 16"
+    assert len(coeff) == N**2, f"len(coeff) = {len(coeff)} ≠ {N**2}"
+    assert len(basis) == N**2, f"len(basis) = {len(basis)} ≠ {N**2}"
 
     # check if the decomposition is correct
-    H_decomposed = np.zeros((4,4), dtype=complex)
-    for c, b in zip(coeff, basis):
-        H_decomposed += c*parse_hamiltonian(b)
+    H_decomposed = sum([c*parse_hamiltonian(b) for c, b in zip(coeff, basis)])
     assert np.allclose(H, H_decomposed), f"H = {H}\nH_decomposed = {H_decomposed}"
 
     # check if `include_zero` returns the whole basis
