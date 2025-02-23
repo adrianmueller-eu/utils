@@ -770,7 +770,7 @@ def _test_ising():
 
 def _test_pauli_basis():
     n = np.random.randint(1,4)
-    pauli_n = pauli_basis(n)
+    pauli_n = list(pauli_basis(n))
 
     # check the number of generators
     n_expect = 2**(2*n)
@@ -799,7 +799,7 @@ def _test_pauli_basis():
         assert np.isclose(np.linalg.norm(A), 1), f"Generator {i} (n = {n}) does not have norm 1! {np.linalg.norm(A)}"
 
     # check string representation
-    pauli_n_str = pauli_basis(n, kind='str')
+    pauli_n_str = list(pauli_basis(n, kind='str'))
     assert len(pauli_n) == len(pauli_n_str), "Number of generators is not the same!"
 
     # check if all generators are the same
@@ -807,7 +807,7 @@ def _test_pauli_basis():
         assert np.allclose(A, parse_hamiltonian(B)), f"Generator {i} (n = {n}) is not the same! {B}\n{A}\n≠\n{parse_hamiltonian(B)}"
 
     # check sparse representation
-    pauli_n_sp = pauli_basis(n, kind='sp')
+    pauli_n_sp = list(pauli_basis(n, kind='sp'))
     assert len(pauli_n) == len(pauli_n_sp), "Number of generators is not the same!"
 
     # check if all generators are the same

@@ -521,6 +521,11 @@ if not sage_loaded:
             return lambda phi: U @ (np.exp(-1j*phi/2*D)[:,None] * U.conj().T)
         return [rotmat(G) for G in generators]
 
+def generate_recursive(stubs, n, basis, extend_fn):
+    if n <= 1:
+        return stubs
+    return (m for s in stubs for m in generate_recursive([extend_fn(s, b) for b in basis], n-1, basis, extend_fn))
+
 def pauli_basis(n, kind='np', normalize=False):
     """ Generate the pauli basis of hermitian 2**n x 2**n matrices. This basis is orthonormal and, except for the identity, traceless. They are also unitary and therefore involutory.
 
@@ -534,14 +539,6 @@ def pauli_basis(n, kind='np', normalize=False):
     Returns
         list[ np.ndarray | scipy.sparse.csr_matrix | str ]: The pauli basis
     """
-
-    def generate_recursive(stubs, n, basis, extend_fn, normalize=False):
-        if normalize:
-            stubs = [m/sqrt(2**n) for m in stubs]
-        if n <= 1:
-            return stubs
-        return [m for s in stubs for m in generate_recursive([extend_fn(s, b) for b in basis], n-1, basis, extend_fn)]
-
     if kind == 'str':
         norm_str = f"{1/sqrt(2**n)}*" if normalize else ""
         return [norm_str + ''.join(i) for i in itertools.product(['I', 'X', 'Y', 'Z'], repeat=n)]
@@ -550,17 +547,15 @@ def pauli_basis(n, kind='np', normalize=False):
         # if normalize:
         #     res = [f'{norm_str}({i})' for i in res]
         # return res
+    elif kind not in ['np', 'sp']:
+        raise ValueError(f"Unknown kind: {kind}")
 
     if n >= 8:
         warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} Pauli basis matrices for n = {n} may take too much memory ({duh(2**(2*n)*2**n*2**n*8)}).", stacklevel=2)
-    basis = su(2, True)
-    if kind == 'np':
-        return generate_recursive(basis, n, basis, extend_fn=np.kron, normalize=normalize)
-    elif kind == 'sp':
-        basis = [sp.csr_array(b) for b in basis]
-        return generate_recursive(basis, n, basis, extend_fn=sp.kron, normalize=normalize)
-    else:
-        raise ValueError(f"Unknown kind: {kind}")
+    basis = su(2, include_identity=True, sparse=kind == 'sp')
+    stubs = [m/sqrt(2**n) for m in basis] if normalize else basis
+    extend_fn = sp.kron if kind == 'sp' else np.kron
+    return generate_recursive(stubs, n, basis, extend_fn=extend_fn)
 
 # from https://docs.pennylane.ai/en/stable/code/api/pennylane.pauli_decompose.html
 def pauli_decompose(H, eps=1e-5):
