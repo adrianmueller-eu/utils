@@ -4,8 +4,8 @@ from functools import reduce
 from math import sqrt, sin, cos, log2
 
 from ..utils import shape_it
-from ..mathlib import matexp, pauli_basis, su, trace_product
-from .state import ket, count_qubits, as_state
+from ..mathlib import matexp, pauli_basis, su, trace_product, generate_recursive
+from .state import ket, count_qubits, as_state, is_ket
 
 fs = lambda x: 1/np.sqrt(x)
 fs2 = fs(2)
@@ -130,11 +130,17 @@ def to_Wigner(state):
 
 def Wigner_matrix(state, check=2):
     state = as_state(state, check=check)
-    Wigner_fn = to_Wigner(state)
-    N = state.shape[0]
-    W = np.zeros((N,N))
-    for i,j in shape_it((N,N)):
-        W[i,j] = Wigner_fn(i,j)
+    n = count_qubits(state)
+    W = np.zeros((2**n, 2**n))
+    As = generate_recursive(Winger_A, n, Winger_A, np.kron)
+    isket = is_ket(state, print_errors=False)
+    for idx, A in enumerate(As):
+        base4 = f'{idx:0{2*n}b}'
+        i, j = int(base4[::2], 2), int(base4[1::2], 2)
+        if isket:
+            W[i,j] = (state.conj() @ A @ state).real / 2**n
+        else:
+            W[i,j] = trace_product(state, A).real / 2**n
     return W
 
 def dm_from_Wigner(W):
