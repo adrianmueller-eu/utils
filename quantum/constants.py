@@ -122,22 +122,22 @@ def get_Wigner_A(i,j,n):
     j_s = [int(x) for x in f'{j:0{n}b}']
     return reduce(np.kron, [Wigner_A[2*i_s[k] + j_s[k]] for k in range(n)])
 
-def to_Wigner(state):
+def Wigner_matel_from_state(state, i, j):
     state = np.asarray(state)
     n = count_qubits(state)
+    A = get_Wigner_A(i,j,n)
     if state.ndim == 1:
-        return lambda i,j: (state.conj() @ get_Wigner_A(i,j,n) @ state).real / 2**n
-    return lambda i,j: trace_product(state, get_Wigner_A(i,j,n)).real / 2**n
+        return (state.conj() @ A @ state).real / 2**n
+    return trace_product(state, A).real / 2**n
 
-def Wigner_matrix(state, check=2):
+def Wigner_from_state(state, check=2):
     state = as_state(state, check=check)
     n = count_qubits(state)
     if n > 8:
         warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} matrices (n = {n}) may take too a long time.", stacklevel=2)
     W = np.zeros((2**n, 2**n))
-    As = generate_recursive(Wigner_A, n, Wigner_A, np.kron)
     isket = is_ket(state, print_errors=False)
-    for idx, A in enumerate(As):
+    for idx, A in enumerate(generate_recursive(Wigner_A, n, Wigner_A, np.kron)):
         base4 = f'{idx:0{2*n}b}'
         i, j = int(base4[::2], 2), int(base4[1::2], 2)
         if isket:
