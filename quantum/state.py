@@ -390,7 +390,14 @@ def ket(specification, n=None, renormalize=False, check=1):
             else:
                 raise ValueError(f"WTF-Error: {specification}")
             s = normalize(s)
-            return reduce(np.kron, [s]*n)
+            return reduce(np.kron, [s]*n).astype(complex)
+        # if a string of + and - only
+        if set(specification) <= {"+", "-"}:
+            if n is None:
+                n = len(specification)
+            plus  = normalize([1,1])
+            minus = normalize([1,-1])
+            return reduce(np.kron, [plus if s == "+" else minus for s in specification]).astype(complex)
 
         # remove whitespace
         specification = specification.replace(" ", "")
