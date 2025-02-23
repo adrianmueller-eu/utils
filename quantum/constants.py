@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import itertools
 from functools import reduce
@@ -131,6 +132,8 @@ def to_Wigner(state):
 def Wigner_matrix(state, check=2):
     state = as_state(state, check=check)
     n = count_qubits(state)
+    if n > 8:
+        warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} matrices (n = {n}) may take too a long time.", stacklevel=2)
     W = np.zeros((2**n, 2**n))
     As = generate_recursive(Winger_A, n, Winger_A, np.kron)
     isket = is_ket(state, print_errors=False)

@@ -550,8 +550,8 @@ def pauli_basis(n, kind='np', normalize=False):
     elif kind not in ['np', 'sp']:
         raise ValueError(f"Unknown kind: {kind}")
 
-    if n >= 8:
-        warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} Pauli basis matrices for n = {n} may take too much memory ({duh(2**(2*n)*2**n*2**n*8)}).", stacklevel=2)
+    if n > 8:
+        warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} Pauli basis matrices (n = {n}) may take a long time.", stacklevel=2)
     basis = su(2, include_identity=True, sparse=kind == 'sp')
     stubs = [m/sqrt(2**n) for m in basis] if normalize else basis
     extend_fn = sp.kron if kind == 'sp' else np.kron
