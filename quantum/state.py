@@ -548,7 +548,7 @@ def dm(kets, p=None, n=None, renormalize=False, check=3):
             return rho
     elif isinstance(kets, str):
         if kets in ['random', 'random_dm']:
-            return random_dm(n, rank='full')
+            return random_dm(n or 1, rank='full')
         elif kets == 'random_pure':
             kets = 'random'
 
