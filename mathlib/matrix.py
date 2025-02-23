@@ -86,8 +86,9 @@ def is_psd(a, eigs=None, check=3, tol=1e-12):
     return np.all(eigs.real >= -tol) and allclose0(eigs.imag, tol)
 
 def is_normal(a, tol=1e-12):
+    a_dg = a.conj().T
     return _sq_matrix_allclose(a, lambda a: (
-        a @ a.conj().T, a.conj().T @ a
+        a @ a_dg, a_dg @ a
     ), tol)
 
 def is_projection(a, tol=1e-9):
