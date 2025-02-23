@@ -30,6 +30,12 @@ def _sq_matrix_allclose(a, f, tol=1e-12):
         return False
     # a[np.isnan(a)] = 0
     a, b = f(a)
+    # considerable speedup for large matrices if they are both contiguous
+    if a.shape[0] > 1000 and a.flags['C_CONTIGUOUS'] != b.flags['C_CONTIGUOUS']:
+        if a.flags['F_CONTIGUOUS']:
+            a = a.copy()
+        else:  # if b.flags['F_CONTIGUOUS']:
+            b = b.copy()
     return allclose0(a-b, tol)
 
 def is_symmetric(a, tol=1e-12):
