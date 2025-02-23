@@ -4,9 +4,8 @@ import itertools
 from functools import reduce
 from math import sqrt, sin, cos, log2
 
-from ..utils import shape_it
-from ..mathlib import matexp, pauli_basis, su, trace_product, generate_recursive
-from .state import ket, count_qubits, as_state, is_ket
+from ..mathlib import matexp, pauli_basis, su
+from .state import ket
 
 fs = lambda x: 1/np.sqrt(x)
 fs2 = fs(2)
@@ -110,49 +109,6 @@ Bell = [
     ket('01 - 10')   # singlet
 ]
 GHZ = GHZ_(3)
-
-Wigner_A = [
-    0.5 * (I + X + Y + Z),
-    0.5 * (I - X - Y + Z),
-    0.5 * (I + X - Y - Z),
-    0.5 * (I - X + Y - Z)
-]
-def get_Wigner_A(i,j,n):
-    i_s = [int(x) for x in f'{i:0{n}b}']
-    j_s = [int(x) for x in f'{j:0{n}b}']
-    return reduce(np.kron, [Wigner_A[2*i_s[k] + j_s[k]] for k in range(n)])
-
-def Wigner_matel_from_state(state, i, j):
-    state = np.asarray(state)
-    n = count_qubits(state)
-    A = get_Wigner_A(i,j,n)
-    if state.ndim == 1:
-        return (state.conj() @ A @ state).real / 2**n
-    return trace_product(state, A).real / 2**n
-
-def Wigner_from_state(state, check=2):
-    state = as_state(state, check=check)
-    n = count_qubits(state)
-    if n > 8:
-        warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} matrices (n = {n}) may take too a long time.", stacklevel=2)
-    W = np.zeros((2**n, 2**n))
-    isket = is_ket(state, print_errors=False)
-    for idx, A in enumerate(generate_recursive(Wigner_A, n, Wigner_A, np.kron)):
-        base4 = f'{idx:0{2*n}b}'
-        i, j = int(base4[::2], 2), int(base4[1::2], 2)
-        if isket:
-            W[i,j] = (state.conj() @ A @ state).real / 2**n
-        else:
-            W[i,j] = trace_product(state, A).real / 2**n
-    return W
-
-def dm_from_Wigner(W):
-    """ The density matrix can be reconstructed from the Wigner matrix since all information is conserved (4^n - 1 dofs). """
-    n = count_qubits(W)
-    rho = np.zeros_like(W, dtype=complex)
-    for i, j in shape_it(W):
-        rho += W[i,j] * get_Wigner_A(i,j,n)
-    return rho
 
 ############################
 ### Non-unitary channels ###

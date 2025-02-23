@@ -1,4 +1,4 @@
-import psutil
+import psutil, warnings
 import numpy as np
 import matplotlib.pyplot as plt
 from math import log2
@@ -9,7 +9,7 @@ except:
     from numpy.linalg import eigh
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product
+from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product, generate_recursive, su
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
 
@@ -683,6 +683,58 @@ def count_qubits(obj):
     if hasattr(obj, 'qubits'):
         return len(obj.qubits)
     raise ValueError(f'Unkown object: {obj}')
+
+Wigner_A = None
+def _init_Wigner_A():
+    global Wigner_A
+    if Wigner_A is None:
+        I, X, Y, Z = su(2, True)
+        Wigner_A = [
+            0.5 * (I + X + Y + Z),
+            0.5 * (I - X - Y + Z),
+            0.5 * (I + X - Y - Z),
+            0.5 * (I - X + Y - Z)
+        ]
+    return Wigner_A
+
+def get_Wigner_A(i,j,n):
+    Wigner_A = _init_Wigner_A()
+    i_s = [int(x) for x in f'{i:0{n}b}']
+    j_s = [int(x) for x in f'{j:0{n}b}']
+    return reduce(np.kron, [Wigner_A[2*i_s[k] + j_s[k]] for k in range(n)])
+
+def Wigner_matel_from_state(state, i, j):
+    state = np.asarray(state)
+    n = count_qubits(state)
+    A = get_Wigner_A(i,j,n)
+    if state.ndim == 1:
+        return (state.conj() @ A @ state).real / 2**n
+    return trace_product(state, A).real / 2**n
+
+def Wigner_from_state(state, check=2):
+    state = as_state(state, check=check)
+    n = count_qubits(state)
+    if n > 8:
+        warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} matrices (n = {n}) may take too a long time.", stacklevel=2)
+    W = np.zeros((2**n, 2**n))
+    isket = is_ket(state, print_errors=False)
+    Wigner_A = _init_Wigner_A()
+    for idx, A in enumerate(generate_recursive(Wigner_A, n, Wigner_A, np.kron)):
+        base4 = f'{idx:0{2*n}b}'
+        i, j = int(base4[::2], 2), int(base4[1::2], 2)
+        if isket:
+            W[i,j] = (state.conj() @ A @ state).real / 2**n
+        else:
+            W[i,j] = trace_product(state, A).real / 2**n
+    return W
+
+def dm_from_Wigner(W):
+    """ The density matrix can be reconstructed from the Wigner matrix since all information is conserved (4^n - 1 dofs). """
+    n = count_qubits(W)
+    rho = np.zeros_like(W, dtype=complex)
+    for i, j in shape_it(W):
+        rho += W[i,j] * get_Wigner_A(i,j,n)
+    return rho
 
 ## TODO: def random_stabilizer_state(n): + convert n to full quantum state
 ## TODO: random_tensor_network_state + convert tensor network state -> full quantum state

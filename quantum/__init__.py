@@ -43,6 +43,7 @@ def test_quantum_all():
         _test_is_dm,
         _test_is_eigenstate,
         _test_count_qubits,
+        _test_Wigner,
         _test_von_neumann_entropy,
         _test_entanglement_entropy,
         _test_fidelity,
@@ -86,14 +87,6 @@ def _test_constants():
     assert np.allclose(Rz(angle), R_(Z, angle))
     l,t,p = np.random.rand(3)*4*np.pi - 2*np.pi
     assert np.allclose(Rot(p,t,l), Rz(l) @ Ry(t) @ Rz(p))
-
-    W = Wigner_from_state(ket('00'))
-    assert np.allclose(W, [[0.25]*4, [0]*4, [0]*4, [0]*4])
-    rho = random_dm(4)
-    W = Wigner_from_state(rho)
-    assert np.isclose(W.sum(), 1), f"Wigner matrix is not normalized: {W.sum()}"
-    rho_reconstructed = dm_from_Wigner(W)
-    assert np.allclose(rho, rho_reconstructed), f"rho = {rho}\nrho_reconstructed = {rho_reconstructed}"
 
 def _test_fourier_matrix():
     assert np.allclose(Fourier_matrix(1), H)
@@ -308,6 +301,15 @@ def _test_random_dm():
     D = np.linalg.eigvalsh(rho)
     assert is_psd(rho, D)
     assert np.sum(D > 1e-12) == 42
+
+def _test_Wigner():
+    W = Wigner_from_state(ket('00'))
+    assert np.allclose(W, [[0.25]*4, [0]*4, [0]*4, [0]*4])
+    rho = random_dm(4)
+    W = Wigner_from_state(rho)
+    assert np.isclose(W.sum(), 1), f"Wigner matrix is not normalized: {W.sum()}"
+    rho_reconstructed = dm_from_Wigner(W)
+    assert np.allclose(rho, rho_reconstructed), f"rho = {rho}\nrho_reconstructed = {rho_reconstructed}"
 
 def _test_QuantumComputer():
     # test basic functionality
