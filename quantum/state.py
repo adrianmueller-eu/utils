@@ -356,13 +356,12 @@ def ket(specification, n=None, renormalize=False, check=1):
     or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
-        n = n or count_qubits(specification) or 1
         specification = np.asarray(specification)
-        if len(specification.shape) == 1 and renormalize:
+        if specification.ndim == 1 and renormalize:
             return normalize(specification)
         if check >= 1:
             assert_ket(specification, n)
-        return np.asarray(specification)
+        return specification
     if is_int(specification):
         return ket_from_int(specification, n)
     if type(specification) == str:
@@ -520,10 +519,8 @@ def dm(kets, p=None, n=None, renormalize=False, check=3):
     """
     if isinstance(kets, (list, np.ndarray)):
         kets = np.asarray(kets)
-        assert len(kets.shape) < 3, f"Invalid shape for state vectors: {kets.shape}"
-        if kets.shape[0] == 1 or (len(kets.shape) == 2 and kets.shape[1] == 1):
-            kets = kets.ravel()
-        if len(kets.shape) == 2:
+        assert kets.ndim < 3, f"Invalid shape for state vectors: {kets.shape}"
+        if kets.ndim == 2:
             if p is None:
                 assert kets.shape[0] == kets.shape[1], f"More than 1 ket given, but no probabilities"
                 rho = kets
@@ -561,7 +558,7 @@ def as_state(state, renormalize=True, check=2):
 def ev(obs, state, check=2):
     if check >= 2:
         assert is_hermitian(obs)
-    if len(state.shape) == 1:
+    if state.ndim == 1:
         assert_ket(state)
         return (state.conj() @ obs @ state).real
     assert_dm(state, check=check)
@@ -570,7 +567,7 @@ def ev(obs, state, check=2):
 def probs(state):
     """ Probabilities of outcomes (vector or density matrix) when measuring in the standard basis."""
     state = np.asarray(state)
-    if len(state.shape) == 2:
+    if state.ndim == 2:
         return np.diag(state).real
     return np.abs(state)**2
 
