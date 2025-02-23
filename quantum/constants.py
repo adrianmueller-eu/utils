@@ -111,7 +111,7 @@ Bell = [
 ]
 GHZ = GHZ_(3)
 
-Winger_A = [
+Wigner_A = [
     0.5 * (I + X + Y + Z),
     0.5 * (I - X - Y + Z),
     0.5 * (I + X - Y - Z),
@@ -120,7 +120,7 @@ Winger_A = [
 def get_Wigner_A(i,j,n):
     i_s = [int(x) for x in f'{i:0{n}b}']
     j_s = [int(x) for x in f'{j:0{n}b}']
-    return reduce(np.kron, [Winger_A[2*i_s[k] + j_s[k]] for k in range(n)])
+    return reduce(np.kron, [Wigner_A[2*i_s[k] + j_s[k]] for k in range(n)])
 
 def to_Wigner(state):
     state = np.asarray(state)
@@ -135,7 +135,7 @@ def Wigner_matrix(state, check=2):
     if n > 8:
         warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} matrices (n = {n}) may take too a long time.", stacklevel=2)
     W = np.zeros((2**n, 2**n))
-    As = generate_recursive(Winger_A, n, Winger_A, np.kron)
+    As = generate_recursive(Wigner_A, n, Wigner_A, np.kron)
     isket = is_ket(state, print_errors=False)
     for idx, A in enumerate(As):
         base4 = f'{idx:0{2*n}b}'
