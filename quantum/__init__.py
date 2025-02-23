@@ -87,6 +87,14 @@ def _test_constants():
     l,t,p = np.random.rand(3)*4*np.pi - 2*np.pi
     assert np.allclose(Rot(p,t,l), Rz(l) @ Ry(t) @ Rz(p))
 
+    W = Wigner_matrix(ket('00'))
+    assert np.allclose(W, [[0.25]*4, [0]*4, [0]*4, [0]*4])
+    rho = random_dm(4)
+    W = Wigner_matrix(rho)
+    assert np.isclose(W.sum(), 1), f"Wigner matrix is not normalized: {W.sum()}"
+    rho_reconstructed = dm_from_Wigner(W)
+    assert np.allclose(rho, rho_reconstructed), f"rho = {rho}\nrho_reconstructed = {rho_reconstructed}"
+
 def _test_fourier_matrix():
     assert np.allclose(Fourier_matrix(1), H)
     n = randint(2,8)

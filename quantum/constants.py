@@ -3,8 +3,9 @@ import itertools
 from functools import reduce
 from math import sqrt, sin, cos, log2
 
-from ..mathlib import matexp, pauli_basis, su
-from .state import ket
+from ..utils import shape_it
+from ..mathlib import matexp, pauli_basis, su, trace_product
+from .state import ket, count_qubits, as_state
 
 fs = lambda x: 1/np.sqrt(x)
 fs2 = fs(2)
@@ -108,6 +109,41 @@ Bell = [
     ket('01 - 10')   # singlet
 ]
 GHZ = GHZ_(3)
+
+Winger_A = [
+    0.5 * (I + X + Y + Z),
+    0.5 * (I - X - Y + Z),
+    0.5 * (I + X - Y - Z),
+    0.5 * (I - X + Y - Z)
+]
+def get_Wigner_A(i,j,n):
+    i_s = [int(x) for x in f'{i:0{n}b}']
+    j_s = [int(x) for x in f'{j:0{n}b}']
+    return reduce(np.kron, [Winger_A[2*i_s[k] + j_s[k]] for k in range(n)])
+
+def to_Wigner(state):
+    state = np.asarray(state)
+    n = count_qubits(state)
+    if state.ndim == 1:
+        return lambda i,j: (state.conj() @ get_Wigner_A(i,j,n) @ state).real / 2**n
+    return lambda i,j: trace_product(state, get_Wigner_A(i,j,n)).real / 2**n
+
+def Wigner_matrix(state, check=2):
+    state = as_state(state, check=check)
+    Wigner_fn = to_Wigner(state)
+    N = state.shape[0]
+    W = np.zeros((N,N))
+    for i,j in shape_it((N,N)):
+        W[i,j] = Wigner_fn(i,j)
+    return W
+
+def dm_from_Wigner(W):
+    """ The density matrix can be reconstructed from the Wigner matrix since all information is conserved (4^n - 1 dofs). """
+    n = count_qubits(W)
+    rho = np.zeros_like(W, dtype=complex)
+    for i, j in shape_it(W):
+        rho += W[i,j] * get_Wigner_A(i,j,n)
+    return rho
 
 ############################
 ### Non-unitary channels ###
