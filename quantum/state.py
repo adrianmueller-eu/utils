@@ -637,8 +637,11 @@ def is_pure_dm(rho, check=3, tol=1e-12):
 
 def is_eigenstate(psi, H, tol=1e-10):
     psi = normalize(psi)
-    psi2 = normalize(H @ psi)
-    return abs(abs(psi2.conj() @ psi) - 1) < tol
+    psi2 = H @ psi
+    eigval_abs = np.linalg.norm(psi2)
+    if eigval_abs < tol:
+        return True
+    return abs(abs(psi2.conj() @ psi) - eigval_abs) < tol
 
 def gibbs(H, beta=1, check=2):
     """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""

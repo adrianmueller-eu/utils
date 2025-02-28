@@ -551,6 +551,11 @@ def _test_is_eigenstate():
     H = parse_hamiltonian('XX + YY + ZZ')
     assert is_eigenstate(ket('00'), H)
     assert not is_eigenstate(ket('01'), H)
+    H = parse_hamiltonian('ZI - IZ')
+    assert is_eigenstate(ket('10'), H)  # eigenvalue -2
+    assert is_eigenstate(ket('01'), H)  # eigenvalue 2
+    assert is_eigenstate(ket('00'), H)  # eigenvalue 0
+    assert not is_eigenstate(ket('10 + 11'), H)
 
 def _test_count_qubits():
     assert count_qubits(ising(20)) == 20
