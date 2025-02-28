@@ -335,8 +335,10 @@ class QuantumComputer:
         with self.observable(obs, qubits) as qubits:
             if len(qubits) == self.n:
                 return self.clear()
-            qubits_indcs = [self.qubits.index(q) for q in qubits]
-            retain = [q for q in range(self.n) if q not in qubits_indcs]
+            if not collapse:
+                self._reorder(qubits, reshape=False)
+                qubits_indcs = [self.qubits.index(q) for q in qubits]
+                retain = [q for q in range(self.n) if q not in qubits_indcs]
             if self.is_matrix_mode():
                 if collapse:
                     q = len(qubits)
@@ -484,7 +486,7 @@ class QuantumComputer:
                 return False
             return True
         else:  # (q x (n-q)) form
-            assert self.state.shape[0] < 2**self.n, f"Invalid state shape: {self.state.shape}"
+            assert self.state.shape[0] < 2**self.n, f"Invalid state shape: {self.state.shape} for {self.n} qubits {self.qubits}"
             if len(self.state.shape) == 2:
                 return False
             return True
