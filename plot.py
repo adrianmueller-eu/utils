@@ -7,7 +7,7 @@ from math import log2, sqrt
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .utils import *
 
-def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", xticks=None, yticks=None, xlog=False, ylog=False, grid=True, vlines=None, hlines=None, show=True, save_file=None, **pltargs):
+def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None, xlog=False, ylog=False, grid=True, vlines=None, hlines=None, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
 
     # make it a bit intelligent
@@ -85,22 +85,52 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
             y = x
             x = np.linspace(1,len(x),len(x))
         if is_complex(y):
+            if labels is not None:
+                warnings.warn("labels are not supported for complex data", stacklevel=2)
             plt.scatter(x, y.real, label="real", **pltargs)
             plt.scatter(x, y.imag, label="imag", **pltargs)
             plt.legend()
         else:
-            plt.scatter(x, y, **pltargs)
+            if len(y.shape) == 1:
+                if labels is not None:
+                    if type(labels) == str or not is_iterable(labels):
+                        pltargs["label"] = labels
+                    else:  # is_iterable(labels):
+                        pltargs["label"] = labels[0]
+                plt.scatter(x, y, fmt, **pltargs)
+            else:
+                if labels is not None:
+                    assert len(labels) == len(y), f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
+                    assert "label" not in pltargs, "label argument is not supported when labels is given"
+                    for yi, label in zip(y, labels):
+                        plt.scatter(x, yi, fmt, label=label, **pltargs)
+                else:
+                    for yi in y:
+                        plt.scatter(x, yi, fmt, **pltargs)
     elif y is not None:
         if is_complex(y):
+            if labels is not None:
+                warnings.warn("labels are not supported for complex data", stacklevel=2)
             plt.plot(x, y.real, fmt, label="real", **pltargs)
             plt.plot(x, y.imag, fmt, label="imag", **pltargs)
             plt.legend()
         else:
             if len(y.shape) == 1:
+                if labels is not None:
+                    if type(labels) == str or not is_iterable(labels):
+                        pltargs["label"] = str(labels)
+                    else:  # is_iterable(labels):
+                        pltargs["label"] = str(labels[0])
                 plt.plot(x, y, fmt, **pltargs)
             else:
-                for yi in y:
-                    plt.plot(x, yi, fmt, **pltargs)
+                if labels is not None:
+                    assert len(labels) == len(y), f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
+                    assert "label" not in pltargs, "label argument is not supported when labels is given"
+                    for yi, label in zip(y, labels):
+                        plt.plot(x, yi, fmt, label=label, **pltargs)
+                else:
+                    for yi in y:
+                        plt.plot(x, yi, fmt, **pltargs)
     else:
         if is_complex(x):
             plt.plot(x.real, fmt, label="real", **pltargs)
