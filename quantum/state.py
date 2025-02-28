@@ -294,7 +294,7 @@ def random_ket(n, size=None, kind='fast'):
     resulting in sampling from the Haar measure.
     If `kind='ortho'`, generates a set of orthonormal states using QR decomposition. At most $2^n$ orthogonal states can be generated (in the last batch dimension).
     """
-    assert is_int(n) and n >= 1, f"n should be an integer >= 1, but was: {n}"
+    assert is_int(n) and n >= 1, f"Invalid number of qubits: n should be an integer >= 1, but was: {n}"
     if not is_iterable(size):
         size = [size]
     assert size == [None] or all(s >= 1 for s in size), f"size should contain only integers >= 1, but was: {size}"
@@ -366,6 +366,8 @@ def ket(specification, n=None, renormalize=False, check=1):
         return ket_from_int(specification, n)
     if type(specification) == str:
         if specification == "random":
+            if n is None:
+                raise ValueError("Please specify the number of qubits for the random state")
             return random_ket(n)
         # handle some special cases: |+>, |->, |i>, |-i>
         if specification in ["+", "-", "i", "-i", "0", "1"]:
