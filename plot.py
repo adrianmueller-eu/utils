@@ -7,7 +7,7 @@ from math import log2, sqrt
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .utils import *
 
-def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", xticks=None, yticks=None, xlog=False, ylog=False, grid=True, show=True, save_file=None, **pltargs):
+def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", xticks=None, yticks=None, xlog=False, ylog=False, grid=True, vlines=None, hlines=None, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
 
     # make it a bit intelligent
@@ -122,6 +122,46 @@ def plot(x,y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None)
         plt.legend()
     plt.gca().spines["top"].set_visible(False)
     plt.gca().spines["right"].set_visible(False)
+
+    if vlines:
+        if not hasattr(vlines, '__iter__') or type(vlines) == str:
+            vlines = [vlines]
+        for v in vlines:
+            # if iterable, assume the first to be the number and the rest to be kwargs for axvline
+            if hasattr(v, '__iter__') and type(v) != str:
+                v, kwargs = v[0], v[1:]
+            else:
+                kwargs = {}
+            if "color" not in kwargs:
+                kwargs["color"] = "red"
+            if "linestyle" not in kwargs:
+                kwargs["linestyle"] = "--"
+            plt.axvline(v, **kwargs)
+            # add a label at v
+            if "label" not in kwargs:
+                kwargs["label"] = f"{v:.3f}"
+            if kwargs["label"] != None:
+                # ax0.text(v + 0.01*(ax0.get_xlim[1] - ax0.get_xlim()[0]), ax0.get_ylim()[1]*0.9, kwargs["label"], rotation=90, verticalalignment="top")
+                plt.text(v, 0, kwargs["label"], rotation=-45, verticalalignment="top")
+    if hlines:
+        if not hasattr(hlines, '__iter__') or type(hlines) == str:
+            hlines = [hlines]
+        for h in hlines:
+            # if iterable, assume the first to be the number and the rest to be kwargs for axhline
+            if hasattr(h, '__iter__') and type(h) != str:
+                h, kwargs = h[0], h[1:]
+            else:
+                kwargs = {}
+            if "color" not in kwargs:
+                kwargs["color"] = "red"
+            if "linestyle" not in kwargs:
+                kwargs["linestyle"] = "--"
+            plt.axhline(h, **kwargs)
+            # add a label at h
+            if "label" not in kwargs:
+                kwargs["label"] = f"{h:.3f}"
+            if kwargs["label"] != None:
+                plt.text(0, h, kwargs["label"], verticalalignment="top")
 
     if save_file:
         plt.savefig(save_file, bbox_inches='tight')
