@@ -577,7 +577,7 @@ def pauli_basis(n, kind='np', normalize=False):
     return generate_recursive(stubs, n, basis, extend_fn=extend_fn)
 
 # from https://docs.pennylane.ai/en/stable/code/api/pennylane.pauli_decompose.html
-def pauli_decompose(H, eps=1e-5):
+def pauli_decompose(H, as_str=False, eps=1e-5):
     r"""Decomposes a Hermitian matrix into a linear combination of Pauli operators.
 
     Parameters
@@ -612,6 +612,8 @@ def pauli_decompose(H, eps=1e-5):
             coeffs.append(coeff)
             obs_lst.append(term)
 
+    if as_str:
+        return str_from_pauli(coeffs, obs_lst)
     return coeffs, obs_lst
 
 def str_from_pauli(coeffs, obs_lst, precision=5):
