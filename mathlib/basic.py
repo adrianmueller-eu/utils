@@ -127,6 +127,8 @@ def choice(a, size=None, replace=True, p=None):
         idx = np.random.choice(n, size=size, replace=replace, p=p)
         if isinstance(a, np.ndarray):
             return a[idx]
+        if isinstance(a, set):
+            a = list(a)
         try:
             return np.asarray(a)[idx]
         except:
