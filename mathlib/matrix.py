@@ -222,6 +222,18 @@ def sinv(A, likely_singular=False, tol=1e-12):
             pass
     return pinv(A)
 
+def adjugate(a):
+    """Return the adjugate of a matrix"""
+    # C = np.zeros_like(a)  # cofactor matrix
+    # for i,j in shape_it(C):
+    #     minor = np.delete(np.delete(a, i, axis=0), j, axis=1)
+    #     C[i, j] = ((-1) ** (i + j)) * np.linalg.det(minor)
+    # return C.T
+    det_a = np.linalg.det(a)
+    if det_a == 0:
+        return None
+    return inv(a) * det_a
+
 def normalize(a, p=2, axis=0):
     """
     Normalize a vector (or tensor of vectors). For np.ndarray, operates *inplace* and returns the same object.
