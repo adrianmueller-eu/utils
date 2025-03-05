@@ -9,9 +9,10 @@ try:
 except ImportError:
     from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
-from .basic import series, sequence
+from .basic import series, sequence, choice
+from .number_theory import mod_inv
 from ..models import Polynomial
-from ..utils import is_int, is_iterable, duh
+from ..utils import is_int, is_iterable, shape_it
 
 sage_loaded = False
 try:
@@ -726,3 +727,143 @@ def random_projection(size, rank=None, orthogonal=True, complex=True, kind='fast
 def random_involutory(size):
     P = random_projection(size, orthogonal=True, complex=True)
     return 2*P - np.eye(size)
+
+########################
+### Integer matrices ###
+########################
+
+def inv_q(A, q):
+    """Matrix inverse in F_q"""
+    # determinant
+    if len(A) == 2:
+        det = (A[0][0]*A[1][1] - A[0][1]*A[1][0])
+    else:
+        det = np.linalg.det(A)
+    det_mod = det % q
+    if det_mod == 0:
+        return None
+    # determinant inverse
+    det_inv = mod_inv(det_mod, q)
+    if det_inv is None:
+        return None
+    # adjugate matrix
+    if len(A) == 2:
+        adjugate = np.array([[A[1][1], -A[0][1]], [-A[1][0], A[0][0]]]) % q
+    else:
+        adjugate = np.round(np.linalg.inv(A) * det).astype(int) % q
+    # inverse matrix
+    A_inv = adjugate*det_inv % q
+    return A_inv
+
+class Group:
+    def __init__(self):
+        self.elements = self.generate()
+
+    def op(self, x, y):
+        raise NotImplementedError()
+
+    def inv(self, x):
+        raise NotImplementedError()
+
+    def cannonical(self, x):
+        raise NotImplementedError()
+
+    def generate(self):
+        raise NotImplementedError()
+
+    def center(self):
+        center = set()
+        for g in self.elements:
+            for x in self.elements:
+                if not (self.op(g, x) == self.op(x, g)).all():
+                    break
+            else:
+                center.add(g)
+        return center
+
+    def sample(self, size=None):
+        if size is None:
+            return self.cannonical(choice(self.elements))
+        return set(self.cannonical(a) for a in choice(self.elements, size=size))
+
+    def __len__(self):
+        return len(self.elements)
+
+    def __iter__(self):
+        return iter(self.elements)
+
+    def __contains__(self, x):
+        return x in self.elements
+
+class SL(Group):
+    def __init__(self, n, q):
+        self.n = n
+        self.q = q
+        super().__init__()
+
+    def generate(self):
+        sl = set()
+        for matrix in itertools.product(range(self.q), repeat=self.n*self.n):
+            matrix = np.array(matrix).reshape(self.n, self.n)
+            if np.round(np.linalg.det(matrix)) % self.q == 1:
+                sl.add(self.cannonical(matrix))
+        return sl
+
+    def op(self, A, B):
+        A, B = np.asarray(A), np.asarray(B)
+        res = (A @ B) % self.q
+        return self.cannonical(res)
+
+    def inv(self, A):
+        return inv_q(A, self.q)
+
+    def cannonical(self, A):
+        return tuple(map(tuple, A))
+
+class PSL(SL):
+    def __init__(self, n, q):
+        self.lambdas = self.generate_lambdas(n, q)
+        super().__init__(n, q)
+
+    @staticmethod
+    def generate_lambdas(n, q):
+        """ Find all lambdas such that lambda^n == 1 in F_q """
+        lambdas = []
+        for l in range(q):
+            if pow(l, n, q) == 1:
+                lambdas.append(l)
+        return lambdas
+
+    def cannonical(self, A):
+        As = []
+        for l in self.lambdas:
+            As.append(tuple(map(lambda x: tuple(map(lambda y: (l*y) % self.q, x)), A)))
+        return min(As)
+
+def conjugacy_classes(G: Group):
+    conjugacy_classes = []
+    for h in G:
+        if not any(h in c for c in conjugacy_classes):
+            conjugacy_class = set()
+            for g in G:
+                g_inv = G.inv(g)
+                if g_inv is not None:
+                    conjugate = G.op(g_inv, G.op(h, g))
+                    conjugate = G.cannonical(conjugate)
+                    if not any(conjugate in c for c in conjugacy_classes):
+                        conjugacy_class.add(conjugate)
+            conjugacy_classes.append(conjugacy_class)
+
+    class_info = []
+    for cls in conjugacy_classes:
+        re = next(iter(cls))
+        class_info.append({
+            "size": len(cls),
+            "representative": re
+        })
+    info = {
+        "group_order": len(G),
+        "num_classes": len(conjugacy_classes),
+        "classes": class_info
+    }
+    return conjugacy_classes, info

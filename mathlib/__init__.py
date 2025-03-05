@@ -55,6 +55,7 @@ def test_mathlib_all():
         _test_normalize,
         _test_symmetrization_operator,
         _test_immanant,
+        _test_integer_matrices,
         # polynomial
         _test_roots,
         # number_theory
@@ -458,6 +459,18 @@ def _test_immanant():
     assert np.isclose(permanent(A), 10), f"{permanent(A)} ≠ 10"
     A = random_square(randint(2,6))
     assert np.isclose(determinant(A), np.linalg.det(A)), f"{determinant(A)} ≠ {np.linalg.det(A)}"
+
+def _test_integer_matrices():
+    SL25 = SL(2, 5)
+    assert len(SL25) == 120
+    classes = conjugacy_classes(SL25)[0]
+    assert len(classes) == 9
+    assert sum(len(c) for c in classes) == 120
+    PSL25 = PSL(2, 5)
+    assert len(PSL25) == 60
+    classes = conjugacy_classes(PSL25)[0]
+    assert len(classes) == 5
+    assert sum(len(c) for c in classes) == 60
 
 def _test_roots():
     # Test cases
