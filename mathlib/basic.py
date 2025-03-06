@@ -125,14 +125,11 @@ def choice(a, size=None, replace=True, p=None):
     if hasattr(a, '__len__'):
         n = len(a)
         idx = np.random.choice(n, size=size, replace=replace, p=p)
-        if isinstance(a, np.ndarray):
-            return a[idx]
         if isinstance(a, set):
             a = list(a)
-        try:
-            return np.asarray(a)[idx]
-        except:
-            return np.asarray(a, dtype=object)[idx]
+        if isinstance(a, np.ndarray) or size is None:
+            return a[idx]
+        return [a[i] for i in idx]
     else:
         return np.random.choice(a, size=size, replace=replace, p=p)
 
