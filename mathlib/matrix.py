@@ -1,7 +1,6 @@
-import warnings, sys
+import warnings
 import numpy as np
 import itertools
-from functools import reduce
 from math import log2, sin, cos, sqrt, factorial
 try:
     import scipy.sparse as sp
@@ -9,10 +8,10 @@ try:
 except ImportError:
     from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
-from .basic import series, sequence, choice, Group
+from .basic import series, sequence, Group
 from .number_theory import mod_inv
 from ..models import Polynomial
-from ..utils import is_int, is_iterable, shape_it
+from ..utils import is_int, is_iterable
 
 sage_loaded = False
 try:
