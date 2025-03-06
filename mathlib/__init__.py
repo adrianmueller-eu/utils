@@ -721,7 +721,7 @@ def _test_prime_factors():
 def _test_euler_phi():
     assert euler_phi(1) == 1
     assert euler_phi(2) == 1
-    assert euler_phi(10) == 4
+    assert euler_phi(12) == 4
     assert euler_phi(42) == 12
 
 def _test_lcm():
