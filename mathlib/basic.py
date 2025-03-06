@@ -142,3 +142,50 @@ def shuffle(a):
         return "".join(a)
     np.random.shuffle(a)
     return a
+
+class Group:
+    def __init__(self):
+        self.elements = list(self.generate())
+
+    def generate(self):
+        raise NotImplementedError()
+
+    def op(self, x, y):
+        raise NotImplementedError()
+
+    def inv(self, x):
+        raise NotImplementedError()
+
+    def center(self):
+        center = set()
+        for g in self.elements:
+            for x in self.elements:
+                if not (self.op(g, x) == self.op(x, g)).all():
+                    break
+            else:
+                center.add(g)
+        return center
+
+    def sample(self, size=None):
+        if size is None:
+            return choice(self.elements)
+        return set(a for a in choice(self.elements, size=size))
+
+    def is_abelian(self):
+        for x in self.elements:
+            for y in self.elements:
+                if not (self.op(x, y) == self.op(y, x)).all():
+                    return False
+        return True
+
+    def __getitem__(self, x):
+        return self.elements[x]
+
+    def __len__(self):
+        return len(self.elements)
+
+    def __iter__(self):
+        return iter(self.elements)
+
+    def __contains__(self, x):
+        return x in self.elements

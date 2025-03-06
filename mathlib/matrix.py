@@ -9,7 +9,7 @@ try:
 except ImportError:
     from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
-from .basic import series, sequence, choice
+from .basic import series, sequence, choice, Group
 from .number_theory import mod_inv
 from ..models import Polynomial
 from ..utils import is_int, is_iterable, shape_it
@@ -768,46 +768,6 @@ def inv_q(A, q):
     # inverse matrix
     A_inv = adjugate*det_inv % q
     return A_inv
-
-class Group:
-    def __init__(self):
-        self.elements = self.generate()
-
-    def op(self, x, y):
-        raise NotImplementedError()
-
-    def inv(self, x):
-        raise NotImplementedError()
-
-    def cannonical(self, x):
-        raise NotImplementedError()
-
-    def generate(self):
-        raise NotImplementedError()
-
-    def center(self):
-        center = set()
-        for g in self.elements:
-            for x in self.elements:
-                if not (self.op(g, x) == self.op(x, g)).all():
-                    break
-            else:
-                center.add(g)
-        return center
-
-    def sample(self, size=None):
-        if size is None:
-            return self.cannonical(choice(self.elements))
-        return set(self.cannonical(a) for a in choice(self.elements, size=size))
-
-    def __len__(self):
-        return len(self.elements)
-
-    def __iter__(self):
-        return iter(self.elements)
-
-    def __contains__(self, x):
-        return x in self.elements
 
 class SL(Group):
     def __init__(self, n, q):
