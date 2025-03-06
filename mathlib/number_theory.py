@@ -65,8 +65,8 @@ def Miller_Rabin(n, alpha=1e-20): # only up to 2^54 -> alpha < 1e-16.26 (-> 55 i
         k = 0
         while n % 2 == 0:
             k += 1
-            n /= 2
-        return k,int(n)
+            n //= 2
+        return k, n
 
     p = 1
     while p > alpha:
@@ -74,7 +74,7 @@ def Miller_Rabin(n, alpha=1e-20): # only up to 2^54 -> alpha < 1e-16.26 (-> 55 i
         if gcd(a,n) != 1:
             # print(n,"is not prime (1)", f"gcd({a},{n}) = {gcd(a,n)}")
             return False
-        k,m = getKM(n-1)
+        k, m = getKM(n-1)
         b = pow(a, m, n)
         if b == 1:
             p *= 1/2
@@ -88,7 +88,8 @@ def Miller_Rabin(n, alpha=1e-20): # only up to 2^54 -> alpha < 1e-16.26 (-> 55 i
             if i == k:
                 # print(n,"is not prime (2)")
                 return False
-        if gcd(b+1,n) == 1 or gcd(b+1,n) == n:
+        gcdb1n = gcd(b+1,n)
+        if gcdb1n == 1 or gcdb1n == n:
             p *= 1/2
         else:
             # print(n,"is not prime (3)")
@@ -104,7 +105,7 @@ def is_prime_regex(n):
 if not sage_loaded:
 
     def is_prime(n):
-        if n < 5*10**8:
+        if n < 3*10**8:
             return is_prime_brute(n)
         return Miller_Rabin(n)
 
