@@ -43,6 +43,11 @@ def is_symmetric(a, tol=1e-12):
         a, a.T
     ), tol)
 
+def is_antisymmetric(a, tol=1e-12):
+    return _sq_matrix_allclose(a, lambda a: (
+        a, -a.T
+    ), tol)
+
 def is_hermitian(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
         a, a.conj().T
