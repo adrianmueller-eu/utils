@@ -1019,7 +1019,7 @@ class SL(Group):
     def __init__(self, n, q):
         self.n = n
         self.q = q
-        super().__init__()
+        super().__init__(self.generate(), identity=self.cannonical(np.eye(n, dtype=int)))
 
     def generate(self):
         sl = set()
