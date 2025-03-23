@@ -294,27 +294,30 @@ def random_ket(n, size=None, kind='fast'):
     """
     assert is_int(n) and n >= 1, f"Invalid number of qubits: n should be an integer >= 1, but was: {n}"
     if not is_iterable(size):
-        size = [size]
-    assert size == [None] or all(s >= 1 for s in size), f"size should contain only integers >= 1, but was: {size}"
-    if kind == 'fast' or size == [None]:
-        if size == [None]:
+        size = (size,)
+    assert size == (None,) or all(s >= 1 for s in size), f"size should contain only integers >= 1, but was: {size}"
+    if kind == 'fast' or size == None:
+        if size == (None,):
             return normalize(random_vec(2**n, complex=True, kind='normal'))
         kets = random_vec((*size, 2**n), complex=True, kind='normal')
         return normalize(kets, axis=-1)
     elif kind == 'ortho':
         if len(size) > 1:
-            res = np.empty([*size, 2**n], dtype=complex)
+            res = np.empty(size + (2**n,), dtype=complex)
             for i in shape_it(size[:-1]):
                 res[i] = random_ket(n, size[-1], kind='ortho')
             return res
-        size = size[0]
-        assert size <= 2**n, f"Can't generate more than 2**{n} = {2**n} orthogonal states, but requested was: {size}"
+        size_ = size[0] or 1
+        assert size_ <= 2**n, f"Can't generate more than 2**{n} = {2**n} orthogonal states, but requested was: {size}"
         # inspired by the method to sample Haar-random unitaries
-        kets = random_vec((2**n, min(size, 2**n)), complex=True, kind='normal')
+        kets = random_vec((2**n, min(size_, 2**n)), complex=True, kind='normal')
         Q, R = np.linalg.qr(kets)
         Rd = np.diag(R)
         L = Rd / np.abs(Rd)
-        return L[:,None] * Q.T
+        kets = L[:,None] * Q.T
+        if size == (None,):
+            return kets[0]
+        return kets
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
