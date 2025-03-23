@@ -98,16 +98,16 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
                         pltargs["label"] = labels
                     else:  # is_iterable(labels):
                         pltargs["label"] = labels[0]
-                plt.scatter(x, y, fmt, **pltargs)
+                plt.scatter(x, y, marker=fmt, **pltargs)
             else:
                 if labels is not None:
                     assert len(labels) == len(y), f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
                     assert "label" not in pltargs, "label argument is not supported when labels is given"
                     for yi, label in zip(y, labels):
-                        plt.scatter(x, yi, fmt, label=label, **pltargs)
+                        plt.scatter(x, yi, marker=fmt, label=label, **pltargs)
                 else:
                     for yi in y:
-                        plt.scatter(x, yi, fmt, **pltargs)
+                        plt.scatter(x, yi, marker=fmt, **pltargs)
     elif y is not None:
         if is_complex(y):
             if labels is not None:
