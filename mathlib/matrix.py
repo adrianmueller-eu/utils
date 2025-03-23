@@ -1034,7 +1034,7 @@ class SL(Group):
         return self.cannonical(res)
 
     def inv(self, A):
-        return inv_q(A, self.q)
+        return self.cannonical(inv_q(A, self.q))
 
     def cannonical(self, A):
         return tuple(map(tuple, A))
@@ -1060,7 +1060,6 @@ def conjugacy_classes(G: Group):
                 g_inv = G.inv(g)
                 if g_inv is not None:
                     conjugate = G.op(g_inv, G.op(h, g))
-                    conjugate = G.cannonical(conjugate)
                     if not any(conjugate in c for c in conjugacy_classes):
                         conjugacy_class.add(conjugate)
             conjugacy_classes.append(conjugacy_class)
