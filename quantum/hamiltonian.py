@@ -63,7 +63,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
 
     Parameters:
         hamiltonian (str): The Hamiltonian to parse.
-        sparse (bool): Whether to use sparse matrices (csr_matrix) or dense matrices (numpy.array).
+        sparse (bool): Whether to use sparse matrices (csr_array) or dense matrices (numpy.array).
         scaling (float): A constant factor to scale the Hamiltonian by.
         buffer (dict): A dictionary to store calculated chunks in. If `None`, it defaults to the global `matmap_np` (or `matmap_sp` if `sparse == True`). Give `buffer={}` and leave `max_buffer_n == 0` (default) to disable the buffer.
         max_buffer_n (int): The maximum length (number of qubits) for new chunks to store in the buffer (default: 0). If `0`, no new chunks will be stored in the buffer.
