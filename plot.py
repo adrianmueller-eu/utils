@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.animation import FuncAnimation
 import numpy as np
-from math import log2, sqrt
+from math import log2
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
-from .utils import *
+from .data import logbins, bins_sqrt
+from .utils import is_iterable
 
 def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None, xlog=False, ylog=False, grid=True, vlines=None, hlines=None, show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""

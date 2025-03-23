@@ -1,7 +1,7 @@
 import numpy as np
 from math import factorial
 
-from .utils import *
+from .data import moving_avg, bins_sqrt, logbins
 
 def smooth(y, smoothing=0.1):
     # https://scipy.github.io/old-wiki/pages/Cookbook/SavitzkyGolay

@@ -1,5 +1,27 @@
+from warnings import warn
 import numpy as np
 import matplotlib.pyplot as plt
+
+def moving_avg(x, w=3):
+    return np.convolve(x, np.ones(w), 'valid') / w
+
+def bins_sqrt(data):
+    return int(np.ceil(np.sqrt(len(data))))
+
+def logbins(data, start=None, stop=None, num=None, scale=2):
+    if start is None:
+        start = min(data)/scale
+    if start <= 0:
+        data = np.asarray(data)
+        data_pos = data[data > 0]
+        warn("Data set contains non-positive numbers (%.2f%%). They will be excluded for the plot." % (100*(1-len(data_pos)/len(data))))
+        data = data_pos
+        start = min(data)/scale
+    if stop is None:
+        stop = max(data)*scale
+    if num is None:
+        num = bins_sqrt(data)
+    return 10**(np.linspace(np.log10(start),np.log10(stop),num))
 
 # make a list out of a pd.corr() matrix
 def corrList(corr, index_names=("feature 1", "feature 2")):

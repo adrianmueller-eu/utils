@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm as tq
 
-from .utils import moving_avg
+from .data import moving_avg
 from .prob import smooth
 from .systems import fractal, simulate, Subgrid, GameOfLife
 from .plot import imshow_dynamic, plot_dynamic
