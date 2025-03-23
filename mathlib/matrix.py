@@ -4,7 +4,7 @@ import itertools
 from math import log2, sin, cos, sqrt, factorial
 try:
     import scipy.sparse as sp
-    from scipy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
+    from scipy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv, schur
 except ImportError:
     from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
@@ -621,25 +621,60 @@ if not sage_loaded:
         """ A class representing an element of a Lie group."""
         def __init__(self, G, convention, is_generator=True):
             """ The generator `G` is expected as hermitian. """
-            if isinstance(G, tuple):
-                self.D, self.U = G
-            elif is_generator:
-                self.D, self.U = eigh(G)
-            else:
-                self.D, self.U = eig(G)
-            if not is_generator:
-                self.D = -1j/convention*np.log(self.D)
-                assert allclose0(self.D.imag), f"Non-real eigenvalues in generator: {self.D}"
-                self.D = self.D.real
-                if not is_unitary(self.U):  # unfortunately, eig does not necessarily return a unitary for unitaries
-                    G = self.U @ (self.D[:,None] * inv(self.U))
-                    assert is_hermitian(G), f"Non-hermitian generator: {G}"
-                    self.D, self.U = eigh(G)
             self.c = convention
+            self.is_generator = is_generator
+
+            if isinstance(G, tuple):
+                self._D, self._U = G
+                self._G = None
+                assert self.D.shape[0] == self.U.shape[0] == self.U.shape[1], f"Invalid shapes: {self.D.shape}, {self.U.shape}"
+                if not is_generator:
+                    self._logD()
+                    self.is_generator = True
+            else:
+                self._G = G
+                self._D, self._U = None, None
+
+        def _diagonalize(self):
+            if self._D is None or self._U is None:
+                if self.is_generator:
+                    self._D, self._U = eigh(self._G)
+                else:
+                    T, Q = schur(self._G)  # self._G is a unitary
+                    assert is_diag(T), f"Non-diagonalizable matrix: {T}"
+                    self._D, self._U = np.diag(T), Q
+                    self._logD()
+                    self.is_generator = True
+                self._G = None
+
+        def _logD(self):
+            self._D = -1j/self.c*np.log(self._D)
+            assert allclose0(self.D.imag), f"Non-real eigenvalues in generator: {self._D}"
+            self._D = self._D.real
+
+        @property
+        def D(self):
+            if self._D is None:
+                self._diagonalize()
+            return self._D
+
+        @property
+        def U(self):
+            if self._U is None:
+                self._diagonalize()
+            return self._U
 
         @property
         def G(self):
-            return self.U @ (self.D[:,None] * self.U.conj().T)
+            if self._G is None or not self.is_generator:
+                self._G = self.U @ (self.D[:,None] * self.U.conj().T)
+            return self._G
+
+        @property
+        def n(self):
+            if self._D is not None:
+                return len(self._D)
+            return len(self._G)
 
         def __call__(self, phi):
             return self.U @ (np.exp(1j*self.c*phi*self.D)[:,None] * self.U.conj().T)
@@ -661,7 +696,7 @@ if not sage_loaded:
     class LieGroup(Group):
         def __init__(self, generators, convention=1):
             els = [LieGroupElement(G, convention) for G in generators]
-            n = els[0].D.shape[0]
+            n = els[0].n
             super().__init__(els, identity=LieGroupElement((np.zeros(n, dtype=complex), np.eye(n)), convention))
 
         def op(self, x: LieGroupElement, y: LieGroupElement):
