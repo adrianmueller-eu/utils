@@ -65,6 +65,7 @@ def test_mathlib_all():
         _test_int_sqrt,
         _test_dlog,
         _test_is_carmichael,
+        _test_Zn_star,
         # misc
         _test_Fibonacci,
         _test_calc_pi,
@@ -763,6 +764,29 @@ def _test_is_carmichael():
     for r in res:
         assert is_carmichael(r)
         assert not is_carmichael(r+2)
+
+def _test_Zn_star():
+    Z10 = Zn_star(10)
+    assert Z10.elements == [1, 3, 7, 9]
+    assert Z10.order() == 4
+    assert Z10.order(9) == 2
+    assert Z10.is_cyclic()
+    assert Z10.generators() == [3, 7]
+
+    Z8 = Zn_star(2**3)
+    assert not Z8.is_cyclic()
+    assert len(Z8.generators()) == 0
+
+    assert Zn_star(1).elements == [0]
+
+    n = randint(2, 100)
+    Zn = Zn_star(n)
+    assert len(Zn) == euler_phi(n), f"Got {len(Zn)} elements instead of {euler_phi(n)} for Z_{n}^*"
+    p = next_prime(n)
+    Zp = Zn_star(p)
+    assert len(Zp) == p-1, f"Z_{p}^* should be range(1, {p}), but got {len(Zp)} elements"
+    assert Zp.is_cyclic()
+    assert Zp.is_field()
 
 def _test_Fibonacci():
     assert Fibonacci(10) == 55

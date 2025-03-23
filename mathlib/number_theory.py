@@ -327,3 +327,40 @@ class Group:
 
     def __repr__(self):
         return repr(self.elements)
+
+class Zn_star(Group):
+    """ Multiplicative group of integers modulo `n`. """
+    def __init__(self, n):
+        self.n = n
+        if is_prime(n):
+            els = range(1, n)
+        else:
+            els = [i for i in range(n) if is_coprime(i, n)]
+        super().__init__(els, 1)
+
+    def op(self, x, y):
+        return (x * y) % self.n
+
+    def pow(self, x, n):
+        return pow(x, n, self.n)
+
+    def is_cyclic(self):
+        if self.n in [1, 2, 4]:
+            return True
+        pf = prime_factors(self.n)
+        if pf[0] == 2:
+            return pf[1] != 2 and len(set(pf)) == 2
+        return len(set(pf)) == 1
+
+    def is_field(self):
+        return len(self) == self.n - 1
+        # return is_prime(self.n)
+
+    def __repr__(self):
+        res = f"Z_{self.n}^* ({len(self.elements)} elements)"
+        if isinstance(self.elements, range) or len(self.elements) < 100:
+            res += f": {self.elements}"
+        else:
+            res += f": {self.elements[:100]}"
+            return res[:-1] + ", ...]"
+        return res
