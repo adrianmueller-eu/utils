@@ -7,7 +7,7 @@ try:
     from sage.all import *
     sage_loaded = True
 except ImportError:
-    pass
+    from .sets import powerset
 
 def _two_arguments(f, *a):
     if len(a) == 2:
@@ -151,21 +151,38 @@ if not sage_loaded:
             a += 2
         return a
 
+    def primes(to, start=2):
+        """ Generate all prime numbers from `start` to `to`. """
+        res = []
+        if start <= 2:
+            res.append(2)
+            start = 3
+        else:
+            start = int(start)
+            if start % 2 == 0:
+                start += 1
+        if to is None:
+            to = start + 10**20
+        for a in range(start, int(to), 2):
+            if is_prime(a):
+                res.append(a)
+        return res
+
+def divisors(n):
+    """ Find all divisors of `n`. """
+    pf = prime_factors(n)
+    return set([prod(c) for c in powerset(pf)])
+
 def closest_prime_factors_to(n, m):
     """Find the set of prime factors of n with product closest to m."""
-    if not sage_loaded:
-        from .sets import powerset
-
-    pf = prime_factors(n)
-
     min_diff = float("inf")
     min_combo = None
-    for c in powerset(pf):
-        diff = abs(m - np.prod(c))
+    for d in divisors(n):
+        diff = abs(m - d)
         if diff < min_diff:
             min_diff = diff
-            min_combo = c
-    return min_combo
+            min_combo = d
+    return prime_factors(min_combo)
 
 def int_sqrt(n):
     """ For integer $n$, find the integer $a$ closest to $\\sqrt{n}$, such that $n/a$ is also an integer. """
