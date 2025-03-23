@@ -1015,6 +1015,7 @@ def inv_q(A, q):
     return A_inv
 
 class SL(Group):
+    """ Special linear group of nxn matrices over F_q. """
     def __init__(self, n, q):
         self.n = n
         self.q = q
@@ -1039,7 +1040,11 @@ class SL(Group):
     def cannonical(self, A):
         return tuple(map(tuple, A))
 
+    def __repr__(self):
+        return f"SL({self.n}, {self.q}) ({len(self)} elements)"
+
 class PSL(SL):
+    """ Projective special linear group of nxn matrices over F_q. """
     def __init__(self, n, q):
         self.lambdas = mod_roots(1, n, q)
         super().__init__(n, q)
@@ -1050,6 +1055,9 @@ class PSL(SL):
             f = tuple if l == 1 else lambda x: tuple(map(lambda y: (l*y) % self.q, x))
             As.append(tuple(map(f, A)))
         return min(As)
+
+    def __repr__(self):
+        return "P" + super().__repr__()
 
 def conjugacy_classes(G: Group):
     conjugacy_classes = []
