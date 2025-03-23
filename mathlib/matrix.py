@@ -8,8 +8,8 @@ try:
 except ImportError:
     from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
-from .basic import series, sequence, Group
-from .number_theory import mod_inv
+from .basic import series, sequence
+from .number_theory import mod_inv, Group
 from ..models import Polynomial
 from ..utils import is_int, is_iterable
 

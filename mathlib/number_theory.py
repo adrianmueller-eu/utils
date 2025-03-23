@@ -224,3 +224,106 @@ def mod_inv(x, q):
         if (i * x) % q == 1:
             return i
     return None  # Not invertible
+
+class Group:
+    def __init__(self, elements, identity=None):
+        self.elements = elements
+        self._identity = identity
+
+    def op(self, x, y):
+        raise NotImplementedError()
+
+    def inv(self, x):
+        if type(self).pow != Group.pow:
+            return self.pow(x, -1)
+        for y in self.elements:
+            if np.all(self.op(x, y) == self.identity):
+                return y
+        raise ValueError(f"Couldn't find inverse of {x} in group {self}")
+
+    def pow(self, x, n):
+        if n == 0:
+            return self.identity
+        assert np.isclose(n, int(n)), "Exponent must be an integer"
+        n = int(n)
+        if n < 0:
+            x = self.inv(x)
+            n = -n
+        while n % 2 == 0:
+            x = self.op(x, x)
+            n //= 2
+        tmp = x
+        for _ in range(n):
+            x = self.op(x, tmp)
+        return x
+
+    @property
+    def id(self):
+        return self.identity
+    @property
+    def identity(self):
+        if self._identity is not None:
+            return self._identity
+        for x in self.elements:
+            for y in self.elements:
+                if not np.all(self.op(x, y) == y):
+                    break
+            else:
+                self._identity = x
+                return x
+        raise ValueError("Couldn't find an identity element!")
+
+    def order(self, x=None):
+        if x is not None:
+            assert x in self, f"{x} not in group {self}"
+            ds = divisors(len(self))
+            for d in ds:
+                if self.pow(x, d+1) == x:
+                    return d
+        if callable(x):
+            return np.inf
+        return len(self)
+
+    def is_generator(self, x):
+        return self.order(x) == len(self)
+
+    def generators(self):
+        return [g for g in self if self.is_generator(g)]
+
+    def is_cyclic(self):
+        for x in self:
+            if self.is_generator(x):
+                return True
+        return False
+
+    def center(self):
+        center = set()
+        for x in self:
+            for y in self:
+                if not np.all(self.op(x, y) == self.op(y, x)):
+                    break
+            else:
+                center.add(x)
+        return center
+
+    def is_abelian(self):
+        for x in self.elements:
+            for y in self.elements:
+                if not np.all(self.op(x, y) == self.op(y, x)):
+                    return False
+        return True
+
+    def __getitem__(self, x):
+        return self.elements[x]
+
+    def __len__(self):
+        return len(self.elements)
+
+    def __iter__(self):
+        return iter(self.elements)
+
+    def __contains__(self, x):
+        return x in self.elements
+
+    def __repr__(self):
+        return repr(self.elements)
