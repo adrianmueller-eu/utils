@@ -9,7 +9,7 @@ except ImportError:
     from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
 from .basic import series, sequence
-from .number_theory import Group
+from .number_theory import Group, mod_roots
 from ..models import Polynomial
 from ..utils import is_int, is_iterable
 
@@ -1041,22 +1041,14 @@ class SL(Group):
 
 class PSL(SL):
     def __init__(self, n, q):
-        self.lambdas = self.generate_lambdas(n, q)
+        self.lambdas = mod_roots(1, n, q)
         super().__init__(n, q)
-
-    @staticmethod
-    def generate_lambdas(n, q):
-        """ Find all lambdas such that lambda^n == 1 in F_q """
-        lambdas = []
-        for l in range(q):
-            if pow(l, n, q) == 1:
-                lambdas.append(l)
-        return lambdas
 
     def cannonical(self, A):
         As = []
         for l in self.lambdas:
-            As.append(tuple(map(lambda x: tuple(map(lambda y: (l*y) % self.q, x)), A)))
+            f = tuple if l == 1 else lambda x: tuple(map(lambda y: (l*y) % self.q, x))
+            As.append(tuple(map(f, A)))
         return min(As)
 
 def conjugacy_classes(G: Group):
