@@ -149,7 +149,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    if "label" in pltargs:
+    if "label" in pltargs or labels is not None:
         plt.legend()
     plt.gca().spines["top"].set_visible(False)
     plt.gca().spines["right"].set_visible(False)
