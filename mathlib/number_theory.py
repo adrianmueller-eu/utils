@@ -1,6 +1,6 @@
 import re
 import numpy as np
-from math import sqrt, ceil, prod
+from math import sqrt, ceil, prod, log
 
 sage_loaded = False
 try:
@@ -126,6 +126,10 @@ if not sage_loaded:
         """ Euler's totient function. """
         return round(n * prod([1 - 1/p for p in set(prime_factors(n))]))
         # return sum([1 for k in range(1, n) if is_coprime(n, k)])  # ~100x slower
+
+    def euler_phi_lower(n):
+        """Asymptotic lower bound for Euler's totient function: $n/(e^gamma * log(log(n)))$ """
+        return n / (np.euler_gamma * log(log(n)))
 
     def lcm(*a):
         """ Least common multiple. """
