@@ -11,7 +11,7 @@ except ImportError:
 from .basic import series, sequence
 from .number_theory import mod_inv, Group
 from ..models import Polynomial
-from ..utils import is_int, is_iterable
+from ..utils import is_int, is_iterable, shape_it
 
 sage_loaded = False
 try:
@@ -251,6 +251,35 @@ def normalize(a, p=2, axis=0):
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
     return a
 
+class Sn:
+    """
+    Symmetric group of order n.
+    """
+    def __init__(self, n):
+        self.n = n
+
+    def sample(self, size=None):
+        if size is None:
+            return np.random.permutation(self.n)
+        if not isinstance(size, tuple):
+            size = (size,)
+        res = np.empty(size + (self.n,), dtype=int)
+        for idx in shape_it(size):
+            res[idx] = np.random.permutation(self.n)
+        return res
+
+    def __contains__(self, x):
+        return len(x) == self.n and set(x) == set(range(self.n))
+
+    def __iter__(self):
+        return itertools.permutations(range(self.n))
+
+    def __len__(self):
+        return factorial(self.n)
+
+    def __repr__(self):
+        return f'S_{self.n}'
+
 def symmetrization_operator(levels, sign_base=1):
     """
     Returns the symmetrization operator for quantum systems with levels specified by `levels`. Set `sign_base = -1` for antisymmetrization.
@@ -262,7 +291,7 @@ def symmetrization_operator(levels, sign_base=1):
         warnings.warn("The antisymmetrization operator for more than 2 qubits is always the zero matrix :)")
     n = len(levels)
     return sum(
-        permutation_sign(p, sign_base) * permutation_matrix(p, levels) for p in itertools.permutations(range(n))
+        permutation_sign(p, sign_base) * permutation_matrix(p, levels) for p in Sn(n)
     ) / factorial(n)
 
 def permutation_matrix(perm, shape):
