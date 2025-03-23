@@ -490,28 +490,82 @@ def power_iteration(A, eps=1e-8):
 
 if not sage_loaded:
 
-    def SO(n):
-        """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
-        def rotmat(i, j, phi):
-            a = np.eye(n)
-            cp, sp = cos(phi), sin(phi)
-            a[i,i] = cp
-            a[j,j] = cp
-            a[i,j] = -sp
-            a[j,i] = sp
-            return a
-        return [lambda phi: rotmat(i, j, phi) for i,j in itertools.combinations(range(n), 2)]
-
-    def su(n, include_identity=False, sparse=False, normalize=False, output_hermitian=True):
-        """ The Lie algebra associated with the Lie group SU(n). Returns the n^2-1 generators (traceless Hermitian matrices) of the group. Use `output_hermitian = True` and `include_identity = True` to return a complete orthogonal basis of hermitian `n x n` matrices.
+    def so(n, sparse=False, normalize=False, output_hermitian=False, as_eigen=False):
+        """
+        The Lie algebra associated with the Lie group SO(n). Returns the n(n-1)/2 generators (antisymmetric matrices) of the group.
 
         Parameters
         ----------
             n (int): The dimension of the matrices.
-            include_identity (bool, optional): If True, include the identity matrix in the basis (default: False).
             sparse (bool, optional): If True, return a sparse representation of the matrices (default: False).
             normalize (bool, optional): If True, normalize the matrices to have norm 1 (default: False).
             output_hermitian (bool, optional): If True, output the Hermitian basis elements `ig` instead.
+            as_eigen (bool, optional): If True, return each generators already diagonalized as tuple `(D, U)`
+
+        Returns
+        -------
+        list[ np.ndarray | scipy.sparse.csr_array ]
+            A list of `n(n-1)/2` matrices that form a basis of the Lie algebra.
+        """
+        basis = []
+        if as_eigen:
+            if sparse:
+                Ubase = sp.eye(n, dtype=complex)
+                Dbase = sp.lil_array(n, dtype=complex)
+            else:
+                Ubase = np.eye(n, dtype=complex)
+                Dbase = np.zeros(n, dtype=complex)
+
+            fs2 = 1/sqrt(2)
+            ifs2 = 1j*fs2
+            if output_hermitian:
+                fs2, ifs2 = ifs2, fs2
+            ev = ifs2 if normalize else 1j
+            for i in range(n):
+                for j in range(i+1, n):
+                    D = Dbase.copy()
+                    D[i] = ev
+                    D[j] = -ev
+
+                    U = Ubase.copy()
+                    U[i,i] = U[i,j] = fs2
+                    U[j,i] = ifs2
+                    U[j,j] = -ifs2
+
+                    if sparse:
+                        basis.append((sp.csr_array(D), sp.csr_array(U)))
+                    else:
+                        basis.append((D, U))
+        else:
+            dtype = complex if output_hermitian else float
+            if sparse:
+                base = sp.lil_array((n,n), dtype=dtype)
+            else:
+                base = np.zeros((n,n), dtype=dtype)
+            ev = 1.0
+            if normalize:
+                ev /= sqrt(2)
+            if output_hermitian:
+                ev *= 1j
+            for i in range(n):
+                for j in range(i+1, n):
+                    m = base.copy()
+                    m[i,j] = ev
+                    m[j,i] = -ev
+                    basis.append(m)
+        if sparse:
+            basis = [sp.csr_array(m) for m in basis]
+        return basis
+
+    def su(n, include_identity=False, output_hermitian=True, sparse=False, normalize=False):
+        """ The Lie algebra associated with the Lie group SU(n). Returns the n^2-1 generators (traceless Hermitian matrices) of the group. Use `output_hermitian = True` and `include_identity = True` to return a complete orthogonal basis of hermitian `n x n` matrices.
+
+        Parameters:
+            n (int): The dimension of the matrices.
+            include_identity (bool, optional): If True, include the identity matrix in the basis (default: False).
+            output_hermitian (bool, optional): If True, output the Hermitian basis elements `ig` instead.
+            sparse (bool, optional): If True, return a sparse representation of the matrices (default: False).
+            normalize (bool, optional): If True, normalize the matrices to have norm 1 (default: False).
 
         Returns
         -------
@@ -533,48 +587,143 @@ if not sage_loaded:
             if normalize:
                 # factor 2 to get norm sqrt(2), too
                 identity = sqrt(2/n) * identity
+            if not output_hermitian:
+                identity = 1j*identity
             basis.append(identity)
+
+        # su have norm sqrt(2) by default
+        el = 1/sqrt(2) if normalize else 1
+        eli = 1j*el
+        if not output_hermitian:
+            el, eli = eli, el
 
         # Generate the off-diagonal matrices
         for i in range(n):
             for j in range(i+1, n):
                 m = base.copy()
-                m[i,j] = 1
-                m[j,i] = 1
+                m[i,j] = el
+                m[j,i] = el
                 basis.append(m)
 
                 m = base.copy()
-                m[i, j] = -1j
-                m[j, i] = 1j
+                m[i, j] = -eli
+                m[j, i] = eli
                 basis.append(m)
 
         # Generate the diagonal matrices
         for i in range(1,n):
             m = base.copy()
             for j in range(i):
-                m[j,j] = 1
-            m[i,i] = -i
+                m[j,j] = el
+            m[i,i] = -i*el
             if i > 1:
                 m = sqrt(2/(i*(i+1))) * m
             basis.append(m)
 
-        if normalize:
-            # su have norm sqrt(2) by default
-            basis = [m/sqrt(2) for m in basis]
-        if not output_hermitian:
-            basis = [1j*m for m in basis]
         if sparse:
-            # convert to csr format for faster arithmetic operations
-            return [sp.csr_matrix(m) for m in basis]
+            basis = [sp.csr_array(m) for m in basis]
         return basis
 
-    def SU(n):
-        """ Special unitary group. Returns n^2-1 functions that take an angle and return the corresponding complex rotation matrix """
-        generators = su(n)
-        def rotmat(G):
-            D, U = eigh(G)
-            return lambda phi: U @ (np.exp(-1j*phi/2*D)[:,None] * U.conj().T)
-        return [rotmat(G) for G in generators]
+    class LieGroupElement:
+        """ A class representing an element of a Lie group."""
+        def __init__(self, G, convention, is_generator=True):
+            """ The generator `G` is expected as hermitian. """
+            if isinstance(G, tuple):
+                self.D, self.U = G
+            elif is_generator:
+                self.D, self.U = eigh(G)
+            else:
+                self.D, self.U = eig(G)
+            if not is_generator:
+                self.D = -1j/convention*np.log(self.D)
+                assert allclose0(self.D.imag), f"Non-real eigenvalues in generator: {self.D}"
+                self.D = self.D.real
+                if not is_unitary(self.U):  # unfortunately, eig does not necessarily return a unitary for unitaries
+                    G = self.U @ (self.D[:,None] * inv(self.U))
+                    assert is_hermitian(G), f"Non-hermitian generator: {G}"
+                    self.D, self.U = eigh(G)
+            self.c = convention
+
+        @property
+        def G(self):
+            return self.U @ (self.D[:,None] * self.U.conj().T)
+
+        def __call__(self, phi):
+            return self.U @ (np.exp(1j*self.c*phi*self.D)[:,None] * self.U.conj().T)
+
+        def __matmul__(self, other):
+            return LieGroupElement(self(1) @ other(1), self.c, is_generator=False)
+
+        def __pow__(self, a):
+            return LieGroupElement((a*self.D, self.U), self.c)
+
+        def __repr__(self):
+            pre = f'exp({1j}*'
+            if self.c != 1:
+                pre += f'({self.c})*'
+            pre += 'phi*'
+            G_str = repr(self.G)[6:]
+            return pre + G_str.replace('\n', '\n' + ' '*(len(pre)-6))
+
+    class LieGroup(Group):
+        def __init__(self, generators, convention=1):
+            els = [LieGroupElement(G, convention) for G in generators]
+            n = els[0].D.shape[0]
+            super().__init__(els, identity=LieGroupElement((np.zeros(n, dtype=complex), np.eye(n)), convention))
+
+        def op(self, x: LieGroupElement, y: LieGroupElement):
+            return x @ y
+
+        def pow(self, x: LieGroupElement, a):
+            return x**a
+
+        def __contains__(self, x: LieGroupElement):
+            return NotImplemented
+
+    class SU(LieGroup):
+        """ Special unitary group. Returns n^2-1 callables that take an angle and return the corresponding unitary matrix """
+        def __init__(self, n):
+            self.n = n
+            super().__init__(su(n, output_hermitian=True), convention=-1/2)
+
+        def __repr__(self):
+            return f'SU({self.n}) ({len(self)} dimensions)'
+
+        def __contains__(self, x):
+            if isinstance(x, LieGroupElement):
+                return x.D.shape == (self.n, self.n)
+            elif isinstance(x, np.ndarray):
+                return x.shape == (self.n, self.n) and is_unitary(x) and abs(det(x) - 1) < 1e-12
+            raise ValueError(f"Invalid type: {type(x)}")
+
+    class SO(LieGroup):
+        """ Special orthogonal group. Returns n(n-1)/2 callables that take an angle and return the corresponding orthogonal matrix """
+        def __init__(self, n):
+            self.n = n
+            super().__init__(so(n, output_hermitian=True, as_eigen=True))
+
+        def __repr__(self):
+            return f'SO({self.n}) ({len(self)} dimensions)'
+
+        def __contains__(self, x):
+            if isinstance(x, LieGroupElement):
+                return x.D.shape == (self.n, self.n) and is_orthogonal_eig(x.D)
+            elif isinstance(x, np.ndarray):
+                return x.shape == (self.n, self.n) and is_orthogonal(x) and abs(det(x) - 1) < 1e-12
+            raise ValueError(f"Invalid type: {type(x)}")
+
+    def SO_old(n, sparse=False):
+        """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
+        eye = sp.eye if sparse else np.eye
+        def rotmat(i, j, phi):
+            a = eye(n)
+            cp, sp = cos(phi), sin(phi)
+            a[i,i] = cp
+            a[j,j] = cp
+            a[i,j] = -sp
+            a[j,i] = sp
+            return a
+        return [lambda phi: rotmat(i, j, phi) for i,j in itertools.combinations(range(n), 2)]
 
 def generate_recursive(stubs, n, basis, extend_fn):
     if n <= 1:

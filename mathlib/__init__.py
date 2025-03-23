@@ -82,6 +82,7 @@ def test_mathlib_all():
         ]
     else:
         tests += [
+            _test_so,
             _test_SO,
             _test_su,
             _test_SU,
@@ -489,84 +490,124 @@ def _test_roots():
     for c in p.roots:
         assert np.isclose(p(c), 0)
 
+def _test_so():
+    n = randint(2**1, 2**3)
+    son = so(n)
+
+    # check the number of generators
+    n_expected = n*(n-1)//2
+    assert len(son) == n_expected, f"Number of generators in so({n}) is {len(son)}, but should be {n_expected}!"
+
+    # check if all generators are antisymmetric
+    for i, A in enumerate(son):
+        assert is_antisymmetric(A), f"so({n})[{i}] is not antisymmetric!"
+
+    # check if all generators are traceless
+    for i, A in enumerate(son):
+        assert np.isclose(np.trace(A), 0), f"so({n})[{i}] is not traceless!"
+
+    # check if all generators are pairwise orthogonal
+    for i, (A,B) in enumerate(combinations(son,2)):
+        assert np.allclose(np.trace(A.conj().T @ B), 0), f"Pair {i} in so({n}) is not orthogonal!"
+
+    # check normalization
+    son_norm = so(n, normalize=True)
+    for i, A in enumerate(son_norm):
+        assert np.isclose(np.linalg.norm(A), 1), f"so({n})[{i}] does not have norm 1!"
+
+    # check eigendecomposition
+    son_eig = so(n, as_eigen=True, normalize=True)
+    for i, (O, (D, U)) in enumerate(zip(son_norm, son_eig)):
+        assert np.allclose(O, U @ np.diag(D) @ U.conj().T), f"so({n})[{i}] is not correctly diagonalized!"
+
+    # check sparse representation
+    son_sp = so(n, sparse=True)
+    for i, (A,B) in enumerate(zip(son, son_sp)):
+        assert np.allclose(A, B.todense()), f"Pair {i} is not the same (n={n})!"
+
 def _test_SO():
     n = 4
     SOn = SO(n)
 
-    # check the number of generators
+    # number of generators
     n_expected = n*(n-1)//2
     assert len(SOn) == n_expected, f"Number of generators is {len(SOn)}, but should be {n_expected}!"
 
-    # check if all generators are orthogonal
+    # all generators are orthogonal
     for i, A in enumerate(SOn):
-        random_angle = np.random.randn()
-        assert is_orthogonal(A(random_angle)), f"Generator {i} is not orthogonal! ({random_angle})"
+        phi = np.random.randn()
+        assert is_orthogonal(A(phi)), f"SO({n})[{i}]({phi}) is not orthogonal!"
 
-    # check if all generators are determinant 1
+    # all generators are determinant 1
     for i, A in enumerate(SOn):
-        random_angle = np.random.randn()
-        assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} does not have determinant 1! ({random_angle})"
+        phi = np.random.randn()
+        assert np.isclose(np.linalg.det(A(phi)), 1), f"SO({n})[{i}]({phi}) does not have determinant 1!"
 
 def _test_su():
     n = randint(2**1, 2**3)
     sun = su(n)
 
-    # check the number of generators
+    # number of generators
     n_expected = n**2-1
-    assert len(sun) == n_expected, f"Number of generators is {len(sun)}, but should be {n_expected}!"
+    assert len(sun) == n_expected, f"Number of generators in su({n}) is {len(sun)}, but should be {n_expected}!"
 
-    # check if no two generators are the same
+    # no two generators are the same
     for i, (A,B) in enumerate(combinations(sun,2)):
-        assert not np.allclose(A, B), f"Pair {i} is not different!"
+        assert not np.allclose(A, B), f"Pair {i} in su({n}) is the same!"
 
-    # check if all generators are traceless
+    # all generators are traceless
     for i, A in enumerate(sun):
-        assert np.isclose(np.trace(A), 0), f"Generator {i} is not traceless!"
+        assert np.isclose(np.trace(A), 0), f"su({n})[{i}] is not traceless!"
 
-    # check if all generators are Hermitian
+    # all generators are Hermitian
     for i, A in enumerate(sun):
-        assert is_hermitian(A), f"Generator {i} is not Hermitian!"
+        assert is_hermitian(A), f"su({n})[{i}] is not Hermitian!"
 
-    # check if all generators are pairwise orthogonal
+    # all generators are pairwise orthogonal
     for i, (A,B) in enumerate(combinations(sun,2)):
-        assert np.allclose(np.trace(A.conj().T @ B), 0), f"Pair {i} is not orthogonal!"
+        assert np.allclose(np.trace(A.conj().T @ B), 0), f"Pair {i} in su({n}) is not orthogonal!"
 
-    # check normalization
-    su_n_norm = su(n, normalize=True)
-    for i, A in enumerate(su_n_norm):
-        assert np.isclose(np.linalg.norm(A), 1), f"Generator {i} does not have norm 1!"
+    # normalization
+    sun_norm = su(n, normalize=True)
+    for i, A in enumerate(sun_norm):
+        assert np.isclose(np.linalg.norm(A), 1), f"su({n})[{i}] does not have norm 1!"
 
-    # check sparse representation
+    # sparse representation
     sun_sp = su(n, sparse=True)
-
-    # check the generators are the same
     for i, (A,B) in enumerate(zip(sun, sun_sp)):
-        assert np.allclose(A, B.todense()), f"Pair {i} is not the same!"
+        assert np.allclose(A, B.todense()), f"Pair {i} is not the same (n={n})!"
 
 def _test_SU():
     n = 4
     SUn = SU(n)
 
-    # check the number of generators
+    # number of generators
     n_expected = n**2-1
-    assert len(SUn) == n_expected, f"Number of generators is {len(SUn)}, but should be {n_expected}!"
+    assert len(SUn) == n_expected, f"Number of generators in SU({n}) is {len(SUn)}, but should be {n_expected}!"
 
-    # check if all generators are unitary
+    # all generators are unitary
     for i, A in enumerate(SUn):
-        random_angle = np.random.randn()
-        assert is_unitary(A(random_angle)), f"Generator {i} is not unitary! ({random_angle})"
+        phi = np.random.randn()
+        assert is_unitary(A(phi)), f"SU({n})[{i}]({phi}) is not unitary!"
 
-    # check if all generators have determinant 1
+    # all generators have determinant 1
     warnings.filterwarnings("ignore")  # ignore numpy warnings (bug)
     for i, A in enumerate(SUn):
-        random_angle = np.random.randn()
-        assert np.isclose(np.linalg.det(A(random_angle)), 1), f"Generator {i} is not in SU({n})! ({random_angle})"
+        phi = np.random.randn()
+        assert np.isclose(np.linalg.det(A(phi)), 1), f"SU({n})[{i}]({phi}) does not have determinant 1!"
     warnings.filterwarnings("default")
 
-    # check if no two generators are the same
+    # no two generators are the same
     for i, (A,B) in enumerate(combinations(SUn,2)):
-        random_angle = np.random.randn()
-        assert not np.allclose(A(random_angle), B(random_angle)), f"Pair {i} is not different! ({random_angle})"
+        phi = np.random.randn()
+        assert not np.allclose(A(phi), B(phi)), f"Pair {i} in SU({n}) is the same! ({phi})"
+
+    # group operations
+    idx = choice(len(SUn))
+    U = SUn[idx]
+    assert allclose0((U @ SUn.inv(U)).G)
+    phi = np.random.randn()
+    assert np.allclose(U(phi), SUn.inv(U)(-phi)), f"SU({n})[{idx}]({phi}) group inversion failed!"
 
 def _test_lagrange_multipliers():
     tol = 1e-10
