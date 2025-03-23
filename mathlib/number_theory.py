@@ -378,3 +378,12 @@ class Zn_star(Group):
             res += f": {self.elements[:100]}"
             return res[:-1] + ", ...]"
         return res
+
+def mod_roots(a, n, q):
+    """ Find all x in F_q such that x^n == a """
+    a = a % q
+    return [x for x in range(q) if pow(x, n, q) == a]
+
+def mod_sqrt(a, q):
+    """ Find all x in F_q such that x^2 == a """
+    return mod_roots(a, 2, q)
