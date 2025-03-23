@@ -63,7 +63,7 @@ def mandelbrot(res=2000, iters=120, xlim=(-2, 1), ylim=(-1.5, 1.5), cmap='defaul
     else:
         fractal(f, iters, res, xlim, ylim, show='open', save_fig='mandelbrot', cmap=cmap)
 
-def lorenz(T=2000):
+def lorenz(T=5000, sleep=5):
     def lorenz(x,y,z, sigma=10, rho=28, beta=8/3):
         return sigma*(y-x), x*(rho-z)-y, x*y-beta*z
 
@@ -72,7 +72,7 @@ def lorenz(T=2000):
         for t in tq(range(T)):
             yield x[t],z[t]
 
-    return plot_dynamic(lorenz_gen(T), (5,5), xlim=(-30,30), ylim=(-5,55), linewidth=0.3)
+    return plot_dynamic(lorenz_gen(T), (5,5), xlim=(-30,30), ylim=(-5,55), linewidth=0.3, sleep=sleep, dot='r.')
 
 def game_of_life(rules='conway', T=255, size=256, sleep=50):
     """
