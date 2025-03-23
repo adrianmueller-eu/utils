@@ -182,10 +182,10 @@ class Polynomial(Function):
             min_r, max_r = min(self.roots), max(self.roots)
             root_range = max_r - min_r
             x = np.linspace(-root_range*0.05, root_range*1.05, 1000) + min_r
-            if ax is None:
-                import matplotlib.pyplot as plt
-                ax = plt.gca()
-            ax.axhline(0, color='grey', linewidth=.5)
+        if ax is None:
+            import matplotlib.pyplot as plt
+            ax = plt.gca()
+        ax.axhline(0, color='grey', linewidth=.5)
         return super().plot(x, ax, label=label)
 
     def __add__(self, other):
