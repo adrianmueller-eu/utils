@@ -126,6 +126,24 @@ def shape_it(shape, progress=False):
     for n in gen:
         yield n
 
+def size_samples(f, size):
+    """ Create a numpy array of shape `size, ...` by sampling using the function `f`. """
+    if size is None or size == ():
+        return f()
+    if is_iterable(size):
+        size = tuple(size)
+    if not isinstance(size, tuple):
+        size = (size,)
+    assert all(s >= 1 for s in size), f"size should contain only integers >= 1, but was: {size}"
+
+    el = np.asarray(f())
+    if size == (1,):
+        return np.array([el])
+    res = np.empty(size + el.shape, dtype=el.dtype)
+    for idx in shape_it(size):
+        res[idx] = f()
+    return res
+
 def last(gen):
     """ Get the last element of a generator. """
     for x in gen:
