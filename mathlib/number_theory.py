@@ -1,6 +1,6 @@
 import re
 import numpy as np
-from math import sqrt, ceil
+from math import sqrt, ceil, prod
 
 sage_loaded = False
 try:
@@ -124,7 +124,7 @@ if not sage_loaded:
 
     def euler_phi(n):
         """ Euler's totient function. """
-        return round(n * np.prod([1 - 1/p for p in set(prime_factors(n))]))
+        return round(n * prod([1 - 1/p for p in set(prime_factors(n))]))
         # return sum([1 for k in range(1, n) if is_coprime(n, k)])  # ~100x slower
 
     def lcm(*a):
