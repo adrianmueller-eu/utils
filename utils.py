@@ -43,6 +43,10 @@ def tqt(iterable, **kwargs):
     chat_id = os.environ['TELEGRAM_CHAT_ID']
     return telegram.tqdm(iterable, token=token, chat_id=chat_id, **kwargs)
 
+def print_gen(gen):
+    for x in gen:
+        print(x)
+
 def print_header(title, char='#'):
     res = "\n"
     charl = len(char)
