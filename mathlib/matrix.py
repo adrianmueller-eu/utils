@@ -9,7 +9,7 @@ except ImportError:
     from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
 
 from .basic import series, sequence
-from .number_theory import mod_inv, Group
+from .number_theory import Group
 from ..models import Polynomial
 from ..utils import is_int, is_iterable
 
@@ -997,12 +997,12 @@ def inv_q(A, q):
     if len(A) == 2:
         det = (A[0][0]*A[1][1] - A[0][1]*A[1][0])
     else:
-        det = np.linalg.det(A)
-    det_mod = det % q
+        det = np.round(np.linalg.det(A))
+    det_mod = int(det) % q
     if det_mod == 0:
         return None
     # determinant inverse
-    det_inv = mod_inv(det_mod, q)
+    det_inv = pow(det_mod, -1, q)
     if det_inv is None:
         return None
     # adjugate matrix

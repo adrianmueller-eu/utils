@@ -239,13 +239,6 @@ def carmichael_numbers(to):
         if is_carmichael(n):
             yield n
 
-def mod_inv(x, q):
-    """Multiplicative inverse in F_q"""
-    for i in range(1, q):
-        if (i * x) % q == 1:
-            return i
-    return None  # Not invertible
-
 class Group:
     def __init__(self, elements, identity=None):
         self.elements = elements
