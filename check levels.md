@@ -73,4 +73,5 @@ Level 3: Severe overhead, active only for interactive or critical calls
 | pinv | 1350
 | polar | 1390
 | eigvals | 2700
+| schur | 3650
 | eig | 3750
