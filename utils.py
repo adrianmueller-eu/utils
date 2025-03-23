@@ -62,7 +62,14 @@ def nbytes(o):
         return o.nbytes
     # scipy sparse matrix
     elif hasattr(o, 'data') and isinstance(o.data, np.ndarray):
-        return o.data.nbytes + o.indptr.nbytes + o.indices.nbytes
+        total = o.data.nbytes
+        if hasattr(o, 'indptr'):
+            total += o.indptr.nbytes
+        if hasattr(o, 'indices'):
+            total += o.indices.nbytes
+        if hasattr(o, 'rows'):
+            total += o.rows.nbytes
+        return total
     # pandas dataframe
     elif hasattr(o, 'memory_usage'):
         return o.memory_usage(deep=True).sum()
