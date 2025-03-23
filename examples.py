@@ -74,10 +74,22 @@ def lorenz(T=5000, sleep=5):
 
     return plot_dynamic(lorenz_gen(T), (5,5), xlim=(-30,30), ylim=(-5,55), linewidth=0.3, sleep=sleep, dot='r.')
 
-def game_of_life(rules='conway', T=255, size=256, sleep=50):
+def game_of_life(rules='conway', T=255, size=256, sleep=50, skip=0, **kwargs):
     """
-    Generalized Game of Life simulation with different rulesets: 'conway', 'highlife', 'rule30', 'rule90', 'sierpinski', or 'ising'.
+    Generalized Game of Life simulation.
     Use a matplotlib backend suitable for interactive plotting, e.g. `%matplotlib qt`.
+
+    Parameters:
+      rules (str): The ruleset. The following are available:
+        'conway', 'highlife', 'rule30', 'rule90', 'sierpinski', 'ising', or 'schelling'.
+      T (int): Number of iterations.
+      size (int or tuple): Size of the grid. Rules 'rule30' and 'rule90' require an int, the others allow either an int or a tuple of two ints (rows, cols).
+      sleep (int): Time in ms to sleep between iterations.
+      skip (int): Number of iterations to skip between updates.
+      **kwargs: Rule-specific parameters:
+        - 'conway', 'highlife': seed_frac (default 0.1)
+        - 'ising': temperature (default 2.27), update_frac (default 0.1), p (default 0.75)
+        - 'schelling': tolerance (default 0), base_move_prob (default 0.01), p (default [0.45, 0.45])
     """
     conway_kernel = [
         [1,1,1],
@@ -146,12 +158,74 @@ def game_of_life(rules='conway', T=255, size=256, sleep=50):
             fig.suptitle(f'{i}, magnetization: {2*np.mean(x)-1:.2f}')
             fig.canvas.draw()
 
-        return imshow_dynamic(GameOfLife(size,size, T=T, rule=ising2d(temperature=2.27, update_frac=.1), init=init_random(0.75)),
-                    figsize=(6,6), sleep=sleep, skip=0, cb=ising_cb)
+        temperature = kwargs.get("temperature", 2.27)
+        update_frac = kwargs.get("update_frac", 0.1)
+        p = kwargs.get("p", 0.55)
+        if isinstance(size, int):
+            size = (size, size)
+
+        return imshow_dynamic(GameOfLife(*size, T=T, rule=ising2d(temperature, update_frac), init=init_random(p)),
+                    figsize=(6,6), sleep=sleep, skip=skip, cb=ising_cb)
+    elif rules == 'schelling':
+        def segregation(grid):
+            n = Subgrid(grid)(conway_kernel)
+            likeness = n * grid
+            nonempty = likeness[grid != 0]
+            if len(nonempty) == 0:
+                return 0
+            return np.mean(nonempty)
+
+        def schelling(tolerance, base_move_prob=0):
+            def _rule(t, grid):
+                n = Subgrid(grid)(conway_kernel)
+                new_grid = grid.copy()
+                # people move away if they don't like it
+                likeness = n * grid  # -1 wants more -1, 1 wants more 1, empty cells don't care
+                p_move_away = (-np.tanh(likeness + tolerance) + 1)/2
+                p_move_away = p_move_away*(1-base_move_prob) + base_move_prob
+                move_away = np.random.rand(*grid.shape) < p_move_away
+                new_grid[move_away] = 0
+                # randomly distribute them over the empty cells
+                n_moved = np.sum(move_away)
+                emtpy_homes = grid == 0
+                n_empty = np.sum(emtpy_homes)
+                if n_moved > n_empty:
+                    n_moved = n_empty  # don't add more people than empty spaces
+                movers = np.zeros(n_empty)
+                movers[:n_moved] = grid[move_away][:n_moved] #choice(np.array([-1, 1]), size=n_moved)
+                if n_empty > n_moved:  # new people move in (doesn't change the emergent dynamics qualitatively, but speeds them up and makes the visuals look nicer)
+                    movers[n_moved:] = np.random.choice([-1,0,1], size=n_empty-n_moved, p=[base_move_prob/2, 1-base_move_prob, base_move_prob/2])
+                np.random.shuffle(movers)
+                new_grid[emtpy_homes] = movers
+                return new_grid
+            return _rule
+
+        def schelling_cb(t, x, im, fig):
+            fig.suptitle(f"t={t}, segregation={segregation(x):.2f}")
+            fig.canvas.draw()
+
+        def schelling_init(p_1, p_2):
+            assert p_1 + p_2 <= 1, "The sum of the two populations must be less than 1"
+            p = [p_1, 1-p_1-p_2, p_2]
+            def _init(rows, cols):
+                return np.random.choice([-1,0,1], size=(rows, cols), p=p)
+            return _init
+
+        tolerance = kwargs.get("tolerance", 0)
+        base_move_prob = kwargs.get("base_move_prob", 0.01)
+        p = kwargs.get("p", [0.45, 0.45])
+        if isinstance(size, int):
+            size = (size, size)
+
+        return imshow_dynamic(GameOfLife(*size, T=T, rule=schelling(tolerance, base_move_prob), init=schelling_init(*p)), figsize=(6,6),
+                    sleep=sleep, skip=skip, cb=schelling_cb)
     else:
         raise ValueError(f"Invalid rules: {rules}. Choose from 'conway', 'highlife', 'rule30', 'rule90', 'sierpinski', or 'ising'.")
 
     if rules in ['conway', 'highlife']:
-        return imshow_dynamic(GameOfLife(size,size, T=T, rule=f, init=init_seeds(int(size**2*seed_frac))), figsize=(6,6), sleep=sleep, skip=0)
+        seed_frac = kwargs.get("seed_frac", seed_frac)
+        if isinstance(size, int):
+            size = (size, size)
+        return imshow_dynamic(GameOfLife(*size, T=T, rule=f, init=init_seeds(int(np.prod(size)*seed_frac))), figsize=(6,6), sleep=sleep, skip=skip)
     elif rules in ['rule30', 'rule90']:
-        return imshow_dynamic(GameOfLife(size,2*size-1, T=T, rule=f, init=init_dot), figsize=(6,6), sleep=sleep, skip=0)
+        return imshow_dynamic(GameOfLife(size,2*size-1, T=T, rule=f, init=init_dot), figsize=(6,6), sleep=sleep, skip=skip)
