@@ -71,7 +71,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
         check (int): Checking whether the resulting matrix is Hermitian requires check level 2.
 
     Returns:
-        numpy.ndarray | scipy.sparse.csr_matrix: The matrix representation of the Hamiltonian.
+        numpy.ndarray|scipy.sparse.csr_array: The matrix representation of the Hamiltonian.
 
     Example:
     >>> parse_hamiltonian('0.5*(XX + YY + ZZ + II)') # SWAP
@@ -379,7 +379,7 @@ def ising(n_qubits, J=(-1,1), h=(-1,1), g=(-1,1), offset=0, kind='1d', circular=
 
     Returns
     -------
-    H : str
+    str
         The Hamiltonian as a string, which can be parsed by ph.
     """
     # TODO: interactions on X and Y, and local fields on Y

@@ -271,7 +271,7 @@ def permutation_matrix(perm, shape):
     the permutation [1,0,2] of three two-level systems can be obtained with `permutation_matrix([1,0,2], [2,2,2])`,
     or, using the short hand for `shape`, with `permutation_matrix([1,0,2], 2)`.
 
-    Parameters
+    Parameters:
         perm (list[int]): The permutation of the indices.
         shape (int | list[int]): The dimensions of each subsystem, in the original order.
     """
@@ -477,6 +477,7 @@ if not sage_loaded:
         """ The Lie algebra associated with the Lie group SU(n). Returns the n^2-1 generators (traceless Hermitian matrices) of the group. Use `output_hermitian = True` and `include_identity = True` to return a complete orthogonal basis of hermitian `n x n` matrices.
 
         Parameters
+        ----------
             n (int): The dimension of the matrices.
             include_identity (bool, optional): If True, include the identity matrix in the basis (default: False).
             sparse (bool, optional): If True, return a sparse representation of the matrices (default: False).
@@ -484,7 +485,9 @@ if not sage_loaded:
             output_hermitian (bool, optional): If True, output the Hermitian basis elements `ig` instead.
 
         Returns
-            list[ np.ndarray | scipy.sparse.csr_array ]: A list of `n^2-1` matrices that form a basis of the Lie algebra.
+        -------
+        list[ np.ndarray | scipy.sparse.csr_array ]:
+            A list of `n^2-1` matrices that form a basis of the Lie algebra.
         """
         if sparse:
             base = sp.lil_array((n,n), dtype=complex)
@@ -554,13 +557,15 @@ def pauli_basis(n, kind='np', normalize=False):
 
     E.g. for n = 2, the basis is [II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ]
 
-    Parameters
+    Parameters:
         n (int): Number of qubits
         kind (str): 'np' for numpy arrays (default), 'sp' for scipy sparse matrices, or 'str' for strings
         normalize (bool): Whether to normalize the basis elements (default False)
 
     Returns
-        list[ np.ndarray | scipy.sparse.csr_matrix | str ]: The pauli basis
+    -------
+    list[ np.ndarray | scipy.sparse.csr_array | str ]
+        The pauli basis
     """
     if kind == 'str':
         norm_str = f"{1/sqrt(2**n)}*" if normalize else ""
@@ -584,12 +589,14 @@ def pauli_basis(n, kind='np', normalize=False):
 def pauli_decompose(H, as_str=False, eps=1e-5):
     r"""Decomposes a Hermitian matrix into a linear combination of Pauli operators.
 
-    Parameters
-        H (ndarray): Hermitian matrix of shape ``(2**n, 2**n)``
+    Parameters:
+        H (ndarray): Hermitian matrix of shape `(2**n, 2**n)`
         eps (float): Threshold to include a term in the decomposition. Set to 0 to include all terms.
 
     Returns
-        tuple[list[float], list[str]]: the coefficients and the Pauli operator strings
+    -------
+    tuple[ list[float], list[str] ] | str
+        The coefficients and the Pauli operator strings
 
     Example
     >>> H = np.array([[-2, -2+1j, -2, -2], [-2-1j,  0,  0, -1], [-2,  0, -2, -1], [-2, -1, -1,  0]])
@@ -675,9 +682,9 @@ def random_hermitian(size, params=(0,1)):
 def random_unitary(size, kind='haar'):
     """
     Sample a random unitary.
-    `kind = 'haar'` samples from the complex Haar measure (default).
-    `kind = 'hermitian'` samples a GUE matrix and returns `exp(1j*H)`.
-    `kind = 'polar'` is the fastest for very small matrices.
+    - `kind = 'haar'` samples from the complex Haar measure (default).
+    - `kind = 'hermitian'` samples a GUE matrix and returns `exp(1j*H)`.
+    - `kind = 'polar'` is the fastest for very small matrices.
     """
     if kind == 'haar':
         A = random_square(size, complex=True, kind='normal')
@@ -710,8 +717,8 @@ def random_normal(size, params=(0,1), complex=True):
 def random_projection(size, rank=None, orthogonal=True, complex=True, kind='fast'):
     """
     Sample a random projection matrix P^2 = P. If `orthogonal = True`, the sample is also hermitian.
-    `kind = uniform` samples uniformly from the space of projectors (only implemented for orthogonal projections).
-    `kind = 'fast'` is faster, especially for rank << size (default).
+    - `kind = uniform` samples uniformly from the space of projectors (only implemented for orthogonal projections).
+    - `kind = 'fast'` is faster, especially for rank << size (default).
     """
     if rank is None:
         rank = np.random.randint(1, size) #+orthogonal)  # rank == n is always orthogonal (identity)

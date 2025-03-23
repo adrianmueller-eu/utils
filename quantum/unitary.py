@@ -140,8 +140,8 @@ try:
         def __init__(self, H, k=1, use_pauli=False, trotter_steps=3):
             """
             Represents a quantum circuit for $e^{iH}$ for a given hamiltonian (hermitian matrix) $H \\in \\mathbb C^{d\\times d}$.
-            If `use_pauli == False`, it calculates full diagonalization and stores two dxd matrices (+ one dx1 vector).
-            If `use_pauli == True`, `PauliEvolutionGate` is used, which has lower memory footprint if the Hamiltonian can be expressed
+            - `use_pauli == False` calculates full diagonalization and stores two dxd matrices (+ one dx1 vector).
+            - `use_pauli == True` uses `PauliEvolutionGate`, which has lower memory footprint if the Hamiltonian can be expressed
             in a polynomial number of Pauli terms. If the system is large this also generates shorter (but only approximative) circuits.
             """
             from qiskit.synthesis.evolution import SuzukiTrotter

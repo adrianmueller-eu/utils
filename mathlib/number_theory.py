@@ -204,12 +204,12 @@ def next_good_int_sqrt(n, p=0.1):
 def dlog(x,g,n):
     """ Discrete logarithm, using the baby-step giant-step algorithm.
 
-    Parameters
+    Parameters:
         x (int): The number to find the logarithm of.
         g (int): The base.
         n (int): The modulus.
 
-    Returns
+    Returns:
         int: The discrete logarithm of `x` to the base `g` modulo `n`.
     """
     w = ceil(sqrt(euler_phi(n)))
