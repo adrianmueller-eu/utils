@@ -543,6 +543,11 @@ def _test_SO():
         phi = np.random.randn()
         assert np.isclose(np.linalg.det(A(phi)), 1), f"SO({n})[{i}]({phi}) does not have determinant 1!"
 
+    # sample
+    O = SOn.sample()
+    assert is_orthogonal(O)
+    assert O in SOn
+
 def _test_su():
     n = randint(2**1, 2**3)
     sun = su(n)
@@ -608,6 +613,11 @@ def _test_SU():
     assert allclose0((U @ SUn.inv(U)).G)
     phi = np.random.randn()
     assert np.allclose(U(phi), SUn.inv(U)(-phi)), f"SU({n})[{idx}]({phi}) group inversion failed!"
+
+    # sample
+    U = SUn.sample()
+    assert is_unitary(U)
+    assert U in SUn
 
 def _test_lagrange_multipliers():
     tol = 1e-10

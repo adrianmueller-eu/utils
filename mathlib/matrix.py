@@ -11,7 +11,7 @@ except ImportError:
 from .basic import series, sequence
 from .number_theory import mod_inv, Group
 from ..models import Polynomial
-from ..utils import is_int, is_iterable, shape_it
+from ..utils import is_int, is_iterable
 
 sage_loaded = False
 try:
@@ -258,15 +258,8 @@ class Sn:
     def __init__(self, n):
         self.n = n
 
-    def sample(self, size=None):
-        if size is None:
-            return np.random.permutation(self.n)
-        if not isinstance(size, tuple):
-            size = (size,)
-        res = np.empty(size + (self.n,), dtype=int)
-        for idx in shape_it(size):
-            res[idx] = np.random.permutation(self.n)
-        return res
+    def sample(self):
+        return np.random.permutation(self.n)
 
     def __contains__(self, x):
         return len(x) == self.n and set(x) == set(range(self.n))
@@ -686,6 +679,10 @@ if not sage_loaded:
             self.n = n
             super().__init__(su(n, output_hermitian=True), convention=-1/2)
 
+        def sample(self):
+            U = random_unitary(self.n)
+            return det(U)**(-1/self.n) * U
+
         def __repr__(self):
             return f'SU({self.n}) ({len(self)} dimensions)'
 
@@ -701,6 +698,13 @@ if not sage_loaded:
         def __init__(self, n):
             self.n = n
             super().__init__(so(n, output_hermitian=True, as_eigen=True))
+
+        def sample(self):
+            O = random_orthogonal(self.n)
+            det_O = det(O)
+            if det_O < 0:
+                O[:,0] *= -1
+            return O
 
         def __repr__(self):
             return f'SO({self.n}) ({len(self)} dimensions)'
