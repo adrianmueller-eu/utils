@@ -111,6 +111,23 @@ def is_projection(a, tol=1e-9):
 def is_projection_orthogonal(a, tol=1e-9):
     return is_projection(a, tol=tol) and is_hermitian(a, tol)
 
+def is_orthogonal_eig(eigs, tol=1e-12):
+    """ Check if the given eigenvalues are compatible with the original matrix being orthogonal. Note this is only a *necessary* condition. """
+    if not allclose0(abs(eigs) - 1, tol):
+        return False
+    # find pairs of eigenvalues that are complex conjugates
+    found = np.zeros_like(eigs, dtype=bool)
+    for i, e in enumerate(eigs):
+        if found[i]:
+            continue
+        conj = np.isclose(e.conj() - eigs[~found], 0)
+        if not any(conj):
+            return False
+        # remove e and its conjugate
+        found[np.where(~found)[0][np.argmax(conj)]] = True
+        found[i] = True
+    return True
+
 def is_diag(a, tol=1e-12):
     # return _sq_matrix_allclose(a, lambda a: (
     #     np.diag(np.diag(a)), a
