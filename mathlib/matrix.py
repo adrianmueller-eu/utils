@@ -34,7 +34,7 @@ except ImportError:
 def _sq_matrix_allclose(a, f, tol=1e-12):
     a = np.asarray(a)
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
-        return False
+        raise ValueError(f"Expected square matrix, got {a.shape}")
     # a[np.isnan(a)] = 0
     a, b = f(a)
     # considerable speedup for large matrices if they are both contiguous
