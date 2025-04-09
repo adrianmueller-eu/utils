@@ -309,7 +309,65 @@ class Polynomial(Function):
                 coeffs_red.pop()
                 if len(coeffs_red) == 0:
                     raise ValueError("The zero polynomial has roots everywhere!")
-            self._roots = list(polyroots(coeffs_red))
+
+            # reduce the polynomial if by the minimum multiplicity of the roots
+            p = self
+            dp = p.derivative()
+            m = 1
+            g = p.gcd(dp)
+            while g != 0 and g.degree > 1:
+                m += 1
+                second_last = p
+                p = dp
+                dp = p.derivative()
+                g = p.gcd(dp)
+            if m > 1:
+                roots = []
+                # print(m, p.roots)
+                if p != 0:
+                    p_ = self
+                    for r in p.roots:  # work only if polyroots finds good roots for p
+                        if abs(second_last(r)) <= p.TOLERANCE and all(abs(r - r_i) > p.TOLERANCE for r_i in roots):
+                            r = np.round(r, -int(np.ceil(np.log10(p.TOLERANCE))))
+                            # print(f"Root {r} has multiplicity {m}.")
+                            if m == self.degree - 1:
+                                m += 1
+                            roots += [r]*m
+                            p__, rem = p_ / Polynomial.from_roots([r]*m)
+                            # assert rem == 0, (p_, p__, rem)
+                            p_ = p__
+                p = p_
+                if p != self and p != 0:
+                    roots += p.roots
+                if len(roots) == self.degree and all(abs(self(r)) <= self.TOLERANCE for r in roots):  # check
+                    # print(f"Found {len(roots)} roots: {roots}")
+                    self._roots = roots
+                    return roots
+                # print(f"Found {len(roots)} ≠ {self.degree} roots: {roots}")
+
+            potential_roots = list(polyroots(coeffs_red))
+            roots = []
+            for r_orig in potential_roots:
+                # improve up to numerical precision using newton's method
+                best_r = r = r_orig
+                r_val = self(r)
+                # use newton's method to find the root
+                i, max_iter = 0, 100
+                d = self.derivative()
+                while abs(r_val) > self.TOLERANCE and i < max_iter: #+ sys.float_info.epsilon:
+                    dr = d(r)
+                    if abs(dr) < sys.float_info.epsilon:
+                        break
+                    r -= r_val / dr
+                    r_val_new = self(r)
+                    if abs(r_val_new) < abs(r_val):
+                        best_r = r
+                    r_val = r_val_new
+                    i += 1
+                # print(f"Root p({r_orig}) = {abs(self(r_orig))} improved to p({best_r}) = {abs(self(best_r))} in {i} iterations.")
+                roots.append(best_r)
+            self._roots = roots
+            # self._roots = potential_roots
         return self._roots
 
     def variety(self, precision=None):
@@ -363,6 +421,22 @@ class Polynomial(Function):
 
     def divisible(self, other):
         return other.divides(self)
+
+    def gcd(self, other):
+        if self == 0:
+            return other
+        if other == 0:
+            return self
+        if self.degree < other.degree:
+            return other.gcd(self)
+        old_r = Polynomial([0], self.TOLERANCE)
+        while other != 0:
+            r = self % other
+            if r == old_r:
+                return other
+            old_r = r
+            self, other = other, r
+        return self
 
     def __bool__(self):
         return self != 0
