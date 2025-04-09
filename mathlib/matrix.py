@@ -917,11 +917,15 @@ def random_hermitian(n, params=(0,1)):
     """
     Sample a random Hermitian matrix from the Gaussian Unitary Ensemble (GUE).
     """
-    a = np.diag(random_vec(n, params=params, complex=False).astype(complex))
-    params = (params[0], params[1]/sqrt(2))  # 2 dof for each off-diagonal element
-    a[np.triu_indices(n, 1)] = random_vec(n*(n-1)//2, params=params, complex=True)
-    a[a == 0] = a.T.conj()[a == 0]
-    return a  # (a + a.T.conj())/2 is both slower and non-GUE
+    if n > 30:
+        a = np.diag(random_vec(n, params=params, complex=False).astype(complex))
+        params = (params[0], params[1]/sqrt(2))  # 2 dof for each off-diagonal element
+        a[np.triu_indices(n, 1)] = random_vec(n*(n-1)//2, params=params, complex=True)
+        a[a == 0] = a.T.conj()[a == 0]
+        return a
+    # equivalent, but faster for small matrices
+    a = random_vec((n,n), params=params, complex=True, kind='normal')
+    return (a + a.T.conj())/2
 
 def random_unitary(n, kind='haar'):
     """
