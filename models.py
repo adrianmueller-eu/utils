@@ -176,7 +176,20 @@ class Polynomial(Function):
         return p
 
     def __call__(self, x):
-        return polyval(np.asarray(x), self.coeffs)
+        # return polyval(np.asarray(x), self.coeffs)
+        x = np.asarray(x)
+        if x.ndim == 0:
+            exponents = np.arange(len(self.coeffs))
+            terms = x**exponents
+            return self.coeffs @ terms
+
+        ys = []
+        for x_i in x:
+            exponents = np.arange(len(self.coeffs))
+            terms = x_i**exponents
+            y_i = self.coeffs @ terms
+            ys.append(y_i)
+        return np.array(ys)
 
     def __str__(self, precision=3):
         if self.PRINT_FACTORIZED:
