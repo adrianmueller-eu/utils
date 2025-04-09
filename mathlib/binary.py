@@ -1,5 +1,7 @@
 import numpy as np
 
+from .matrix import kron
+
 def binFrac_i(j, i):
     return int(j % (1/2**(i-1)) != j % (1/2**i))
     #return int(np.ceil((j % (1/2**(i-1))) - (j % (1/2**i))))
@@ -145,5 +147,14 @@ def count_bitreversed(q):
     if q <= 8:
         bits = np.unpackbits(np.arange(2**q, dtype=np.uint8)).reshape(-1, 8)[:, :-q-1:-1]
         return 2**np.arange(q-1, -1, -1) @ bits.T
-    return np.indices((2,)*q).reshape(q, -1).T @ (2**np.arange(q))
+    p8 = count_bitreversed(8)
+    q -= 8
+    res = p8 << q
+    while q > 8:
+        q -= 8
+        pq = p8 << q
+        res = kron(pq, res, np.add)
+    pr = count_bitreversed(q)
+    return kron(pr, res, np.add)
+    # return np.indices((2,)*q).reshape(q, -1).T @ (2**np.arange(q))
     # return sum([((np.arange(2**q) >> j) & 1) << (q - 1 - j) for j in range(q)])
