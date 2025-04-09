@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.polynomial.polynomial import polyfit, polyval, polyroots, polyadd, polysub, polyder, polyint, polymul
@@ -48,39 +49,43 @@ def expm(x, y=None, plot=True, scaling_factor=True):
 # arm
 
 # helper methods
-def _to_str_coeff_1(c, precision=3):
-    if np.iscomplex(c) and not np.isclose(c.imag, 0):
-        if np.isclose(c.real, 0):
+def _to_str_coeff_1(c, precision=3, tol=0):
+    if abs(c.imag) > tol:
+        if abs(c.real) < tol:
             return f"{c.imag:.{precision}g}j"
         return f"({c.real:.{precision}g}{c.imag:+.{precision}g}j)"
     return f"{c.real:.{precision}g}"
 
-def _generate_poly_label(coeffs, precision):
+def _generate_poly_label(coeffs, precision, tol=0):
     def _to_str(i):
         c = coeffs[i]
-        if np.isclose(c, int(c.real)):
-            c = int(c.real)
+        if abs(c.imag) < tol:
+            c = c.real
+            if abs(c - int(np.round(c))) < tol:
+                c = int(np.round(c))
         if i == 0:
             if type(c) == int:
                 if c != 0:
                     return f"%d" % c
-            elif not np.isclose(c, 0):
-                return _to_str_coeff_1(c, precision)
+            elif abs(c) >= tol:
+                return _to_str_coeff_1(c, precision, tol)
         elif i == 1:
             if type(c) == int:
                 if c == 1:
                     return "x"
                 elif c != 0:
                     return f"{c}x"
-            elif not np.isclose(c, 0):
-                return _to_str_coeff_1(c, precision) + "x"
+            elif abs(c) >= tol:
+                return _to_str_coeff_1(c, precision, tol) + "x"
         elif type(c) == int:
             if c == 1:
                 return f"x**{i}"
             elif c != 0:
                 return f"{c}x**{i}"
-        elif not np.isclose(c, 0):
-            return _to_str_coeff_1(c, precision) + f"x**{i}"
+        elif abs(c) >= tol:
+            return _to_str_coeff_1(c, precision, tol) + f"x**{i}"
+        else:
+            print(f"Warning: coefficient {c} is too small.")
         return ""
 
     q = len(coeffs) - 1
@@ -142,10 +147,11 @@ class Polynomial(Function):
 
     PRINT_FACTORIZED = False
 
-    def __init__(self, coeffs):
+    def __init__(self, coeffs, tolerance=1e-7):
         assert len(coeffs) > 0, "Polynomial must have at least one coefficient."
         self.coeffs = tuple(coeffs)
         self._roots = None
+        self.TOLERANCE = tolerance
 
     @property
     def degree(self):
@@ -175,7 +181,7 @@ class Polynomial(Function):
     def __str__(self, precision=3):
         if self.PRINT_FACTORIZED:
             return self.print_factorized(precision=precision)
-        return _generate_poly_label(self.coeffs, precision)
+        return _generate_poly_label(self.coeffs, precision, self.TOLERANCE)
 
     def plot(self, x=None, ax=None, label='auto'):
         if x is None:
@@ -184,34 +190,35 @@ class Polynomial(Function):
             x = np.linspace(-root_range*0.05, root_range*1.05, 1000) + min_r
         if ax is None:
             import matplotlib.pyplot as plt
+            plt.figure()
             ax = plt.gca()
         ax.axhline(0, color='grey', linewidth=.5)
         return super().plot(x, ax, label=label)
 
     def __add__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(polyadd(self.coeffs, other.coeffs))
+            return Polynomial(polyadd(self.coeffs, other.coeffs), self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
             new_coeffs[0] += other
-            return Polynomial(new_coeffs)
+            return Polynomial(new_coeffs, self.TOLERANCE)
         return NotImplemented
 
     def __sub__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(polysub(self.coeffs, other.coeffs))
+            return Polynomial(polysub(self.coeffs, other.coeffs), self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
             new_coeffs[0] -= other
-            return Polynomial(new_coeffs)
+            return Polynomial(new_coeffs, self.TOLERANCE)
         return NotImplemented
 
     def __mul__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(np.convolve(self.coeffs, other.coeffs))
+            return Polynomial(np.convolve(self.coeffs, other.coeffs), self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = [c*other for c in self.coeffs]
-            return Polynomial(new_coeffs)
+            return Polynomial(new_coeffs, self.TOLERANCE)
         return NotImplemented
 
     def __truediv__(self, other):
@@ -222,7 +229,7 @@ class Polynomial(Function):
             return polynomial_division(self, other, verbose=False)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = [c/other for c in self.coeffs]
-            return Polynomial(new_coeffs)
+            return Polynomial(new_coeffs, self.TOLERANCE)
         return NotImplemented
 
     def __floordiv__(self, other):
@@ -237,30 +244,30 @@ class Polynomial(Function):
         return NotImplemented
 
     def derivative(self, m=1):
-        return Polynomial(polyder(self.coeffs, m))
+        return Polynomial(polyder(self.coeffs, m), self.TOLERANCE)
 
     def integrate(self,m=1):
-        return Polynomial(polyint(self.coeffs,m))
+        return Polynomial(polyint(self.coeffs, m), self.TOLERANCE)
 
     def __eq__(self, other):
         if isinstance(other, Polynomial):
-            return np.all(self.coeffs == other.coeffs)
+            return all(abs(c1 - c2) <= self.TOLERANCE for c1, c2 in zip(self.coeffs, other.coeffs))
         if isinstance(other, (int, float, complex)):
-            return np.isclose(self.coeffs[-1], other) and np.allclose(self.coeffs[:-1], 0)
+            return abs(self.coeffs[-1] - other) <= self.TOLERANCE and np.all([np.abs(self.coeffs[:-1]) <= self.TOLERANCE])
         return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __neg__(self):
-        return Polynomial(-np.array(self.coeffs))
+        return Polynomial([-c for c in self.coeffs], self.TOLERANCE)
 
     def __pos__(self):
         return self
 
     def __pow__(self, n):
         if n == 0:
-            return Polynomial([1])
+            return Polynomial([1], self.TOLERANCE)
         if n == 1:
             return self
         if n == 2:
@@ -272,7 +279,7 @@ class Polynomial(Function):
         if self._roots is None:
             # remove highest terms that are 0
             coeffs_red = list(self.coeffs)
-            while np.isclose(coeffs_red[-1], 0):
+            while abs(coeffs_red[-1]) <= self.TOLERANCE:
                 coeffs_red.pop()
                 if len(coeffs_red) == 0:
                     raise ValueError("The zero polynomial has roots everywhere!")
@@ -299,7 +306,7 @@ class Polynomial(Function):
             if np.isclose(r, 0):
                 factor = "x"
             else:
-                r = _to_str_coeff_1(r, precision)
+                r = _to_str_coeff_1(r, precision, self.TOLERANCE)
                 factor = f"(x-{r})"
                 factor = factor.replace("--", "+")
             if m > 1:
@@ -333,9 +340,9 @@ def polynomial_division(f: Polynomial, g: Polynomial, verbose=True):
     # special case for monomial division
     if f.is_monomial() and g.is_monomial():
         coeffs = [0]*(f.degree - g.degree) + [f.coeffs[-1]/g.coeffs[-1]]
-        return Polynomial(coeffs), Polynomial([0])
+        return Polynomial(coeffs, f.TOLERANCE), Polynomial([0], f.TOLERANCE)
 
-    q = Polynomial([0])
+    q = Polynomial([0], f.TOLERANCE)
     r = f
     lt_g = g.lt()
     if verbose:
