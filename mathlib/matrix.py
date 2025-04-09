@@ -3,10 +3,17 @@ import numpy as np
 import itertools
 from math import log2, sin, cos, sqrt, factorial
 try:
+    import scipy
     import scipy.sparse as sp
-    from scipy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv, schur
+    from scipy.linalg import eig, eigvals, eigvalsh, svd, det, inv, pinv, schur
 except ImportError:
-    from numpy.linalg import eig, eigh, eigvals, eigvalsh, svd, det, inv, pinv
+    from numpy.linalg import eig, eigvals, eigvalsh, svd, det, inv, pinv
+
+def eigh(A, **kwargs):
+    """Eigenvalue decomposition of a hermitian matrix."""
+    if len(A) <= 68:
+        return np.linalg.eigh(A, **kwargs)
+    return scipy.linalg.eigh(A, **kwargs)
 
 from .basic import series, sequence
 from .number_theory import Group, mod_roots
