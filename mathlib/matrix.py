@@ -1001,8 +1001,8 @@ def random_projection(n, rank=None, orthogonal=True, complex=True, kind='fast'):
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
 
-def random_involutory(size):
-    P = random_projection(size, orthogonal=True, complex=True)
+def random_involutory(size, kind='uniform'):
+    P = random_projection(size, orthogonal=True, complex=True, kind=kind)
     return 2*P - np.eye(size)
 
 ########################
