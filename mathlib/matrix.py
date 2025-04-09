@@ -951,6 +951,10 @@ def random_unitary(n, kind='haar'):
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
 
+def unitary_noise(d, s):
+    H = random_hermitian(d)
+    return matexp(1j*s*H)
+
 def random_psd(n, params=(0,1), complex=True):
     params = (params[0], sqrt(params[1]))  # eigs scale with variance
     a = random_square(n, params=params, complex=complex, kind='normal')
