@@ -124,7 +124,7 @@ class QuantumComputer:
     def get_state(self, qubits='all', obs=None):
         return self._get("state", qubits, obs)
 
-    def get_U(self, qubits='all', obs=None):
+    def get_unitary(self, qubits='all', obs=None):
         if not self._track_unitary:
             raise ValueError("Unitary tracking is disabled")
         return self._get("U", qubits, obs)
@@ -388,7 +388,7 @@ class QuantumComputer:
         return plotQ(state, **kw_args)
 
     def plotU(self, show_qubits='all', obs=None, **kw_args):
-        U = self.get_U(show_qubits, obs)
+        U = self.get_unitary(show_qubits, obs)
         return imshow(U, **kw_args)
 
     def _check_qubit_arguments(self, qubits, allow_new):

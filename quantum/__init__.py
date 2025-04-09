@@ -355,7 +355,7 @@ def _test_QuantumComputer():
         p = qc.probs()
         assert np.isclose(entropy(p), 0), f"p = {p}"
     U_expected = parse_unitary('CX @ HI')  # check generated unitary
-    assert np.allclose(qc.get_U(), U_expected), f"Incorrect unitary:\n{qc.U}\n ≠\n{U_expected}"
+    assert np.allclose(qc.get_unitary(), U_expected), f"Incorrect unitary:\n{qc.U}\n ≠\n{U_expected}"
 
     assert np.isclose(qc.std(X, 0), 1)
     assert np.isclose(qc.std(Y, 0), 1)
