@@ -359,7 +359,7 @@ def characteristic_polynomial(A):
 def commutator(A, B):
     return A @ B - B @ A
 
-def commute(A, B, tol=1e-10):
+def commutes(A, B, tol=1e-10):
     """ Check if two matrices commute. """
     return allclose0(commutator(A, B), tol=tol)
 

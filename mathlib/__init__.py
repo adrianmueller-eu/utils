@@ -357,7 +357,7 @@ def _test_is_normal():
 def _test_random_normal():
     N = random_normal(randint(2,20))
     assert is_normal(N)
-    assert commute(N, N.T.conj())
+    assert commutes(N, N.T.conj())
 
 def _test_is_projection():
     # orthogonal projection
