@@ -99,9 +99,17 @@ Fredkin = CSWAP = C_(SWAP)
 ##############
 
 def GHZ_(n):
+    """
+    GHZ generalization to n qubits: (|000...0> + |111...1>) / sqrt(2)
+    """
     a = np.zeros(2**n)
     a[0] = a[-1] = fs2
     return a
+def W_state(n):
+    """
+    W state of n qubits.
+    """
+    return sum([ket(2**i, n) for i in range(n)]) / sqrt(n)
 Bell = [
     ket('00 + 11'),  # GHZ_(2)
     ket('00 - 11'),
