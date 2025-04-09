@@ -931,7 +931,7 @@ def random_unitary(n, kind='haar'):
     """
     Sample a random unitary.
     - `kind = 'haar'` samples from the complex Haar measure (default).
-    - `kind = 'hermitian'` samples a GUE matrix and returns `exp(1j*H)`.
+    - `kind = 'gue'` samples a GUE matrix and returns its eigenbasis. Also Haar-distributed, but slower than above.
     - `kind = 'polar'` is the fastest for very small matrices.
     """
     if kind == 'haar':
@@ -940,15 +940,14 @@ def random_unitary(n, kind='haar'):
         R_d = np.diag(R)
         L = R_d / np.abs(R_d)
         return Q * L[None,:]
+    elif kind == 'gue':
+        return eigh(random_hermitian(n))[1]
     elif kind == 'polar':  # fastest for very small and slowest for very large matrices
         A = random_square(n, complex=True, kind='normal')
         D, U = eigh(A.T.conj() @ A)
         D_sqrt = np.sqrt(D)[:,None]
         J_inv = U @ (1/D_sqrt * U.conj().T)
         return A @ J_inv
-    elif kind == 'hermitian':
-        H = random_hermitian(n)
-        return matexp(1j*H)
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
 
