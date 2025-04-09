@@ -201,7 +201,7 @@ try:
             if self.use_pauli:
                 if k == -1:
                     return self.pauli_ev.inverse()
-                return exp_i(self.pauli_ev, k=-self.k*k)
+                return exp_i(self.pauli_ev, k=self.k*k, use_pauli=True)
             return exp_i((self.D, self.U), k=self.k*k, use_pauli=False)  # the tuple only stores the references
 
         def __pow__(self, k):
