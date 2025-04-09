@@ -995,8 +995,9 @@ def random_projection(n, rank=None, orthogonal=True, complex=True, kind='fast'):
             return U @ (D[:,None] * U.conj().T)
         else:
             # only P^2 = P
-            warnings.warn("Uniform sampling from non-orthogonal projections is not implemented. Falling back to kind='fast'.")
-            return random_projection(n, rank=rank, orthogonal=orthogonal, complex=complex, kind='fast')
+            A = random_square(n, complex=complex)
+            D = np.random.permutation([1]*rank + [0]*(n-rank))
+            return A @ (D[:,None] * inv(A))
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
 
