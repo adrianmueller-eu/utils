@@ -896,19 +896,12 @@ class QuantumComputer:
         # 1. Hadamard on energy register
         self.h(energy)
 
-        # 2. Unitary condition
+        # 2. Conditioned unitary powers
         U = self.parse_unitary(U, check=self.check_level)
-        UD, UU = eig(U)
-        # eig unfortunately doesn't necessarily output a unitary if the input is unitary
-        # see https://github.com/numpy/numpy/issues/15461
-        if self.check_level >= 2 and not is_unitary(UU):
-            warnings.warn("Eigendecomposition of the unitary didn't yield unitary transformation matrix. Using inverse instead.", stacklevel=2)
-            UU_inv = inv(UU)  # transformation matrix is always invertible
-        else:
-            UU_inv = UU.conj().T
         for j, q in enumerate(energy):
-            U_2j = UU @ (UD[:,None]**(2**j) * UU_inv)
-            self.c(U_2j, q, state)
+            if j > 0:
+                U = U @ U
+            self.c(U, q, state)
 
         # 3. IQFT on energy register
         self.iqft(energy, do_swaps=False)
