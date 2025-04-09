@@ -341,7 +341,15 @@ class Polynomial(Function):
         return "*".join(factors)
 
     def lt(self):
-        return Polynomial([0]*self.degree + [self.coeffs[-1]])
+        # return Polynomial([0]*self.degree + [self.coeffs[-1]])
+        # find the highest non-zero coefficient
+        coeffs = list(self.coeffs)
+        while abs(coeffs[-1]) <= self.TOLERANCE:
+            coeffs.pop()
+            if len(coeffs) == 0:
+                return Polynomial([0], self.TOLERANCE)
+        coeffs = [0]*(len(coeffs) - 1) + [coeffs[-1]]
+        return Polynomial(coeffs, self.TOLERANCE)
 
     def is_monomial(self):
         return np.isclose(np.sum(np.abs(self.coeffs)), np.abs(self.coeffs[-1]))
