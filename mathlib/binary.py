@@ -126,3 +126,12 @@ def int_from_bincoll(l):
 
 def bincoll_from_int(n, places=0):
     return bincoll_from_binstr(binstr_from_int(n, places))
+
+def count_bitreversed(q):
+    if q <= 3:
+        return np.array([int(bin(j)[2:].zfill(q)[::-1], 2) for j in range(2**q)])
+    if q <= 8:
+        bits = np.unpackbits(np.arange(2**q, dtype=np.uint8)).reshape(-1, 8)[:, :-q-1:-1]
+        return 2**np.arange(q-1, -1, -1) @ bits.T
+    return np.indices((2,)*q).reshape(q, -1).T @ (2**np.arange(q))
+    # return sum([((np.arange(2**q) >> j) & 1) << (q - 1 - j) for j in range(q)])
