@@ -222,9 +222,11 @@ try:
     def get_unitary(circ, decimals=None, as_np=True):
         if hasattr(circ, 'get_unitary'):
             return circ.get_unitary()
+        if hasattr(circ, 'to_matrix'):
+            return circ.to_matrix()
         sim = Aer.get_backend('unitary_simulator')
-        t_circuit = transpile(circ, sim)
-        res = sim.run(t_circuit).result()
+        circ = transpile(circ, sim, optimization_level=1)  # simplify, but make no assumption about the initial state
+        res = sim.run(circ).result()
         U   = res.get_unitary(decimals=decimals)
         if as_np:
             return np.array(U)
