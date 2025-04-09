@@ -221,13 +221,13 @@ def _test_ket_unket():
     for _ in range(150):
         assert time.time() - start < max_time, f"ket is too slow (iteration {_}/150)"
         for _ in range(100):
-            ket(psi, check=0)
+            ket(psi, check=0, renormalize=False)
 
     start = time.time()
     for _ in range(30):
         assert time.time() - start < max_time, f"ket is too slow (iteration {_}/30)"
         for _ in range(100):
-            ket(psi, check=1)
+            ket(psi, check=1, renormalize=False)
 
 def _test_random_ket():
     n_qubits = np.random.randint(1, 10)
@@ -262,7 +262,7 @@ def _test_op_dm():
         for _ in range(n):
             assert time.time() - start < max_time, f"dm is too slow (iteration {_}/{n})"
             for _ in range(100):
-                dm(rho, check=level)
+                dm(rho, check=level, renormalize=False)
 
 def _test_is_ket():
     assert is_ket([1,0,0,0])

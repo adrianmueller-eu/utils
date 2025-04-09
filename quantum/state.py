@@ -352,7 +352,7 @@ def ket_from_int(d, n=None):
     res[d] = 1
     return res
 
-def ket(specification, n=None, renormalize=False, check=1):
+def ket(specification, n=None, renormalize=True, check=1):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number 
     or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
@@ -523,7 +523,7 @@ def op(specification1, specification2=None, n=None, check=1):
 
     return np.outer(s1, s2.conj())
 
-def dm(kets, p=None, n=None, renormalize=False, check=3):
+def dm(kets, p=None, n=None, renormalize=True, check=3):
     """
     Generate a density matrix from a list of state vectors and probabilities.
     """
