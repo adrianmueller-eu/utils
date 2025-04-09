@@ -884,14 +884,9 @@ class QuantumComputer:
 
     def qft(self, qubits, inverse=False, do_swaps=True):
         qubits = self._check_qubit_arguments(qubits, False)
-        QFT = Fourier_matrix(n=len(qubits), n_is_qubits=True)
+        QFT = Fourier_matrix(n=2**len(qubits), swap=not do_swaps)
         if inverse:
-            QFT = QFT.T.conj()  # unitary!
-        if not do_swaps:
-            # Fourier_matrix already does the swaps, so we need to *undo* them
-            n = len(qubits)
-            for i in range(n//2):
-                self.swap(qubits[i], qubits[n-i-1])
+            QFT = QFT.T.conj()
         return self(QFT, qubits)
 
     def iqft(self, qubits, do_swaps=True):

@@ -89,9 +89,9 @@ def _test_constants():
     assert np.allclose(Rot(p,t,l), Rz(l) @ Ry(t) @ Rz(p))
 
 def _test_fourier_matrix():
-    assert np.allclose(Fourier_matrix(1), H)
+    assert np.allclose(Fourier_matrix(2), H)
     n = randint(2,8)
-    F = Fourier_matrix(n)
+    F = Fourier_matrix(2**n)
     assert is_unitary(F)
     assert np.allclose(F @ ket('0'*n), normalize(np.ones(2**n)))  # Fourier creates a full superposition or ...
     assert np.allclose(F[:,0], parse_unitary('H'*n)[:,0])  # ... in other words
@@ -685,7 +685,7 @@ def _test_POVM():
     assert np.allclose(measurement_operator(3, 3, [2,1], as_matrix=False), [0,0,0,1]*2)
 
 def _test_partial_operation():
-    U = Fourier_matrix(5)
+    U = Fourier_matrix(2**5)
     subsystem_state = random_ket(2)
     env_state = random_ket(3)
     Kraus = partial_operation(U, [0,1], env_state)

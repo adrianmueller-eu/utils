@@ -5,17 +5,25 @@ try:
     from scipy.linalg import eig, eigh
 except ImportError:
     from numpy.linalg import eig, eigh
+from math import log2, sqrt
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .state import ket, op, count_qubits, plotQ, reverse_qubit_order, transpose_qubit_order
-from ..mathlib import is_unitary, is_hermitian, pauli_decompose
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed
 from ..utils import is_int
 
-def Fourier_matrix(n, n_is_qubits=True):
+def Fourier_matrix(n, swap=False):
     """Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT)."""
-    if n_is_qubits:
-        n = 2**n
-    return 1/np.sqrt(n) * np.array([[np.exp(2j*np.pi*i*j/n) for j in range(n)] for i in range(n)], dtype=complex)
+    if swap:
+        q = int(log2(n))
+        assert n == 2**q, f'Only can swap if n is a power of two, but was: {n} ≠ 2**{q}'
+        row_order = count_bitreversed(q)
+    else:
+        row_order = range(n)
+    cols, rows = np.meshgrid(range(n), row_order)
+    return np.exp(2j*np.pi/n * cols * rows)/sqrt(n)
+    # bin_ = lambda j: int(bin(j)[2:].zfill(q)[::-1], 2) if swap else j
+    # return 1/np.sqrt(n) * np.array([[np.exp(2j*np.pi*bin_(i)*j/n) for j in range(n)] for i in range(n)], dtype=complex)
 
 def parse_unitary(unitary, check=2):
     """Parse a string representation of a unitary into its matrix representation. The result is guaranteed to be unitary.
