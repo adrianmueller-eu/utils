@@ -439,6 +439,24 @@ def _test_QuantumComputer():
     assert np.allclose(qc.get_state(), (dm('01') + dm('10'))/2)
     qc.purify(sample=True)
 
+    if "qiskit" in sys.modules:
+        warnings.filterwarnings("ignore")  # ignore deprecation warnings
+        from qiskit.circuit.library import PhaseEstimation, RYGate, QFT
+        U = QuantumCircuit(2)  # RYGate(np.pi/12) fails for pi/(2**(n-2)) for n >= 3
+        U.rx(0.1, 0)
+        n = randint(1,8)
+        U_PE1 = get_unitary(PhaseEstimation(n, U))
+        U_PE2 = get_unitary(QC(2+n, track_unitary=True).pe(get_unitary(U), [0,1], range(2,n+2)[::-1]))
+        assert np.allclose(U_PE1, U_PE2)
+
+        U_QFT1 = get_unitary(QFT(n, do_swaps=False))
+        U_QFT2 = get_unitary(QC(n, track_unitary=True).qft(range(n), do_swaps=False))
+        assert np.allclose(U_QFT1, U_QFT2)
+        U_QFT1 = get_unitary(QFT(n, do_swaps=True))
+        U_QFT2 = get_unitary(QC(n, track_unitary=True).qft(range(n), do_swaps=True))
+        assert np.allclose(U_QFT1, U_QFT2)
+        warnings.filterwarnings("default")
+
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
     psi = np.kron(np.kron([1,1], [0,1]), [1,-1])
