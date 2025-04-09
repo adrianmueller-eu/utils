@@ -9,7 +9,7 @@ except:
     from numpy.linalg import eigh
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product, generate_recursive, su
+from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product, generate_recursive, su, commutes
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
 
@@ -636,13 +636,16 @@ def is_pure_dm(rho, check=3, tol=1e-12):
         return abs(trace_product(rho, rho) - 1) < tol
     return True
 
-def is_eigenstate(psi, H, tol=1e-10):
-    psi = normalize(psi)
+def is_eigenstate(psi, H, tol=1e-10, check=2):
+    if len(psi.shape) == 2:
+        rho = dm(psi, check=check)
+        return commutes(rho, H, tol)
+    psi = ket(psi, renormalize=True)  # non-normalized states can still be eigenstates
     psi2 = H @ psi
     eigval_abs = np.linalg.norm(psi2)
     if eigval_abs < tol:
         return True
-    return abs(abs(psi2.conj() @ psi) - eigval_abs) < tol
+    return abs(abs(psi.conj() @ psi2) - eigval_abs) < tol
 
 def gibbs(H, beta=1, check=2):
     """Calculate the Gibbs state of a Hamiltonian `H` at inverse temperature `beta`."""
