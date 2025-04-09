@@ -420,6 +420,67 @@ def scatter1d(data, figsize=None, xticks=None, alpha=.5, s=500, marker="|", xlim
     if show:
         plt.show()
 
+def scatter(a, b=None, figsize=(6,6), hist_ratio=0.2, x_label="", y_label="", title="", labels=None, save_fig=None, **scatter_kwargs):
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=figsize,
+                                    gridspec_kw={'width_ratios': [1, hist_ratio], 'height_ratios': [hist_ratio, 1]})
+
+    fig.subplots_adjust(wspace=0, hspace=0)  # remove space between subplots
+    fig.suptitle(title)
+    fig.subplots_adjust(top=0.95)  # reduce space to suptitle
+    ax2.axis('off')  # hide right upper subplot completely
+
+    # scatter plot
+    if is_iterable(a) and not is_iterable(a[0]):
+        a = [a]
+    if b is None:
+        if is_complex(a[0]):
+            b = [np.imag(a) for a in a]
+            a = [np.real(a) for a in a]
+            x_label = x_label or "Re"
+            y_label = y_label or "Im"
+        else:
+            raise ValueError("Scatter plot requires two real 1d arrays")
+    if labels is None:
+        labels = [None]*len(a)
+    for ai, bi, label in zip(a, b, labels):
+        ax3.scatter(ai, bi, label=label, **scatter_kwargs)
+    if labels[0] is not None:
+        ax3.legend()
+    ax3.set_xlabel(x_label)
+    ax3.set_ylabel(y_label)
+    ax3.spines['right'].set_visible(False)
+    ax3.spines['top'].set_color('lightgrey')
+    ax3.spines['top'].set_linewidth(0.5)
+
+    # histogram on the top
+    a_bins = max([bins_sqrt(ai) for ai in a])
+    a_con = np.concatenate(a)
+    n, a_bins = histogram(a_con.ravel(), bins=a_bins)
+    for ai in a:
+        ax1.hist(ai, bins=a_bins, alpha=0.6 if len(a) > 1 else 1)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['left'].set_visible(False)
+    ax1.spines['bottom'].set_visible(False)
+    ax1.set_xticks([])
+
+    # histogram on the right
+    b_bins = max([bins_sqrt(bi) for bi in b])
+    b_con = np.concatenate(b)
+    n, b_bins = histogram(b_con.ravel(), bins=b_bins)
+    for bi in b:
+        ax4.hist(bi, bins=b_bins, orientation='horizontal', alpha=0.6 if len(a) > 1 else 1, align='mid')
+    ax4.spines['top'].set_visible(False)
+    ax4.spines['right'].set_visible(False)
+    ax4.spines['bottom'].set_visible(False)
+    ax4.spines['left'].set_color('lightgrey')
+    ax4.spines['left'].set_linewidth(0.5)
+    ax4.set_yticks([])
+    ax4.tick_params(axis='x', rotation=45)
+    if save_fig is not None:
+        fig.savefig(save_fig, bbox_inches='tight')
+    plt.show()
+
 def colorize_complex(z):
     """Colorize complex numbers by their angle and magnitude."""
 
