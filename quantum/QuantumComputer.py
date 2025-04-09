@@ -256,6 +256,7 @@ class QuantumComputer:
     def resetv(self, qubits=None):
         """
         Special reset for state vector collapse of existing qubits. For this case, this is ~2x faster than (but equivalent to) the general reset method.
+        Returns the outcome (standard basis) as binary string.
         """
         if self.is_matrix_mode():
             raise ValueError("Special reset not available for matrix mode")
@@ -271,7 +272,7 @@ class QuantumComputer:
         keep = self.state[outcome] / sqrt(probs[outcome])
         self.state = np.zeros_like(self.state)
         self.state[outcome] = keep
-        return self
+        return binstr_from_int(outcome, q)
 
     def init(self, state, qubits=None, collapse=True):
         if qubits is None:
