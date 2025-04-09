@@ -210,7 +210,13 @@ class Polynomial(Function):
 
     def __add__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(polyadd(self.coeffs, other.coeffs), self.TOLERANCE)
+            p = Polynomial(polyadd(self.coeffs, other.coeffs), self.TOLERANCE)
+            # while lt is 0, remove it
+            if p == 0:
+                return Polynomial([0], self.TOLERANCE)
+            while abs(p.coeffs[-1]) <= self.TOLERANCE:
+                p.coeffs = p.coeffs[:-1]
+            return p
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
             new_coeffs[0] += other
@@ -219,7 +225,13 @@ class Polynomial(Function):
 
     def __sub__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(polysub(self.coeffs, other.coeffs), self.TOLERANCE)
+            p = Polynomial(polysub(self.coeffs, other.coeffs), self.TOLERANCE)
+            # while lt is 0, remove it
+            if p == 0:
+                return Polynomial([0], self.TOLERANCE)
+            while abs(p.coeffs[-1]) <= self.TOLERANCE:
+                p.coeffs = p.coeffs[:-1]
+            return p
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
             new_coeffs[0] -= other
