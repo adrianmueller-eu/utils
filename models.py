@@ -293,10 +293,11 @@ class Polynomial(Function):
     def __pow__(self, n):
         if n == 0:
             return Polynomial([1], self.TOLERANCE)
+        while n % 2 == 0:
+            n //= 2
+            self = self * self
         if n == 1:
             return self
-        if n == 2:
-            return self * self
         return self * (self**(n-1))
 
     @property
