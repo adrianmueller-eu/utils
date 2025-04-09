@@ -435,6 +435,7 @@ def _test_symmetrization_operator():
     ], dtype=complex)
     II = np.eye(4)
     assert np.allclose(permutation_matrix([1,0], 2), SWAP)
+    assert np.allclose(permutation_matrix([0,2,1,3]), SWAP)
     assert np.allclose(symmetrization_operator(2), (II + SWAP)/2)
     assert np.allclose(symmetrization_operator(2, -1), (II - SWAP)/2)
     n = randint(1,5)

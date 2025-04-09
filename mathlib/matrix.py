@@ -311,7 +311,7 @@ def symmetrization_operator(levels, sign_base=1):
         permutation_sign(p, sign_base) * permutation_matrix(p, levels) for p in Sn(n)
     ) / factorial(n)
 
-def permutation_matrix(perm, shape):
+def permutation_matrix(perm, shape=None):
     """
     Returns a permutation matrix for a given permutation `perm` and shape `shape`. For example,
     the permutation [1,0,2] of three two-level systems can be obtained with `permutation_matrix([1,0,2], [2,2,2])`,
@@ -319,8 +319,11 @@ def permutation_matrix(perm, shape):
 
     Parameters:
         perm (list[int]): The permutation of the indices.
-        shape (int | list[int]): The dimensions of each subsystem, in the original order.
+        shape (None | int | list[int]): The dimensions of each subsystem, in the original order.
     """
+    if shape is None:
+        # permute the identity
+        return np.eye(len(perm))[perm]
     if is_int(shape):
         shape = int(shape)
         dims  = shape**len(perm)
