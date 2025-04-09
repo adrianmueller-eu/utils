@@ -252,29 +252,30 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
     else:
         ax0 = plt.gca()
 
-    # filter nan, -inf, and inf from data
-    data = np.asarray(data)
-    nan_filter = np.isnan(data) | np.isinf(data)
-    n_filtered = np.sum(nan_filter)
-    if n_filtered > 0:
-        n_original = len(data)
-        data = data[~nan_filter]  # filter out nan and inf
-        print(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
-    if xlog:
-        filter0 = data <= 0
-        n_filtered = np.sum(filter0)
+    def clean_data(data):
+        # filter nan, -inf, and inf from data
+        data = np.asarray(data)
+        nan_filter = np.isnan(data) | np.isinf(data)
+        n_filtered = np.sum(nan_filter)
         if n_filtered > 0:
             n_original = len(data)
-            data = data[~filter0]
-            print(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+            data = data[~nan_filter]  # filter out nan and inf
+            print(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+        if xlog:
+            filter0 = data <= 0
+            n_filtered = np.sum(filter0)
+            if n_filtered > 0:
+                n_original = len(data)
+                data = data[~filter0]
+                print(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+        return data
 
+    data = clean_data(data)
     n, bins = histogram(data.ravel(), bins=bins, xlog=xlog, density=density)
     if len(data.shape) > 1 and 1 < data.shape[0] < 10: # not more than 10 distributions
-        for i, d in enumerate(data):
-            if hasattr(labels, '__len__') and len(labels) == data.shape[0]:
-                label = labels[i]
-            else:
-                label = None
+        if labels is None:
+            labels = [None] * data.shape[0]
+        for d, label in zip(data, labels):
             ax0.hist(d.ravel(), bins=bins, density=density, alpha=1.5/data.shape[0], label=label)
         ax0.legend()
     else:
