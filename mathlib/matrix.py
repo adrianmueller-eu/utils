@@ -269,7 +269,7 @@ def normalize(a, p=2, axis=0):
     if is_complex(a):
         a = np.asarray(a, dtype=complex)
     else:
-        a = np.asarray(a, dtype=float)
+        a = np.asarray(a).real.astype(float)  # converting complex -> float *and* int -> float
     if a.shape == ():
         return a/np.linalg.norm(a)
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
