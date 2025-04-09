@@ -34,6 +34,7 @@ def test_mathlib_all():
         _test_binstr_from_bincoll,
         _test_int_from_bincoll,
         _test_bincoll_from_int,
+        _test_negative_binstr,
         # matrix
         _test_is_symmetric,
         _test_random_symmetric,
@@ -251,6 +252,11 @@ def _test_bincoll_from_int():
     assert bincoll_from_int(42) == [1, 0, 1, 0, 1, 0]
     assert bincoll_from_int(0) == [0]
     assert bincoll_from_int(1) == [1]
+
+def _test_negative_binstr():
+    s = binstr_from_int(randint(1, 2**10))
+    assert (int(s, 2) + int(negative_binstr(s), 2)) % 2**len(s) == 0
+    assert int(flip(s), 2) == int(negative_binstr(s), 2) - 1
 
 def _test_is_symmetric():
     a = [

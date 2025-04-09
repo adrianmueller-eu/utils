@@ -127,6 +127,18 @@ def int_from_bincoll(l):
 def bincoll_from_int(n, places=0):
     return bincoll_from_binstr(binstr_from_int(n, places))
 
+def flip(s):
+    """ Flip the bits of a binary string `s`. """
+    return ''.join(['1' if x == '0' else '0' for x in s])
+
+def negative_binstr(s):
+    """ Returns the additive inverse of the bitstring `s` in the integer ring mod 2^len(s).
+    That is, `(int(s, 2) + int(negative_binstr(s), 2)) % 2**len(s) == 0`.
+    It is also true that `int(flip(s), 2) == int(negative_binstr(s), 2) - 1`.
+    """
+    n, i = len(s), int(s, 2)
+    return binstr_from_int(-i % 2**n, n)
+
 def count_bitreversed(q):
     if q <= 3:
         return np.array([int(bin(j)[2:].zfill(q)[::-1], 2) for j in range(2**q)])
