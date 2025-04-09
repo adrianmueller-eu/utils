@@ -120,8 +120,9 @@ def binstr_from_bincoll(l):
     return "".join([str(x) for x in l])
 
 def int_from_bincoll(l):
-    #return sum([2**i*v_i for i,v_i in enumerate(reversed(l))])
+    # return sum([2**i*v_i for i,v_i in enumerate(reversed(l))])
     return int_from_binstr(binstr_from_bincoll(l))
+    # return 2**np.arange(len(l)) @ l[::-1]
 
 def bincoll_from_int(n, places=0):
     return bincoll_from_binstr(binstr_from_int(n, places))
