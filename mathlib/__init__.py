@@ -55,6 +55,7 @@ def test_mathlib_all():
         _test_matexp,
         _test_matlog,
         _test_normalize,
+        _test_kron,
         _test_symmetrization_operator,
         _test_immanant,
         _test_integer_matrices,
@@ -441,6 +442,25 @@ def _test_normalize():
     assert np.isclose(np.linalg.norm(b), 1)
     a = np.array(3 - 4j)
     assert np.isclose(normalize(a), a/5)
+
+def _test_kron():
+    a = random_vec(12, complex=True)
+    b = random_square(10, complex=True)
+    assert np.kron(a,a).shape == kron(a,a).shape
+    assert np.allclose(np.kron(a,a), kron(a,a))
+    assert np.kron(b,b).shape == kron(b,b).shape
+    assert np.allclose(np.kron(b,b), kron(b,b))
+    assert np.kron(b,a).shape == kron(b,a).shape
+    assert np.allclose(np.kron(a,b), kron(a,b))
+    assert np.kron(a,b).shape == kron(a,b).shape
+    assert np.allclose(np.kron(b,a), kron(b,a))
+
+    a = np.array([[1,2],[3,4]])
+    b = a + 2
+    assert np.all(kron(a,b,np.add) == np.array([[ 4,  5,  5,  6],
+                                                [ 6,  7,  7,  8],
+                                                [ 6,  7,  7,  8],
+                                                [ 8,  9,  9, 10]]))
 
 def _test_symmetrization_operator():
     SWAP = np.array([

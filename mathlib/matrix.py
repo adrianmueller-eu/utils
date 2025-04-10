@@ -275,14 +275,15 @@ def normalize(a, p=2, axis=0):
     a /= np.linalg.norm(a, ord=p, axis=axis, keepdims=True)
     return a
 
-def kron(A, B, op=np.multiply):
+def kron(A, B, op: np.ufunc=np.multiply):
+    A, B = np.asarray(A), np.asarray(B)
     if A.ndim == 1:
-        A = A[:, None]
+        A = A[None,:]
     if B.ndim == 1:
-        B = B[:, None]
-    assert A.ndim == 2 and B.ndim == 2 and A.shape[1] == B.shape[1], f"Invalid dimensions: {A.shape}, {B.shape}"
+        B = B[None,:]
+    assert A.ndim == 2 and B.ndim == 2, f"Invalid dimensions: {A.shape}, {B.shape}"
     res = op.outer(A, B).transpose([0,2,1,3]).reshape(A.shape[0]*B.shape[0], A.shape[1]*B.shape[1])
-    if res.shape[1] == 1:
+    if res.shape[0] == 1:
         return res.ravel()
     return res
 
