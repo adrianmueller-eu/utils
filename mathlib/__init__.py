@@ -35,6 +35,7 @@ def test_mathlib_all():
         _test_int_from_bincoll,
         _test_bincoll_from_int,
         _test_negative_binstr,
+        _test_count_bitreversed,
         # matrix
         _test_is_symmetric,
         _test_random_symmetric,
@@ -257,6 +258,15 @@ def _test_negative_binstr():
     s = binstr_from_int(randint(1, 2**10))
     assert (int(s, 2) + int(negative_binstr(s), 2)) % 2**len(s) == 0
     assert int(flip(s), 2) == int(negative_binstr(s), 2) - 1
+
+def _test_count_bitreversed():
+    assert all(count_bitreversed(0) == [0])
+    assert all(count_bitreversed(1) == [0,1])
+    assert all(count_bitreversed(2) == [0,2,1,3])
+    n = randint(2, 12)
+    assert all(sorted(count_bitreversed(n)) == np.arange(2**n))
+    n = randint(2, 20)
+    assert len(count_bitreversed(n)) == 2**n
 
 def _test_is_symmetric():
     a = [
