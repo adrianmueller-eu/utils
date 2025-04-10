@@ -891,7 +891,7 @@ def str_from_pauli(coeffs, obs_lst, precision=5):
 ### Random ###
 ##############
 
-def random_vec(n, params=(0,1), complex=False, kind='normal'):
+def random_vec(size, params=(0,1), complex=False, kind='normal'):
     if kind == 'normal':
         rng = np.random.normal
     elif kind == 'uniform':
@@ -899,15 +899,14 @@ def random_vec(n, params=(0,1), complex=False, kind='normal'):
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
     if complex:
-        return rng(*params, size=n) + 1j*rng(*params, size=n)
-    return rng(*params, size=n)
+        return rng(*params, size=size) + 1j*rng(*params, size=size)
+    return rng(*params, size=size)
 
-def random_square(n, params=(0,1), complex=False, kind='normal'):
-    if not hasattr(n, '__len__'):
-        n = (n, n)
-    if n[0] != n[1] or len(n) != 2:
-        raise ValueError(f"The shape must be square, but was {n}.")
-    return random_vec(n, params=params, complex=complex, kind=kind)
+def random_square(size, params=(0,1), complex=False, kind='normal'):
+    if not hasattr(size, '__len__'):
+        size = (size,)
+    size += (size[-1],)  # repeat last dimension
+    return random_vec(size, params=params, complex=complex, kind=kind)
 
 def random_symmetric(n, params=(0,1)):
     """
