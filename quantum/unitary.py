@@ -13,7 +13,10 @@ from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitrevers
 from ..utils import is_int
 
 def Fourier_matrix(n, swap=False):
-    """Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT)."""
+    """ Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT).
+    If swap == False, the matrix is $F_{jk} = \\frac{1}{\\sqrt{n}} e^{2\\pi i jk/n}$.
+    If swap == True, the matrix is $F_{jk} = \\frac{1}{\\sqrt{n}} e^{2\\pi i \\overline{j} k/n}$, where $\\overline{j}$ is `j` bit-reverse.
+    """
     if swap:
         q = int(log2(n))
         assert n == 2**q, f'Only can swap if n is a power of two, but was: {n} ≠ 2**{q}'
@@ -22,8 +25,7 @@ def Fourier_matrix(n, swap=False):
         row_order = range(n)
     cols, rows = np.meshgrid(range(n), row_order)
     return np.exp(2j*np.pi/n * cols * rows)/sqrt(n)
-    # bin_ = lambda j: int(bin(j)[2:].zfill(q)[::-1], 2) if swap else j
-    # return 1/np.sqrt(n) * np.array([[np.exp(2j*np.pi*bin_(i)*j/n) for j in range(n)] for i in range(n)], dtype=complex)
+    # return np.array([[np.exp(2j*np.pi*j*k/n) for k in range(n)] for j in row_order])/sqrt(n)
 
 def parse_unitary(unitary, check=2):
     """Parse a string representation of a unitary into its matrix representation. The result is guaranteed to be unitary.
