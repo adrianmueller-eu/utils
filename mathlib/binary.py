@@ -141,9 +141,13 @@ def negative_binstr(s):
     n, i = len(s), int(s, 2)
     return binstr_from_int(-i % 2**n, n)
 
+def bitreverse(a, n):
+    """ Bit-reverse the integer `a` in `n` bits. """
+    return int(bin(a)[2:].zfill(n)[::-1], 2)
+
 def count_bitreversed(q):
     if q <= 3:
-        return np.array([int(bin(j)[2:].zfill(q)[::-1], 2) for j in range(2**q)])
+        return np.array([bitreverse(j, q) for j in range(2**q)])
     if q <= 8:
         bits = np.unpackbits(np.arange(2**q, dtype=np.uint8)).reshape(-1, 8)[:, :-q-1:-1]
         return 2**np.arange(q-1, -1, -1) @ bits.T
