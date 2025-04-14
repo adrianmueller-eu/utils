@@ -454,6 +454,10 @@ def _test_QuantumComputer():
     assert len(ops) == 8
     assert np.allclose(qc[:], QC(2)(ops).decohere()[:])
 
+    # test choi matrix
+    qc.compress_operators()
+    assert len(qc.get_operators()) == 4
+
     if "qiskit" in sys.modules:
         warnings.filterwarnings("ignore")  # ignore deprecation warnings
         from qiskit.circuit.library import PhaseEstimation, RYGate, QFT

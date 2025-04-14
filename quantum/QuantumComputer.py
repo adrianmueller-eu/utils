@@ -635,6 +635,20 @@ class QuantumComputer:
             return outcome
         return self
 
+    def choi_matrix(self):
+        """
+        Returns the Choi-Jamiołkowski representation of the Kraus operators.
+        """
+        if not self._track_operators:
+            raise ValueError("Operator tracking is disabled")
+
+        self.reorder(self.original_order)
+        return choi_from_operators(self.operators, n=self.n, check=self.check_level)
+
+    def compress_operators(self, filter_eps=1e-12):
+        self.operators = operators_from_choi(self.choi_matrix(), n=self.n, filter_eps=filter_eps, check=self.check_level)
+        return self
+
     def ev(self, obs, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
         state = self.get_state(qubits)
@@ -971,7 +985,7 @@ class QuantumComputer:
         operators = np.asarray(operators)
         if operators.ndim == 3:
             assert len(operators) > 0, "No operators provided"
-            assert is_kraus(operators, check=check), "Operators are not valid Kraus operators"
+            assert_kraus(operators, check=check)
             return operators
         else:
             # it's probably a unitary!
