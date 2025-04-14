@@ -14,7 +14,7 @@ fs2 = fs(2)
 ### Unitaries ###
 #################
 
-I_ = lambda n: np.eye(2**n)
+I_ = lambda n, dtype=float: np.eye(2**n, dtype=dtype)
 I, X, Y, Z = su(2, True)
 S = np.array([  # matsqrt(Z)
     [1,  0],

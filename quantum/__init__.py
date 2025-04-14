@@ -439,6 +439,21 @@ def _test_QuantumComputer():
     assert np.allclose(qc.get_state(), (dm('01') + dm('10'))/2)
     qc.purify(sample=True)
 
+    # test kraus operators
+    qc = QuantumComputer(2)
+    qc.h(0)
+    qc.noise('depolarizing', 0)
+    ops = qc.get_operators()
+    assert len(ops) == 4
+    assert is_kraus(ops)
+    assert np.allclose(QC(2)(ops)[:], qc[:])
+
+    qc.cx(0,1)
+    qc.measure(0, collapse=False)
+    ops = qc.get_operators()
+    assert len(ops) == 8
+    assert np.allclose(qc[:], QC(2)(ops).decohere()[:])
+
     if "qiskit" in sys.modules:
         warnings.filterwarnings("ignore")  # ignore deprecation warnings
         from qiskit.circuit.library import PhaseEstimation, RYGate, QFT
@@ -446,14 +461,14 @@ def _test_QuantumComputer():
         U.rx(0.1, 0)
         n = randint(1,8)
         U_PE1 = get_unitary(PhaseEstimation(n, U))
-        U_PE2 = get_unitary(QC(2+n, track_unitary=True).pe(get_unitary(U), [0,1], range(2,n+2)[::-1]))
+        U_PE2 = get_unitary(QC(2+n, track_operators=True).pe(get_unitary(U), [0,1], range(2,n+2)[::-1]))
         assert np.allclose(U_PE1, U_PE2)
 
         U_QFT1 = get_unitary(QFT(n, do_swaps=False))
-        U_QFT2 = get_unitary(QC(n, track_unitary=True).qft(range(n), do_swaps=False))
+        U_QFT2 = get_unitary(QC(n, track_operators=True).qft(range(n), do_swaps=False))
         assert np.allclose(U_QFT1, U_QFT2)
         U_QFT1 = get_unitary(QFT(n, do_swaps=True))
-        U_QFT2 = get_unitary(QC(n, track_unitary=True).qft(range(n), do_swaps=True))
+        U_QFT2 = get_unitary(QC(n, track_operators=True).qft(range(n), do_swaps=True))
         assert np.allclose(U_QFT1, U_QFT2)
         warnings.filterwarnings("default")
 
