@@ -1019,12 +1019,3 @@ class QuantumComputer:
             n_obs = count_qubits(H)
             assert n_obs == n_qubits, f"Observable has {n_obs} qubits, but {n_qubits} qubits were provided"
         return H
-
-def evolve(state, U, check=2):
-    state = as_state(state, check=check)
-    n = count_qubits(state)
-    U = QuantumComputer.parse_unitary(U, n, check)
-    if len(state.shape) == 1:
-        return U @ state
-    assert is_dm(state, check=check), "Invalid state: not a density matrix"
-    return U @ state @ U.T.conj()
