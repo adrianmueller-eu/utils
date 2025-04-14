@@ -197,7 +197,7 @@ try:
                 self.append(self.pauli_ev, self.all_qubits)
             else:
                 u = self.get_unitary()
-                self.unitary(Operator(u), self.all_qubits, label=self.name)
+                self.unitary(u, self.all_qubits, label=self.name)
 
         def power(self, k):
             if self.use_pauli:
