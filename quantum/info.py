@@ -196,3 +196,32 @@ def reset_operator(n, value=0):
     Create a set of Kraus operators that reset `n` qubits to `value` in the standard basis.
     """
     return [op(value, i, n) for i in range(2**n)]
+
+def choi_from_operators(operators, n=None, check=3):
+    """
+    Create the Choi matrix from a set of Kraus operators.
+    """
+    operators = np.asarray(operators)
+    n = n or count_qubits(operators[0])
+    assert_kraus(operators, n_qubits=n, check=check)
+    Choi = np.zeros((2**(2*n), 2**(2*n)), dtype=complex)
+    for K in operators:
+        Kvec = K.reshape(-1, 1)  # column vectorization
+        Choi += Kvec @ Kvec.conj().T
+    return Choi
+
+def operators_from_choi(choi, n=None, filter_eps=1e-10, check=3):
+    """
+    Create the Kraus operators from a Choi matrix.
+    """
+    choi = np.asarray(choi)
+    n = n or int(np.log2(choi.shape[0]) / 2)
+    assert choi.shape == (2**(2*n), 2**(2*n)), f"Choi matrix has invalid shape: {choi.shape} ≠ {(2**(2*n), 2**(2*n))}"
+    U, S, _ = svd(choi)
+    mask = S > filter_eps
+    S = S[mask]
+    U = U[:, mask]
+    S = np.sqrt(S)
+    operators = [S[i] * U[:, i].reshape(2**n, 2**n) for i in range(len(S))]
+    assert_kraus(operators, n_qubits=n, check=check)
+    return operators
