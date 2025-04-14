@@ -177,14 +177,14 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     if hlines:
         if not hasattr(hlines, '__iter__') or type(hlines) == str:
             hlines = [hlines]
-        for h in hlines:
+        for i, h in enumerate(hlines):
             # if iterable, assume the first to be the number and the rest to be kwargs for axhline
             if hasattr(h, '__iter__') and type(h) != str:
                 h, kwargs = h[0], h[1:]
             else:
                 kwargs = {}
             if "color" not in kwargs:
-                kwargs["color"] = "red"
+                kwargs["color"] = plt.cm.tab10(i)
             if "linestyle" not in kwargs:
                 kwargs["linestyle"] = "--"
             plt.axhline(h, **kwargs)
