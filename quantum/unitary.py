@@ -122,7 +122,7 @@ try:
     # Other useful imports
     from qiskit.visualization import plot_histogram
 
-    def run(circuit, shots=1, generate_state=True, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4), title=""):
+    def run(circuit, shots=1, generate_state=True, optimization_level=2, plot=True, showqubits=None, showcoeff=True, showprobs=True, showrho=False, figsize=(16,4), title=""):
         if shots > 10:
             n_gates = count_gates(circuit)
             print("#gates: %d, expected running time: %.3fs" % (n_gates, n_gates * 0.01))
@@ -133,7 +133,7 @@ try:
                 shots = 1
         else:
             simulator = Aer.get_backend('aer_simulator')
-        t_circuit = transpile(circuit, simulator)
+        t_circuit = transpile(circuit, simulator, optimization_level=optimization_level)
         result = simulator.run(t_circuit, shots=shots).result()
 
         if generate_state:
