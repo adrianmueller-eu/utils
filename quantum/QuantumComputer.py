@@ -867,11 +867,11 @@ class QuantumComputer:
         return self
 
     def __neg__(self):
-        if self.is_matrix_mode():
-            self.state = I_(self.n) - self.state.reshape(2**self.n, 2**self.n)
-            return self
-        else:
-            raise ValueError("Negation is not defined for vector states")
+        if not self.is_matrix_mode():
+            raise ValueError("Negation is not defined for state vectors")
+
+        self.state = I_(self.n) - self.state.reshape(2**self.n, 2**self.n)
+        return self
 
     def x(self, q):
         return self(X, q)
@@ -971,9 +971,8 @@ class QuantumComputer:
         """
         Ensures `operators` form a valid CPTP map. Returns a list of np.ndarray.
         """
-        if isinstance(operators, list):
-            operators = np.asarray(operators)
-        if len(operators.shape) == 3:
+        operators = np.asarray(operators)
+        if operators.ndim == 3:
             assert len(operators) > 0, "No operators provided"
             assert is_kraus(operators, check=check), "Operators are not valid Kraus operators"
             return operators
@@ -993,8 +992,7 @@ class QuantumComputer:
         elif "scipy" in sys.modules and sp.issparse(U):
             U = U.toarray()
         else:
-            try:
-                # qiskit might not be loaded
+            try: # qiskit might not be loaded
                 U = get_unitary(U)
             except:
                 raise ValueError(f"Can't process unitary of type {type(U)}: {U}")
