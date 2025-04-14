@@ -9,7 +9,7 @@ except:
     from numpy.linalg import eigh
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product, generate_recursive, su, commutes
+from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product, generate_recursive, su, commutes, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
 
@@ -635,6 +635,29 @@ def is_pure_dm(rho, check=3, tol=1e-12):
     if check >= 1:
         return abs(trace_product(rho, rho) - 1) < tol
     return True
+
+def ket_from_dm(rho, kind='sample', tol=0, check=3):
+    """ Convert a density matrix `rho` to a state vector. """
+    rho = dm(rho, check=check)
+    if kind == 'sample':
+        probs, kets = eigh(rho)
+        # filter out small eigenvalues
+        mask = probs >= tol
+        probs = probs[mask]
+        kets = kets.T[mask]
+        return choice(kets, p=probs)
+    elif kind == 'max':
+        probs, kets = np.linalg.eigh(rho)
+        return kets.T[np.argmax(probs)]
+    else:
+        raise ValueError(f"Unknown kind: {kind}")
+
+def dm_from_ensemble(probs, kets, check=2):
+    check_probability_distribution(probs, check=check)
+    if check >= 2:
+        for k in kets:
+            assert_ket(k)
+    return np.sum(p * np.outer(k, k.conj()) for p, k in zip(probs, kets))
 
 def is_eigenstate(psi, H, tol=1e-10, check=2):
     if len(psi.shape) == 2:
