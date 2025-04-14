@@ -3,16 +3,15 @@ from contextlib import contextmanager
 import numpy as np
 try:
     import scipy.sparse as sp
-    from scipy.linalg import eig, eigh, inv
 except ImportError:
-    from numpy.linalg import eig, eigh, inv
+    pass
 
 from .constants import *
-from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, is_dm, as_state
+from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, as_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
-from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag, trace_product
+from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag, trace_product, eigh
 from ..plot import imshow
 from ..utils import is_int, duh
 from ..prob import entropy
