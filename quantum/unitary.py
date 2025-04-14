@@ -221,6 +221,15 @@ try:
                 return get_unitary(qc)
             return self.U @ (np.exp(self.k*k*1j*self.D)[:,None] * self.U.T.conj())
 
+        def to_matrix(self):
+            return self.get_unitary()
+
+        @property
+        def H(self):
+            if self.use_pauli:
+                return self.pauli_ev.operator
+            return self.U @ (self.D[:,None] * self.U.T.conj())
+
     def get_unitary(circ, decimals=None, as_np=True):
         if hasattr(circ, 'get_unitary'):
             return circ.get_unitary()
