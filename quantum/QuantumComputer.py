@@ -611,6 +611,33 @@ class QuantumComputer:
             self.state = self.state.reshape(q, nq, q, nq)
         return self
 
+    def to_ket(self, kind='max', return_outcome=False, tol=1e-12):
+        """
+        Convert density matrix to state vector representation.
+        """
+        if not self.is_matrix_mode():
+            # warnings.warn("State is already a vector", stacklevel=2)
+            return self
+        if len(self.operators) > 1:
+            if self.track_operators == True:
+                raise ValueError("State vector representation is not compatible with multiple Kraus operators")
+            elif self._track_operators:
+                warnings.warn("State vector representation is not compatible with multiple Kraus operators. Resetting operators.", stacklevel=2)
+                self._reset_operators()
+
+        p, kets = self.ensemble(filter_eps=tol)
+        if kind == 'max':
+            outcome = np.argmax(p)
+            self.state = kets[outcome]
+        elif kind == 'sample':
+            outcome = choice(len(p), p=normalize(p, p=1))
+            self.state = kets[outcome]
+        else:
+            raise ValueError(f"Invalid kind: {kind}. Use 'max' or 'sample'.")
+        if return_outcome:
+            return outcome
+        return self
+
     def ev(self, obs, qubits='all'):
         qubits = self._check_qubit_arguments(qubits, False)
         state = self.get_state(qubits)
