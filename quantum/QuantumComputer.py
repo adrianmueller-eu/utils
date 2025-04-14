@@ -75,12 +75,9 @@ class QuantumComputer:
         isunitary = len(operators) == 1
         # if it's a 1-qubit channel and multiple qubits are given, apply it to all qubits
         if operators[0].shape == (2,2) and len(qubits) > 1:
-            if isunitary:
-                for q in qubits:
-                    self(operators, q)
-                return self
-            # extend all operators by kron with itself for all given qubits
-            operators = [reduce(np.kron, [o]*len(qubits)) for o in operators]
+            for q in qubits:
+                self(operators, q)
+            return self
 
         # rotate axes of state to have the `qubits` first
         if qubits != self.qubits or self.state.shape[0] != 2**len(qubits):
