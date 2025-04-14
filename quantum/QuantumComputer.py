@@ -603,7 +603,12 @@ class QuantumComputer:
         if RAM_required > psutil.virtual_memory().available:
             warnings.warn(f"Insufficient RAM! ({2*self.n}-qubit density matrix would require {duh(RAM_required)})", stacklevel=2)
 
+        q = self.state.shape[0]  # keep original reshaping
+        self.state = self.state.reshape(2**self.n)
         self.state = np.outer(self.state, self.state.conj())
+        if q != 2**self.n:
+            nq = 2**self.n - q
+            self.state = self.state.reshape(q, nq, q, nq)
         return self
 
     def ev(self, obs, qubits='all'):
