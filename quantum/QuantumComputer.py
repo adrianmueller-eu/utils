@@ -826,6 +826,8 @@ class QuantumComputer:
         """
         if noise_model is None:
             raise ValueError("No noise model provided. Valid options are: " + ', '.join(noise_models.keys()))
+        if noise_model not in noise_models:
+            raise ValueError(f"Invalid noise model: {noise_model}. Valid options are: " + ', '.join(noise_models.keys()))
         with self.observable(obs, qubits) as qubits:
             operators = noise_models[noise_model](p)
             return self(operators, qubits)
