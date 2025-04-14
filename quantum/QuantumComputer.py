@@ -141,7 +141,7 @@ class QuantumComputer:
             a = getattr(self, prop)
             if len(qubits) == self.n:
                 return a
-            return partial_trace(a, [self.qubits.index(q) for q in qubits], reorder=False)
+            return partial_trace(a, range(len(qubits)), reorder=False)
 
     @contextmanager
     def observable(self, obs=None, qubits='all', return_energies=False):
@@ -352,8 +352,7 @@ class QuantumComputer:
                 return self.clear()
             if not collapse:
                 self._reorder(qubits, reshape=False)
-                qubits_indcs = [self.qubits.index(q) for q in qubits]
-                retain = [q for q in range(self.n) if q not in qubits_indcs]
+                retain = range(len(qubits), self.n)
             if self.is_matrix_mode():
                 if collapse:
                     q = len(qubits)
