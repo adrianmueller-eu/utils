@@ -240,13 +240,8 @@ class QuantumComputer:
             return binstr_from_int(outcome, len(qubits))
         return outcome
 
-    def reset(self, qubits=None, collapse=True):
-        if qubits is not None:
-            self.init(0, qubits, collapse=collapse)
-        elif self.n:
-            self.init(0, collapse=collapse)
-        # else: pass
-        return self
+    def reset(self, qubits='all', collapse=True):
+        return self.init(0, qubits, collapse=collapse)
 
     def resetv(self, qubits=None):
         """
