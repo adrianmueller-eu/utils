@@ -21,6 +21,7 @@ class QuantumComputer:
     MATRIX_BREAK = 12
     ENTROPY_EPS = 1e-12
     FILTER_EPS = 1e-12  # filter out small eigenvalues and zero operators
+    KEEP_VECTOR = True
 
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
@@ -241,7 +242,7 @@ class QuantumComputer:
                     self.state = np.zeros_like(self.state)
                     self.state[outcome] = normalize(keep)  # may be 1 or vector
                 else:
-                    if entropy(probs) < self.ENTROPY_EPS:  # deterministic outcome implies no entanglement, but loss of information can also happen with the "measurement device" (even if there is no entanglement)
+                    if self.KEEP_VECTOR and entropy(probs) < self.ENTROPY_EPS:  # deterministic outcome implies no entanglement, but loss of information can also happen with the "measurement device" (even if there is no entanglement)
                         warn('Outcome is deterministic -> no decoherence')
                         return self
                     if self.n > self.MATRIX_BREAK:
@@ -365,8 +366,8 @@ class QuantumComputer:
                 else:
                     self.state = partial_trace(self.state, retain, reorder=False)
             else:
-                if collapse or self.entanglement_entropy(qubits) < self.ENTROPY_EPS:
-                    # if no entanglement with others, just remove it
+                if collapse or (self.KEEP_VECTOR and self.entanglement_entropy(qubits) < self.ENTROPY_EPS):
+                    # if `qubits` are separable, just remove them
                     probs = self._probs(qubits)  # also moves qubits to the front and reshapes
                     outcome = choice(2**len(qubits), p=probs)
                     self.state = normalize(self.state[outcome])
