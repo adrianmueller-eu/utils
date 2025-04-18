@@ -346,9 +346,13 @@ def _test_QuantumComputer():
     assert unket(qc.get_state()) == '100'
     qc.remove([0,2])
     assert unket(qc.get_state()) == '0'
+    qc.reset(1)
     qc.x(2)
     result = qc.measure('all')
     assert result == '01'
+    qc = QuantumComputer(2)
+    qc.reset([1,2])
+    assert qc.n == 3, f"qc.n = {qc.n} ≠ 3"
 
     # Heisenberg uncertainty principle
     qc = QuantumComputer(1, 'random')
@@ -370,7 +374,7 @@ def _test_QuantumComputer():
         p = qc.probs()
         assert np.isclose(entropy(p), 0), f"p = {p}"
     U_expected = parse_unitary('CX @ HI')  # check generated unitary
-    assert np.allclose(qc.get_unitary(), U_expected), f"Incorrect unitary:\n{qc.U}\n ≠\n{U_expected}"
+    assert np.allclose(qc.get_unitary(), U_expected), f"Incorrect unitary:\n{qc.get_unitary()}\n ≠\n{U_expected}"
 
     assert np.isclose(qc.std(X, 0), 1)
     assert np.isclose(qc.std(Y, 0), 1)
@@ -460,18 +464,28 @@ def _test_QuantumComputer():
     qc.noise('depolarizing', 0)
     ops = qc.get_operators()
     assert len(ops) == 4
-    assert is_kraus(ops)
+    assert_kraus(ops, n=(2,2))
     assert np.allclose(QC(2)(ops)[:], qc[:])
 
     qc.cx(0,1)
     qc.measure(0, collapse=False)
     ops = qc.get_operators()
     assert len(ops) == 8
-    assert np.allclose(qc[:], QC(2)(ops).decohere()[:])
+    assert np.allclose(qc[:], QC(2)(ops)[:])
+    qc.reset(0, collapse=False)
+    ops = qc.get_operators()
+    assert np.allclose(qc[:], QC(2)(ops)[:])
 
     # test choi matrix
     qc.compress_operators()
     assert len(qc.get_operators()) == 4
+
+    # test n_out > n_in
+    qc = QC(1)
+    qc.init(0, [1], collapse=False)
+    qc(random_unitary(2**2))
+    qc.measure([1], collapse=False)
+    qc.compress_operators()
 
     if "qiskit" in sys.modules:
         warnings.filterwarnings("ignore")  # ignore deprecation warnings
