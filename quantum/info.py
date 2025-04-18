@@ -230,7 +230,7 @@ def combine_channels(operators1, operators2, filter0=True, tol=1e-10, check=3):
                 new_operators.append(Kij)
     return new_operators
 
-def measurement_operator(outcome, n, subsystem, as_matrix=True):
+def measurement_operator(outcome, n, subsystem=None, as_matrix=True):
     if subsystem is None:
         subsystem = range(n)
     subsystem = list(subsystem)
