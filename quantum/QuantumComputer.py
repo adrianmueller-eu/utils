@@ -368,7 +368,9 @@ class QuantumComputer:
             self.original_order[self.original_order.index(q)] = name
         return self
 
-    def reorder(self, new_order):
+    def reorder(self, new_order='original'):
+        if new_order == 'original':
+            new_order = self.original_order
         new_order = self._check_qubit_arguments(new_order, False)
         self.original_order = new_order
         self._reorder(new_order)  # may be unnecessary here, since any next call takes care of reordering as necessary
