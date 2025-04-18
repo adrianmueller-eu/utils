@@ -6,7 +6,7 @@ try:
 except ImportError:
     pass
 
-from .state import count_qubits, partial_trace, op, dm, ev, as_state
+from .state import count_qubits, partial_trace, op, ket, dm, ev, as_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0, eigvalsh, svd
 from ..prob import entropy
 from ..utils import is_iterable, is_from_assert, is_int
@@ -73,7 +73,7 @@ def trace_distance(rho1, rho2, check=1):
 
 def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps=1e-10, check=2):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
-    state = as_state(state, check=check)
+    state = ket(state, renormalize=check>0, check=check)
     n = count_qubits(state)
 
     assert len(state.shape) == 1, f"State must be a vector, but has shape: {state.shape}"
