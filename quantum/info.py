@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-import itertools
+from math import prod
 try:
     import scipy.sparse as sp
 except ImportError:
@@ -169,6 +169,14 @@ def assert_kraus(operators, n_qubits=(None, None), trace_preserving=True, orthog
                 res = np.trace(Ki.conj().T @ Kj)
                 assert np.abs(res) < tol, f"Operators {i,j} are not orthogonal: {res}"
     return Ks
+
+def is_unitary_channel(operators, check=3):
+    """ Check if given operators form a unitary quantum channel. """
+    operators = assert_kraus(operators, check=check)
+    return len(operators) == 1 and ( \
+        (operators[0].ndim == 2 and operators[0].shape[0] == operators[0].shape[1]) or \
+        (operators[0].ndim in (3,4) and prod(operators[0].shape[:2]) == prod(operators[0].shape[2:])) \
+    )
 
 def measurement_operator(outcome, n, subsystem, as_matrix=True):
     if subsystem is None:
