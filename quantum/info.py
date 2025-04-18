@@ -287,6 +287,26 @@ def reset_channel(new_state=0, n=None, filter_eps=1e-10, check=3):
             Ks.append(K)
     return Ks
 
+def extension_channel(new_state, n=None, filter_eps=1e-10, check=3):
+    """
+    Create a set of Kraus operators that expand to `n` new qubits initialized in `new_state`.
+    """
+    new_state = as_state(new_state, renormalize=False, n=n, check=check)
+    p, kets = ensemble_from_state(new_state, filter_eps=filter_eps, check=check)
+    sp = np.sqrt(p)
+    n = count_qubits(kets[0])
+    Ks = []
+    for sp_i, k_i in zip(sp, kets):
+        K = sp_i * k_i[:, None]  # expand to n qubits
+        Ks.append(K)
+    return Ks
+
+def removal_channel(n):
+    """
+    Create a set of Kraus operators that remove `n` qubits. This is equivalent to the (partial) trace operation.
+    """
+    return np.eye(2**n)[:,None,:]  # [ket(i, n=q)[None,:] for i in range(2**q)]
+
 def choi_from_operators(operators, n=None, check=3):
     """
     Create the Choi matrix from a set of Kraus operators.
