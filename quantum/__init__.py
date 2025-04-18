@@ -33,6 +33,7 @@ def test_quantum_all():
         _test_exp_i,
         _test_get_H_energies_eq_get_pe_energies,
         _test_QuantumComputer,
+        _test_channels,
         _test_random_ket,  # required _test_reverse_qubit_order
         _test_random_dm,   # required by _test_partial_trace
         _test_reverse_qubit_order,
@@ -51,8 +52,6 @@ def test_quantum_all():
         _test_trace_distance,
         _test_schmidt_decomposition,
         _test_correlation_quantum,
-        _test_POVM,
-        _test_partial_operation,
         _test_ground_state,
         _test_ising,
         _test_pauli_basis,
@@ -492,6 +491,55 @@ def _test_QuantumComputer():
         assert np.allclose(U_QFT1, U_QFT2)
         warnings.filterwarnings("default")
 
+def _test_channels():
+    # POVM
+    assert np.allclose(measurement_operator(0, 2), op(0, n=2))
+    assert np.allclose(measurement_operator(3, 3, [2,1], as_matrix=False), [0,0,0,1]*2)
+    assert np.allclose(sum(POVM(2)), np.eye(2**2))
+    povm = POVM(2, [0], as_matrix=True)
+    assert len(povm) == 2, f"len(povm) = {len(povm)} ≠ 2"
+    assert np.allclose(povm[0], op('00') + op('01')), f"povm[0] = {povm[0]} ≠ op('00') + op('01')"
+    assert np.allclose(povm[1], op('10') + op('11')), f"povm[1] = {povm[1]} ≠ op('10') + op('11')"
+    assert_kraus(povm, n_qubits=(2,2))
+
+    # combine channels
+    K1 = [pu('HI')]
+    K2 = [pu('CX')]
+    K3 = combine_channels(K2, K1)
+    assert len(K3) == 1
+    assert np.allclose(K3, pu('CX @ HI'))
+
+    # removal / extension
+    def _test(st, n):
+        K_r = removal_channel(n)
+        assert_kraus(K_r, n_qubits=(0,n))
+        K_e = extension_channel(st, n)
+        assert_kraus(K_e, n_qubits=(n,0))
+        K_c = combine_channels(K_r, K_e)
+        assert_kraus(K_c, n_qubits=(0,0))
+        assert K_c[0].shape == (1,1)
+        K_c1 = combine_channels(K_e, K_r)
+        K_c2 = reset_channel(st, n)
+        assert_kraus(K_c2, n_qubits=(n,n))
+        assert np.allclose(K_c1, K_c2)
+        return K_c2
+
+    n = 3
+    _test(0, n)
+    _test(random_ket(n), n)
+    _test(dm(0, n=n), n)
+    _test(random_dm(n), n)
+
+    # partial operation
+    U = Fourier_matrix(2**5)
+    subsystem_state = random_ket(2)
+    env_state = random_ket(3)
+    Ks = partial_operation(U, [0,1], env_state)
+    assert_kraus(Ks, n_qubits=(2,2))
+    st_expect = QC(np.kron(subsystem_state, env_state))(U)[0,1]  # partial_trace(U @ np.kron(subsystem_state, env_state), [0,1])
+    st_actual = QC(subsystem_state)(Ks)[0,1]  # sum([K @ dm(subsystem_state) @ K.conj().T for K in Ks])
+    assert np.allclose(st_actual, st_expect), f"Partial operation failed: {st_actual} != {st_expect}"
+
 def _test_reverse_qubit_order():
     # known 3-qubit matrix
     psi = np.kron(np.kron([1,1], [0,1]), [1,-1])
@@ -731,23 +779,6 @@ def _test_correlation_quantum():
     assert np.isclose(correlation_quantum(ket('0101 + 1010'), ZZ, ZZ), 0)
     assert np.isclose(correlation_quantum(ket('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
     assert np.isclose(correlation_quantum(dm('0.5*0101 + 0000'), ZZ, ZZ), 0.64)
-
-def _test_POVM():
-    for actual, expected in zip(POVM(2, [0], as_matrix=True), [op('00') + op('01'), op('10') + op('11')]):
-        assert np.allclose(actual, expected), f"actual = {actual} ≠ expected = {expected}"
-    assert np.allclose(measurement_operator(3, 3, [2,1], as_matrix=False), [0,0,0,1]*2)
-
-def _test_partial_operation():
-    U = Fourier_matrix(2**5)
-    subsystem_state = random_ket(2)
-    env_state = random_ket(3)
-    Kraus = partial_operation(U, [0,1], env_state)
-    assert_kraus(Kraus)
-    # st_expect = partial_trace(U @ np.kron(subsystem_state, env_state), [0,1])
-    # st_actual = sum([K @ dm(subsystem_state) @ K.conj().T for K in Kraus])
-    st_expect = QC(np.kron(subsystem_state, env_state))(U)[0,1]
-    st_actual = QC(subsystem_state)(Kraus)[0,1]
-    assert np.allclose(st_actual, st_expect), f"Partial operation failed: {st_actual} != {st_expect}"
 
 def _test_ground_state():
     H = parse_hamiltonian('ZZII + IZZI + IIZZ', dtype=float)
