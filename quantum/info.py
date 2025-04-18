@@ -6,7 +6,7 @@ try:
 except ImportError:
     pass
 
-from .state import count_qubits, partial_trace, op, ket, dm, ev, as_state, assert_state
+from .state import count_qubits, partial_trace, op, ket, dm, ev, as_state, ensemble_from_state, assert_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0, eigvalsh, svd
 from ..prob import entropy
 from ..utils import is_iterable, is_from_assert, is_int
@@ -272,11 +272,20 @@ def POVM(n, subsystem=None, as_matrix=True):
         subsystem = range(n)
     return [measurement_operator(outcome, n, subsystem, as_matrix) for outcome in range(2**len(subsystem))]
 
-def reset_operator(n, value=0):
+def reset_channel(new_state=0, n=None, filter_eps=1e-10, check=3):
     """
     Create a set of Kraus operators that reset `n` qubits to `value` in the standard basis.
     """
-    return [op(value, i, n) for i in range(2**n)]
+    new_state = as_state(new_state, renormalize=False, n=n, check=check)
+    p, kets = ensemble_from_state(new_state, filter_eps=filter_eps, check=check)
+    sp = np.sqrt(p)
+    n = count_qubits(kets[0])
+    Ks = []
+    for sp_i, k_i in zip(sp, kets):
+        for z in range(2**n):
+            K = sp_i * op(k_i, z, n=n, check=check)
+            Ks.append(K)
+    return Ks
 
 def choi_from_operators(operators, n=None, check=3):
     """
