@@ -268,10 +268,12 @@ def _test_is_ket():
     assert is_ket([1,0,0,0])
     assert not is_ket([1,0,0,1], print_errors=False)
     assert not is_ket([1,0,0,0,0], print_errors=False)
+    warnings.filterwarnings("ignore")
     assert is_ket([1])  # 0-qubit state
+    assert not is_ket([[1]], print_errors=False)
+    warnings.filterwarnings("default")
     assert is_ket('0.5*00 + 11')
     assert not is_ket('abc', print_errors=False)
-    assert not is_ket([[1]], print_errors=False)
     assert not is_ket(np.eye(2)/2, print_errors=False)
     assert is_ket(random_ket(2))
 
@@ -279,7 +281,9 @@ def _test_is_dm():
     assert is_dm(I_(2)/2**2)
     assert not is_dm(I_(2), print_errors=False)
     assert not is_dm(np.eye(3), print_errors=False)
+    warnings.filterwarnings("ignore")
     assert is_dm([[1]])  # 0-qubit state
+    warnings.filterwarnings("default")
     assert is_dm('0.5*00 + 11')
     assert not is_dm('abc', print_errors=False)
     assert not is_dm([1], print_errors=False)
