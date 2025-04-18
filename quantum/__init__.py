@@ -941,7 +941,7 @@ def _test_pauli_decompose():
     H_decomposed = sum([c*parse_hamiltonian(b) for c, b in zip(coeff, basis)])
     assert np.allclose(H, H_decomposed), f"H = {H}\nH_decomposed = {H_decomposed}"
 
-    # check if `include_zero` returns the whole basis
+    # check if `eps=0` always returns the whole basis
     n = 4
     coeff, basis = pauli_decompose(np.eye(2**n), eps=0)
     n_expect = 2**(2*n)  # == len(pauli_basis(n))
