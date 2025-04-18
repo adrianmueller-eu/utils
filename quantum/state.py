@@ -592,8 +592,12 @@ def assert_ket(psi, n=None, **kwargs):
         try:
             psi = ket(psi, check=0)
         except Exception as e:
-            assert False, f"Invalid state vector: {psi}\n{e.__class__.__name__}: {e}"
-    psi = np.asarray(psi, dtype=complex)
+            assert False, f"Invalid state vector: {psi}"
+    try:
+        psi = np.asarray(psi)
+    except Exception as e:
+        assert False, f"Invalid state vector: {psi}"
+    assert np.issubdtype(psi.dtype, np.number)  # norm is faster for float than complex
     n = n or count_qubits(psi)
     assert len(psi.shape) == 1 and psi.shape[0] == 2**n, f"Invalid state vector shape: {psi.shape} ≠ {(2**n,)}"
     psi_norm = kwargs.get('norm') or np.linalg.norm(psi)
@@ -609,8 +613,11 @@ def assert_dm(rho, n=None, check=3):
         try:
             rho = dm(rho, renormalize=False, check=0)
         except Exception as e:
-            assert False, f"Invalid density matrix: {rho}\n{e.__class__.__name__}: {e}"
-    rho = np.asarray(rho, dtype=complex)
+            assert False, f"Invalid density matrix: {rho}"
+    try:
+        rho = np.asarray(rho, dtype=complex)  # float is no performance difference in np.trace
+    except Exception as e:
+        assert False, f"Invalid density matrix: {rho}"
     assert len(rho.shape) == 2 and rho.shape[0] == rho.shape[1], f"Invalid density matrix shape: {rho.shape}"
     n = n or count_qubits(rho)
     assert rho.shape[0] == 2**n, f"Invalid density matrix shape: {rho.shape} should be a power of 2"
