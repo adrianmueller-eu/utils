@@ -694,6 +694,8 @@ def count_qubits(obj):
         assert x == 2**n, f"Dimension must be a power of 2, but was {x}"
         return n
 
+    if is_int(obj):
+        return asint(obj)
     if isinstance(obj, str) or (hasattr(obj, 'dtype') and obj.dtype.kind == 'U'):  # after conversion to numpy array
         if hasattr(obj, 'item'):
             obj = obj.item()
@@ -710,14 +712,12 @@ def count_qubits(obj):
             # obj = parse_unitary(obj)
             obj = obj.split('@')[0]
             return len(re.search('\\S+', obj)[0])
+    if hasattr(obj, 'shape'):
+        return asint(obj.shape[-1])  # input space
     if hasattr(obj, 'n'):
         return obj.n
-    if hasattr(obj, 'shape'):
-        return asint(obj.shape[-1])
     if hasattr(obj, '__len__'):
         return asint(len(obj))
-    if is_int(obj):
-        return asint(obj)
     if hasattr(obj, 'num_qubits'):
         return obj.num_qubits
     if hasattr(obj, 'qubits'):
