@@ -465,6 +465,7 @@ def unket(state, as_dict=False, prec=5):
     {'00': 0.5, '01': 0.5, '10': 0.5, '11': 0.5}
     """
     eps = 10**(-prec) if prec is not None else 0
+    state = ket(state, renormalize=False)
     n = count_qubits(state)
     if as_dict:
         # cast to float if imaginary part is zero
