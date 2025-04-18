@@ -769,10 +769,9 @@ class QuantumComputer:
 
     def _schmidt_coefficients_gen(self, obs=None, filter_eps=1e-10):
         if self.is_matrix_mode():
-            print("Error: Schmidt coefficients are not available for density matrices")
+            raise ValueError("Schmidt coefficients are not available for density matrices")
         if self.n == 0:
-            print("Error: No bipartitions can be generated from a single qubit")
-            return
+            raise ValueError("No bipartitions can be generated from a single qubit")
         state = self.get_state(obs=obs)
         for i, o in bipartitions(self.qubits, unique=self.is_pure()):
             idcs = [self.qubits.index(q) for q in i]
