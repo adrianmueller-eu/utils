@@ -212,6 +212,24 @@ def apply_channel(operators, state, reshaped, check=3):
         new_state = np.tensordot(U, state, axes=1)
     return new_state
 
+def combine_channels(operators1, operators2, filter0=True, tol=1e-10, check=3):
+    """
+    Combine two quantum channels to a single quantum channel in the order $E = E_1 \\circ E_2$.
+    `filter0` removes zero operators from the result with tolerance `tol`.
+    """
+    operators1 = assert_kraus(operators1, check=check)
+    operators2 = assert_kraus(operators2, check=check)
+    assert operators1[0].shape[1] == operators2[0].shape[0], f"Input dimension of `operators1` does not match output dimension of `operators2`: {operators1[0].shape} x {operators2[0].shape}"
+
+    new_operators = []
+    for Ki in operators1:
+        for Kj in operators2:
+            # (m x q) x (q x (n-q) x -1) -> m x (n-q) x -1
+            Kij = np.tensordot(Ki, Kj, axes=1)
+            if not filter0 or not allclose0(Kij, tol):
+                new_operators.append(Kij)
+    return new_operators
+
 def measurement_operator(outcome, n, subsystem, as_matrix=True):
     if subsystem is None:
         subsystem = range(n)
