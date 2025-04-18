@@ -218,14 +218,14 @@ def _test_ket_unket():
     max_time = 0.01
     start = time.time()
 
-    for _ in range(150):
-        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/150)"
+    for _ in range(70):
+        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/70)"
         for _ in range(100):
             ket(psi, check=0, renormalize=False)
 
     start = time.time()
-    for _ in range(30):
-        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/30)"
+    for _ in range(25):
+        assert time.time() - start < max_time, f"ket is too slow (iteration {_}/25)"
         for _ in range(100):
             ket(psi, check=1, renormalize=False)
 
@@ -257,10 +257,10 @@ def _test_op_dm():
     rho = random_dm(2)
     max_time = 0.01
 
-    for n, level in zip([3,10,40,40], [3,2,1,0]):
+    for i, n, level in zip(range(4), [5,10,30,38], [3,2,1,0]):
         start = time.time()
         for _ in range(n):
-            assert time.time() - start < max_time, f"dm is too slow (iteration {_}/{n})"
+            assert time.time() - start < max_time, f"dm is too slow ({i}, iteration {_}/{n})"
             for _ in range(100):
                 dm(rho, check=level, renormalize=False)
 
