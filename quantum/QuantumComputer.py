@@ -20,6 +20,7 @@ class QuantumComputer:
     MATRIX_SLOW = 8
     MATRIX_BREAK = 12
     ENTROPY_EPS = 1e-12
+    FILTER_EPS = 1e-12  # filter out small eigenvalues and zero operators
 
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
@@ -170,7 +171,7 @@ class QuantumComputer:
         with self.observable(obs, qubits) as qubits:
             return self._probs(qubits)
 
-    def probs_pp(self, qubits='all', obs=None, filter_eps=1e-12, precision=7):
+    def probs_pp(self, qubits='all', obs=None, filter_eps=FILTER_EPS, precision=7):
         probs = self.probs(qubits, obs)
         print("Prob       State")
         print("-"*25)
@@ -522,7 +523,7 @@ class QuantumComputer:
             return 1
         return self.schmidt_number(qubits, obs)  # faster than matrix_rank
 
-    def ensemble(self, obs=None, filter_eps=1e-12):
+    def ensemble(self, obs=None, filter_eps=FILTER_EPS):
         """
         Returns a minimal ensemble of orthnormal kets.
         """
@@ -530,7 +531,7 @@ class QuantumComputer:
         with self.observable(obs):
             return ensemble_from_state(self.state, filter_eps=filter_eps, check=0)
 
-    def ensemble_pp(self, obs=None, filter_eps=1e-12):
+    def ensemble_pp(self, obs=None, filter_eps=FILTER_EPS):
         probs, kets = self.ensemble(obs, filter_eps)
         print(f"Prob      State")
         print("-"*25)
@@ -593,7 +594,7 @@ class QuantumComputer:
             self.state = self.state.reshape(q, nq, q, nq)
         return self
 
-    def to_ket(self, kind='max', return_outcome=False, tol=1e-12):
+    def to_ket(self, kind='max', return_outcome=False, filter_eps=FILTER_EPS):
         """
         Convert density matrix to state vector representation.
         """
@@ -607,7 +608,7 @@ class QuantumComputer:
                 warn("State vector representation is not compatible with a non-unitary channel. Resetting operators.")
                 self._reset_operators()
 
-        p, kets = self.ensemble(filter_eps=tol)
+        p, kets = self.ensemble(filter_eps=filter_eps)
         if kind == 'max':
             outcome = np.argmax(p)
             self.state = kets[outcome]
