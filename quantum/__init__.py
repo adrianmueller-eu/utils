@@ -41,6 +41,7 @@ def test_quantum_all():
         _test_op_dm,
         _test_is_ket,
         _test_is_dm,
+        _test_ensemble,
         _test_is_eigenstate,
         _test_count_qubits,
         _test_Wigner,
@@ -296,6 +297,17 @@ def _test_is_dm():
         v = normalize(v)
     rho = (I + v[0]*X + v[1]*Y + v[2]*Z)/2
     assert is_dm(rho)
+
+def _test_ensemble():
+    n = np.random.randint(1, 5)
+    rho = random_dm(n)
+    p, kets = ensemble_from_state(rho)
+    assert is_dm(dm_from_ensemble(p, kets))
+    ket = random_ket(n)
+    p, kets = ensemble_from_state(ket)
+    assert np.isclose(p[0], 1)
+    assert len(kets) == 1
+    assert len(kets[0]) == 2**n
 
 def _test_random_dm():
     n_qubits = np.random.randint(1, 5)
