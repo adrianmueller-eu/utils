@@ -354,12 +354,15 @@ def ket(specification, n=None, renormalize=True, check=1):
     or a combination of binary numbers and weights. The weights will be normalized to 1."""
     # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
-        specification = np.asarray(specification)
-        if specification.ndim == 1 and renormalize:
-            return normalize(specification)
-        if check >= 1:
-            assert_ket(specification, n)
-        return specification
+        psi = np.asarray(specification)
+        if psi.ndim == 1 and renormalize:
+            psi_norm = np.linalg.norm(psi)
+            psi /= psi_norm
+            if check >= 1:
+                assert_ket(psi, n, norm=psi_norm)
+        elif check >= 1:
+            assert_ket(psi, n)
+        return psi
     if is_int(specification):
         return ket_from_int(specification, n)
     if type(specification) == str:
@@ -582,7 +585,7 @@ def is_ket(psi, n=None, print_errors=True):
     """Check if `ket` is a valid state vector."""
     return is_from_assert(assert_ket, print_errors)(psi, n)
 
-def assert_ket(psi, n=None):
+def assert_ket(psi, n=None, **kwargs):
     """ Check if `ket` is a valid state vector. """
     if isinstance(psi, str):
         try:
@@ -592,7 +595,8 @@ def assert_ket(psi, n=None):
     psi = np.asarray(psi, dtype=complex)
     n = n or count_qubits(psi)
     assert len(psi.shape) == 1 and psi.shape[0] == 2**n, f"Invalid state vector shape: {psi.shape} ≠ {(2**n,)}"
-    assert abs(np.linalg.norm(psi) - 1) < 1e-10, f"State vector is not normalized: {np.linalg.norm(psi)}"
+    psi_norm = kwargs.get('norm') or np.linalg.norm(psi)
+    assert abs(psi_norm - 1) < 1e-10, f"State vector is not normalized: {psi_norm}"
 
 def is_dm(rho, n=None, print_errors=True, check=3):
     """Check if matrix `rho` is a density matrix."""
