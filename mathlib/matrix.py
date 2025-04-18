@@ -152,6 +152,11 @@ def is_diag(a, tol=1e-12):
     a = a.reshape(-1)[:-1].reshape(a.shape[0]-1, a.shape[1]+1)[:,1:]  # remove diagonal
     return allclose0(a, tol=tol)
 
+def is_square(a):
+    if not hasattr(a, 'shape'):  # don't hide a sparse matrix inside a numpy array
+        a = np.asarray(a)
+    return a.ndim >= 2 and a.shape[-2] == a.shape[-1]
+
 def allclose0(a, tol=1e-12):
     if tol == 0:
         return np.all(a == 0)
