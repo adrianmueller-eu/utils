@@ -30,7 +30,7 @@ class QuantumComputer:
 
         self.clear()
 
-        if state is None and qubits is not None and not is_int(qubits) and is_state(qubits, self.check_level):
+        if state is None and qubits is not None and not is_int(qubits) and is_state(qubits, print_errors=False, check=self.check_level):
             state = qubits
             qubits = count_qubits(state)
         if is_int(qubits):
