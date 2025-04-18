@@ -202,13 +202,22 @@ def startfile(filepath):
     else:                                   # linux variants
         return subprocess.call(('xdg-open', filepath))
 
+def warn(msg, category=UserWarning, stacklevel=2):
+    """ Issue a warning with a custom stack level. """
+    if isinstance(msg, str):
+        warnings.warn(msg, category, stacklevel=stacklevel+1)
+    else:
+        warnings.warn(str(msg), category, stacklevel=stacklevel+1)
+    sys.stdout.flush()  # flush potential other output first, too
+    sys.stderr.flush()  # this flushes the warning output
+
 def reissue_warnings(func):
     # Thanks to https://stackoverflow.com/questions/54399469/how-do-i-assign-a-stacklevel-to-a-warning-depending-on-the-caller
     def inner(*args, **kwargs):
         with warnings.catch_warnings(record = True) as warning_list:
             result = func(*args, **kwargs)
         for warning in warning_list:
-            warnings.warn(warning.message, warning.category, stacklevel = 2)
+            warn(warning.message, warning.category)
         return result
     return inner
 

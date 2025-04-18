@@ -1,4 +1,4 @@
-import sys, psutil, warnings
+import sys, psutil
 from contextlib import contextmanager
 import numpy as np
 try:
@@ -13,7 +13,7 @@ from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag, trace_product, eigh
 from ..plot import imshow
-from ..utils import is_int, duh
+from ..utils import is_int, duh, warn
 from ..prob import entropy
 
 class QuantumComputer:
@@ -193,8 +193,7 @@ class QuantumComputer:
         with self.observable(obs, qubits, return_energies=True) as (qubits, energies):
             if collapse:
                 if self.track_operators == True:
-                    warnings.warn("Collapse is incompatible with Kraus operators. Resetting operators.", stacklevel=2)
-                self._reset_operators()
+                    warn("Collapse is incompatible with Kraus operators. Resetting operators.")
             probs = self._probs(qubits)
             q = len(qubits)
             if self.is_matrix_mode():
@@ -240,10 +239,10 @@ class QuantumComputer:
                     self.state[outcome] = normalize(keep)  # may be 1 or vector
                 else:
                     if entropy(probs) < self.ENTROPY_EPS:  # deterministic outcome implies no entanglement, but loss of information can also happen with the "measurement device" (even if there is no entanglement)
-                        warnings.warn('Outcome is deterministic -> no decoherence', stacklevel=2)
+                        warn('Outcome is deterministic -> no decoherence')
                         return self
                     if self.n > self.MATRIX_BREAK:
-                        warnings.warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
+                        warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.")
                     # decohere as as density matrix
                     self.to_dm()
                     return self.measure(qubits, collapse=collapse, obs=obs)
@@ -251,7 +250,7 @@ class QuantumComputer:
         if return_as == 'energy' and energies is not None:
             return energies[outcome]
         elif return_as == 'energy':
-            print("Warning: No observable provided for return_as_energy=True. Returning as outcome index instead.", stacklevel=2)
+            warn("No observable provided for return_as_energy=True. Returning as outcome index instead.")
         elif return_as == 'binstr':
             return binstr_from_int(outcome, len(qubits))
         return outcome
@@ -273,7 +272,7 @@ class QuantumComputer:
             raise ValueError("Special reset not available for matrix mode")
 
         if self.track_operators == True:
-            warnings.warn("Reset is incompatible with unitary tracking. Resetting unitary.", stacklevel=2)
+            warn("Reset is incompatible with operator tracking. Resetting operators.")
         self._reset_operators()
         q = len(qubits)
         new_state = ket(0, n=q)
@@ -373,7 +372,7 @@ class QuantumComputer:
                 else:
                     # otherwise, we need to decohere
                     if len(retain) > self.MATRIX_BREAK:
-                        warnings.warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.", stacklevel=2)
+                        warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
                         # return self.remove(qubits, collapse=True)
                     self.state = partial_trace(self.state, retain, reorder=False)
 
@@ -437,14 +436,14 @@ class QuantumComputer:
         if self.n > 0 and self._track_operators:
             RAM_required = (2**(self.n + q))**2*16*2*max(1, len(self.operators))
             if RAM_required > psutil.virtual_memory().available:
-                warnings.warn(f"Insufficient RAM! {max(1, len(self.operators))} ({self.n + q}-qubit operators would require {duh(RAM_required)})", stacklevel=3)
+                warn(f"Insufficient RAM! {max(1, len(self.operators))} ({self.n + q}-qubit operators would require {duh(RAM_required)})", stacklevel=3)
         else:
             if self.is_matrix_mode():  # False if self.n == 0
                 RAM_required = (2**(self.n + q))**2*16*2
             else:
                 RAM_required = (2**(self.n + q))*16*2
             if RAM_required > psutil.virtual_memory().available:
-                warnings.warn(f"Insufficient RAM! ({self.n + q}-qubit state would require {duh(RAM_required)})", stacklevel=3)
+                warn(f"Insufficient RAM! ({self.n + q}-qubit state would require {duh(RAM_required)})", stacklevel=3)
 
         if self.is_matrix_mode():
             state = state if state is not None else dm(0, n=q)
@@ -557,7 +556,7 @@ class QuantumComputer:
         `sample=True` will sample from the ensemble, otherwise a deterministic purification is performed.
         """
         if not self.is_matrix_mode():
-            warnings.warn("State is already a vector", stacklevel=2)
+            warn("State is already a vector")
             return self
 
         with self.observable(obs):
@@ -592,12 +591,12 @@ class QuantumComputer:
         Convert state vector to density matrix representation.
         """
         if self.is_matrix_mode():
-            # warnings.warn("State is already a density matrix", stacklevel=2)
+            # warn("State is already a density matrix")
             return self
         # RAM check
         RAM_required = 2**(2*self.n)*16*2
         if RAM_required > psutil.virtual_memory().available:
-            warnings.warn(f"Insufficient RAM! ({2*self.n}-qubit density matrix would require {duh(RAM_required)})", stacklevel=2)
+            warn(f"Insufficient RAM! ({2*self.n}-qubit density matrix would require {duh(RAM_required)})")
 
         q = self.state.shape[0]  # keep original reshaping
         self.state = self.state.reshape(2**self.n)
@@ -612,13 +611,13 @@ class QuantumComputer:
         Convert density matrix to state vector representation.
         """
         if not self.is_matrix_mode():
-            # warnings.warn("State is already a vector", stacklevel=2)
+            # warn("State is already a vector")
             return self
         if len(self.operators) > 1:
             if self.track_operators == True:
-                raise ValueError("State vector representation is not compatible with multiple Kraus operators")
+                raise ValueError("State vector representation is not compatible with a non-unitary channel")
             elif self._track_operators:
-                warnings.warn("State vector representation is not compatible with multiple Kraus operators. Resetting operators.", stacklevel=2)
+                warn("State vector representation is not compatible with a non-unitary channel. Resetting operators.")
                 self._reset_operators()
 
         p, kets = self.ensemble(filter_eps=tol)
@@ -741,7 +740,7 @@ class QuantumComputer:
         qubits = self._check_qubit_arguments(qubits, False)
         gen = self._entanglement_entropy_gen(qubits, obs)
         if len(qubits) > 10 and sort is not None or len(qubits) >= 12:
-            warnings.warn("This may take a while", stacklevel=2)
+            warn("This may take a while")
         printed_all = self._gen_pp(gen, qubits, sort, head, "Entropy", lambda x: f"{x[0]:.{precision}f}".rstrip('0'))
         # add full state entropy
         if printed_all:
@@ -798,7 +797,7 @@ class QuantumComputer:
             formatter = lambda x: f"{x[0]}"
             title = "Schmidt number"
         if self.n >= 14 and sort is not None or self.n >= 20:
-            warnings.warn("This may take a while", stacklevel=2)
+            warn("This may take a while")
         self._gen_pp(gen, self.qubits, sort, head, title, formatter)
 
     def schmidt_number(self, qubits='all', obs=None):
