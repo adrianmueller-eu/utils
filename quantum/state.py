@@ -358,10 +358,8 @@ def ket(specification, n=None, renormalize=True, check=1):
         if psi.ndim == 1 and renormalize:
             psi_norm = np.linalg.norm(psi)
             psi /= psi_norm
-            if check >= 1:
-                assert_ket(psi, n, norm=psi_norm)
-        elif check >= 1:
-            assert_ket(psi, n)
+            assert_ket(psi, n, check=0)  # norm is already checked
+        assert_ket(psi, n, check=check)
         return psi
     if is_int(specification):
         return ket_from_int(specification, n)
@@ -586,7 +584,7 @@ def is_ket(psi, n=None, print_errors=True):
     """Check if `ket` is a valid state vector."""
     return is_from_assert(assert_ket, print_errors)(psi, n)
 
-def assert_ket(psi, n=None, **kwargs):
+def assert_ket(psi, n=None, check=1):
     """ Check if `ket` is a valid state vector. """
     if isinstance(psi, str):
         try:
@@ -600,8 +598,8 @@ def assert_ket(psi, n=None, **kwargs):
     assert np.issubdtype(psi.dtype, np.number)  # norm is faster for float than complex
     n = n or count_qubits(psi)
     assert len(psi.shape) == 1 and psi.shape[0] == 2**n, f"Invalid state vector shape: {psi.shape} ≠ {(2**n,)}"
-    psi_norm = kwargs.get('norm') or np.linalg.norm(psi)
-    assert abs(psi_norm - 1) < 1e-10, f"State vector is not normalized: {psi_norm}"
+    if check >= 1:
+        assert abs(np.linalg.norm(psi) - 1) < 1e-10, f"State vector is not normalized: {np.linalg.norm(psi)}"
 
 def is_dm(rho, n=None, print_errors=True, check=3):
     """Check if matrix `rho` is a density matrix."""
