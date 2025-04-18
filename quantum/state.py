@@ -624,17 +624,16 @@ def assert_dm(rho, n=None, check=3):
     assert abs(np.trace(rho) - 1) < 1e-10, f"Density matrix is not normalized: {np.trace(rho)}"
     assert is_psd(rho, check=check), "Density matrix is not positive semi-definite"
 
-def is_state(state, check=3):
+def is_state(state, n=None, print_errors=True, check=3):
+    """ Check if `state` is a valid state vector or density matrix. """
+    return is_from_assert(assert_state, print_errors)(state, n, check=check)
+
+def assert_state(state, n=None, check=3):
+    """ Check if `state` is a valid state vector or density matrix. """
     try:
-        assert_ket(state)
-        return True
-    except:
-        pass
-    try:
-        assert_dm(state, check=check)
-        return True
-    except:
-        return False
+        assert_ket(state, n=n)
+    except AssertionError:
+        assert_dm(state, n=n, check=check)
 
 def is_pure_dm(rho, check=3, tol=1e-12):
     """ Check if matrix `rho` is a pure density matrix. """
