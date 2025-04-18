@@ -4,11 +4,10 @@ import itertools
 from functools import reduce
 try:
     import scipy.sparse as sp
-    from scipy.linalg import eigh, eigvalsh
 except ImportError:
-    from numpy.linalg import eigh, eigvalsh
+    pass
 
-from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0, is_unitary, binstr_from_float
+from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0, is_unitary, binstr_from_float, eigh, eigvalsh
 from ..utils import duh
 from .state import random_ket, unket
 

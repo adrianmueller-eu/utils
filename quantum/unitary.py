@@ -1,15 +1,11 @@
 import sys, warnings
 import numpy as np
 from functools import reduce
-try:
-    from scipy.linalg import eig, eigh
-except ImportError:
-    from numpy.linalg import eig, eigh
 from math import log2, sqrt
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .state import ket, op, count_qubits, plotQ, reverse_qubit_order, transpose_qubit_order
-from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh
 from ..utils import is_int
 
 def Fourier_matrix(n, swap=False):

@@ -3,13 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import log2
 from functools import reduce
-try:
-    from scipy.linalg import eigh
-except:
-    from numpy.linalg import eigh
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib import normalize, binstr_from_int, is_hermitian, softmax, is_psd, random_vec, trace_product, generate_recursive, su, commutes, choice
+from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, eigh
+from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
 

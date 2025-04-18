@@ -2,12 +2,12 @@ import sys
 import numpy as np
 import itertools
 try:
-    from scipy.linalg import svd, eigvalsh
+    import scipy.sparse as sp
 except ImportError:
-    from numpy.linalg import svd, eigvalsh
+    pass
 
 from .state import count_qubits, partial_trace, op, dm, ev, as_state
-from ..mathlib import trace_norm, matsqrth_psd, allclose0
+from ..mathlib import trace_norm, matsqrth_psd, allclose0, eigvalsh, svd
 from ..prob import entropy
 from ..utils import is_iterable, is_from_assert, is_int
 
