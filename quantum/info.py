@@ -6,7 +6,7 @@ try:
 except ImportError:
     pass
 
-from .state import count_qubits, partial_trace, op, ket, dm, ev, as_state
+from .state import count_qubits, partial_trace, op, ket, dm, ev, as_state, assert_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0, eigvalsh, svd
 from ..prob import entropy
 from ..utils import is_iterable, is_from_assert, is_int
@@ -177,6 +177,40 @@ def is_unitary_channel(operators, check=3):
         (operators[0].ndim == 2 and operators[0].shape[0] == operators[0].shape[1]) or \
         (operators[0].ndim in (3,4) and prod(operators[0].shape[:2]) == prod(operators[0].shape[2:])) \
     )
+
+def apply_channel(operators, state, reshaped, check=3):
+    state = np.asarray(state)
+    # sanity checks
+    if check:
+        if reshaped:
+            tmp_state = state.reshape(prod(state.shape[:2]), -1)
+        else:
+            tmp_state = state
+        n = count_qubits(state)
+        assert_state(tmp_state, n=n, check=check)
+        operators = assert_kraus(operators, n_qubits=(None, n), check=check)
+    assert operators[0].shape[1] == state.shape[0], f"Input dimension of the operators does not match the state dimension: {operators[0].shape} x {state.shape}"
+
+    state_is_dm = reshaped and state.ndim in (3,4) or not reshaped and state.ndim == 2
+    if state_is_dm:
+        new_state = np.zeros_like(state, dtype=complex)
+        for K in operators:
+            if not reshaped:
+                # (m x q) x (q x q) x (q x m) -> m x m
+                new_state += K @ state @ K.T.conj()
+            else:
+                # (m x q) x (q x (n-q) x q x (n-q)) -> m x (n-q) x q x (n-q)
+                tmp = np.tensordot(K, state, axes=1)
+                # (m x (n-q) x q x (n-q)) x (q x m) -> m x (n-q) x (n-q) x m
+                tmp = np.tensordot(tmp, K.T.conj(), axes=(2,0))
+                # m x (n-q) x (n-q) x m -> m x (n-q) x m x (n-q)
+                new_state += tmp.transpose([0, 1, 3, 2])
+    else:
+        assert is_unitary_channel(operators, check=0), "Non-unitary operators can't be applied to state vectors!"
+        U = operators[0]
+        # (q x q) x (q x (n-q)) -> q x (n-q)  or  (q x q) x q -> q
+        new_state = np.tensordot(U, state, axes=1)
+    return new_state
 
 def measurement_operator(outcome, n, subsystem, as_matrix=True):
     if subsystem is None:
