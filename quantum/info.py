@@ -375,3 +375,11 @@ def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
     operators = [S[i] * U[:, i].reshape(2**n_out, 2**n_in) for i in range(len(S))]
     # assert_kraus(operators, n_qubits=(n_out, n_in), check=3)
     return operators
+
+def compress_channel(operators, filter_eps=1e-12, check=3):
+    """
+    Find a minimal set of Kraus operators that represent the same quantum channel.
+    """
+    choi = choi_from_channel(operators, check=check)
+    n_out, n_in = count_qubits(operators[0].shape[0]), count_qubits(operators[0].shape[1])
+    return channel_from_choi(choi, n=(n_out, n_in), filter_eps=filter_eps, k=len(operators))
