@@ -559,12 +559,12 @@ def dm(kets, p=None, n=None, renormalize=True, check=3):
     psi = ket(kets, n, renormalize=renormalize, check=check)
     return np.outer(psi, psi.conj())
 
-def as_state(state, renormalize=True, check=2):
+def as_state(state, renormalize=True, n=None, check=2):
     try:
-        return ket(state, renormalize=renormalize, check=check)
+        return ket(state, n=n, renormalize=renormalize, check=check)
     except:
         pass
-    return dm(state, renormalize=renormalize, check=check)
+    return dm(state, n=n, renormalize=renormalize, check=check)
 
 def ev(obs, state, check=2):
     if check >= 2:
