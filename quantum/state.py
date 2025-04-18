@@ -665,7 +665,7 @@ def dm_from_ensemble(probs, kets, check=2):
     if check >= 2:
         for k in kets:
             assert_ket(k)
-    return np.sum(p * np.outer(k, k.conj()) for p, k in zip(probs, kets))
+    return sum(p * np.outer(k, k.conj()) for p, k in zip(probs, kets))
 
 def ensemble_from_state(rho, filter_eps=1e-10, check=3):
     if check:
