@@ -500,7 +500,7 @@ def _test_channels():
     assert len(povm) == 2, f"len(povm) = {len(povm)} ≠ 2"
     assert np.allclose(povm[0], op('00') + op('01')), f"povm[0] = {povm[0]} ≠ op('00') + op('01')"
     assert np.allclose(povm[1], op('10') + op('11')), f"povm[1] = {povm[1]} ≠ op('10') + op('11')"
-    assert_kraus(povm, n_qubits=(2,2))
+    assert_kraus(povm, n=(2,2))
 
     # combine channels
     K1 = [pu('HI')]
@@ -512,15 +512,15 @@ def _test_channels():
     # removal / extension
     def _test(st, n):
         K_r = removal_channel(n)
-        assert_kraus(K_r, n_qubits=(0,n))
+        assert_kraus(K_r, n=(0,n))
         K_e = extension_channel(st, n)
-        assert_kraus(K_e, n_qubits=(n,0))
+        assert_kraus(K_e, n=(n,0))
         K_c = combine_channels(K_r, K_e)
-        assert_kraus(K_c, n_qubits=(0,0))
+        assert_kraus(K_c, n=(0,0))
         assert K_c[0].shape == (1,1)
         K_c1 = combine_channels(K_e, K_r)
         K_c2 = reset_channel(st, n)
-        assert_kraus(K_c2, n_qubits=(n,n))
+        assert_kraus(K_c2, n=(n,n))
         assert np.allclose(K_c1, K_c2)
         return K_c2
 
@@ -535,7 +535,7 @@ def _test_channels():
     subsystem_state = random_ket(2)
     env_state = random_ket(3)
     Ks = partial_operation(U, [0,1], env_state)
-    assert_kraus(Ks, n_qubits=(2,2))
+    assert_kraus(Ks, n=(2,2))
     st_expect = QC(np.kron(subsystem_state, env_state))(U)[0,1]  # partial_trace(U @ np.kron(subsystem_state, env_state), [0,1])
     st_actual = QC(subsystem_state)(Ks)[0,1]  # sum([K @ dm(subsystem_state) @ K.conj().T for K in Ks])
     assert np.allclose(st_actual, st_expect), f"Partial operation failed: {st_actual} != {st_expect}"

@@ -113,13 +113,13 @@ def correlation_quantum(state, obs_A, obs_B, check=2):
     rho_B = partial_trace(state, list(range(n_A, n_A + n_B)), reorder=False)
     return ev(obs_AB, state, check=min(1, check)) - ev(obs_A, rho_A, check) * ev(obs_B, rho_B, check)
 
-def is_kraus(operators, n_qubits=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10, print_errors=True):
+def is_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10, print_errors=True):
     """ Check if the given operators form a valid Kraus decomposition. See `assert_kraus` for detailed doc. """
-    return is_from_assert(assert_kraus, print_errors)(operators, n_qubits, trace_preserving, orthogonal, check, tol)
+    return is_from_assert(assert_kraus, print_errors)(operators, n, trace_preserving, orthogonal, check, tol)
 
-def assert_kraus(operators, n_qubits=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10):
+def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10):
     """
-    Throw AssertionError if the given operators do not form a valid Kraus decomposition.
+    Ensures the given `operators` form a valid representation of a quantum channel (Kraus operators). Throws an AssertionError if otherwise.
 
     Parameters:
         operators (np.ndarray | list[np.ndarray]): List of Kraus operators to check
@@ -127,7 +127,10 @@ def assert_kraus(operators, n_qubits=(None, None), trace_preserving=True, orthog
         trace_preserving (bool): Whether to check for trace-preserving $\\sum K_i^\\dagger K_i = I$ or contractive $\\sum K_i^\\dagger K_i \\leq I$ property
         orthogonal (bool): Check if the operators are orthogonal $\\sum K_i^\\dagger K_j = 0$ for $i \\neq j$
         check (int): Check level (0: ndim only, 1: check with n_qubits argument, 2: trace-preserving + orthogonality, 3: contractivity)
-        tol (float): Tolerance for numerical checks
+        tol (float): Tolerance (for trace-preserving/contractive property and orthogonality)
+
+    Returns:
+        np.ndarray: Kraus operators as a numpy array of shape (n_ops, n_out, n_in).
     """
     Ks = np.asarray(operators)
     # 1. Check ndim
@@ -139,17 +142,17 @@ def assert_kraus(operators, n_qubits=(None, None), trace_preserving=True, orthog
     if check < 1:
         return Ks
     # 2. Check size matches n_qubits and n_qubits_out
-    n_qubits_out, n_qubits_in = n_qubits
-    if n_qubits_out is None:
-        n_qubits_out = count_qubits(Ks.shape[-2])  # check if it's a power of 2
+    n_out, n_in = n
+    if n_out is None:
+        n_out = count_qubits(Ks.shape[-2])  # check if it's a power of 2
     else:
-        shape_exp = 2**n_qubits_out
-        assert Ks.shape[-2] == shape_exp, f"Operators have invalid shape for {n_qubits_out} output qubits: {Ks.shape} != {shape_exp}"
-    if n_qubits_in is None:
-        n_qubits_in = count_qubits(Ks.shape[-1])  # check if it's a power of 2
+        shape_exp = 2**n_out
+        assert Ks.shape[-2] == shape_exp, f"Operators have invalid shape for {n_out} output qubits: {Ks.shape} != {shape_exp}"
+    if n_in is None:
+        n_in = count_qubits(Ks.shape[-1])  # check if it's a power of 2
     else:
-        shape_exp = 2**n_qubits_in
-        assert Ks.shape[-1] == shape_exp, f"Operators have invalid shape for {n_qubits_in} input qubits: {Ks.shape} != {shape_exp}"
+        shape_exp = 2**n_in
+        assert Ks.shape[-1] == shape_exp, f"Operators have invalid shape for {n_in} input qubits: {Ks.shape} != {shape_exp}"
 
     if check < 2:
         return Ks  # trace and orthogonality checks are expensive
@@ -188,7 +191,7 @@ def apply_channel(operators, state, reshaped, check=3):
             tmp_state = state
         n = count_qubits(state)
         assert_state(tmp_state, n=n, check=check)
-        operators = assert_kraus(operators, n_qubits=(None, n), check=check)
+        operators = assert_kraus(operators, n=(None, n), check=check)
     assert operators[0].shape[1] == state.shape[0], f"Input dimension of the operators does not match the state dimension: {operators[0].shape} x {state.shape}"
 
     state_is_dm = reshaped and state.ndim in (3,4) or not reshaped and state.ndim == 2
@@ -311,7 +314,7 @@ def choi_from_channel(operators, n=(None, None), check=3):
     """
     Create the Choi matrix from a set of Kraus operators.
     """
-    operators = assert_kraus(operators, n_qubits=n, check=check)
+    operators = assert_kraus(operators, n=n, check=check)
     choi_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
     if choi_dim*len(operators) > 1e6:
         warn(f"Constructing {choi_dim,choi_dim} Choi matrix for {len(operators)} operators may take a while")
