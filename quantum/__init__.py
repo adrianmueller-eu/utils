@@ -933,7 +933,7 @@ def _test_pauli_decompose():
     # random n-qubit hamiltonian
     N = 2**randint(1, 5)
     H = random_hermitian(N)
-    coeff, basis = pauli_decompose(H)
+    coeff, basis = pauli_decompose(H, eps=1e-10)
     assert len(coeff) == N**2, f"len(coeff) = {len(coeff)} ≠ {N**2}"
     assert len(basis) == N**2, f"len(basis) = {len(basis)} ≠ {N**2}"
 
