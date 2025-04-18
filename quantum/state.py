@@ -78,7 +78,7 @@ def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
             isket = True
     else:
         remove_batch = False
-        isket = is_ket(state[*[0]*len(state.shape[:-2]),0,:], False)
+        isket = is_ket(state[*[0]*len(state.shape[:-2]),0,:], False, check=1)  # check=1 -> check norm
 
     if isket:
         # assert_ket(state[*[0]*len(state.shape[:-2]),0,:])
@@ -450,7 +450,7 @@ def ket(specification, n=None, renormalize=True, check=1):
         state[int(key, 2)] = specification[key]
     return normalize(state)
 
-def unket(state, as_dict=False, prec=5):
+def unket(state, as_dict=False, prec=5, check=1):
     """ Reverse of `ket`.
 
     `prec` serves as filter for states close to 0, and if `as_dict==False`, it also defines to which precision 
@@ -463,7 +463,7 @@ def unket(state, as_dict=False, prec=5):
     {'00': 0.5, '01': 0.5, '10': 0.5, '11': 0.5}
     """
     eps = 10**(-prec) if prec is not None else 0
-    state = ket(state, renormalize=False)
+    state = ket(state, renormalize=False, check=check)
     n = count_qubits(state)
     if as_dict:
         # cast to float if imaginary part is zero
@@ -568,7 +568,7 @@ def ev(obs, state, check=2):
     if check >= 2:
         assert is_hermitian(obs)
     if state.ndim == 1:
-        assert_ket(state)
+        assert_ket(state, check=check)
         return (state.conj() @ obs @ state).real
     assert_dm(state, check=check)
     return trace_product(obs, state).real
@@ -580,15 +580,15 @@ def probs(state):
         return np.diag(state).real
     return np.abs(state)**2
 
-def is_ket(psi, n=None, print_errors=True):
+def is_ket(psi, n=None, print_errors=True, check=1):
     """Check if `ket` is a valid state vector."""
-    return is_from_assert(assert_ket, print_errors)(psi, n)
+    return is_from_assert(assert_ket, print_errors)(psi, n, check)
 
 def assert_ket(psi, n=None, check=1):
     """ Check if `ket` is a valid state vector. """
     if isinstance(psi, str):
         try:
-            psi = ket(psi, check=0)
+            psi = ket(psi)
         except Exception as e:
             assert False, f"Invalid state vector: {psi}"
     try:
@@ -629,7 +629,7 @@ def is_state(state, n=None, print_errors=True, check=3):
 def assert_state(state, n=None, check=3):
     """ Check if `state` is a valid state vector or density matrix. """
     try:
-        assert_ket(state, n=n)
+        assert_ket(state, n=n, check=check)
     except AssertionError:
         assert_dm(state, n=n, check=check)
 
@@ -777,7 +777,7 @@ def Wigner_from_state(state, check=2):
     if n > 8:
         warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} matrices (n = {n}) may take too a long time.", stacklevel=2)
     W = np.zeros((2**n, 2**n))
-    isket = is_ket(state, print_errors=False)
+    isket = state.ndim == 1
     Wigner_A = _init_Wigner_A()
     for idx, A in enumerate(generate_recursive(Wigner_A, n, Wigner_A, np.kron)):
         base4 = f'{idx:0{2*n}b}'
