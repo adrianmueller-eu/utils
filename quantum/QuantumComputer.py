@@ -7,7 +7,7 @@ except ImportError:
     pass
 
 from .constants import *
-from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, as_state
+from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, as_state, ensemble_from_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
@@ -526,22 +526,9 @@ class QuantumComputer:
         """
         Returns a minimal ensemble of orthnormal kets.
         """
-        self._reorder(self.original_order)
-
+        self._reorder(self.original_order, reshape=False)
         with self.observable(obs):
-            if self.is_matrix_mode():
-                if self.n > self.MATRIX_SLOW and is_diag(self.state, tol=0):
-                    probs = np.diag(self.state).real
-                    kets = I_(self.n)
-                    return probs, kets
-                probs, kets = eigh(self.state)
-                # filter out zero eigenvalues
-                mask = probs > filter_eps
-                probs = probs[mask]
-                kets = kets.T[mask]
-                return probs.real, kets
-            else:
-                return np.array([1.]), np.array([self.state]).T
+            return ensemble_from_state(self.state, filter_eps=filter_eps, check=0)
 
     def ensemble_pp(self, obs=None, filter_eps=1e-12):
         probs, kets = self.ensemble(obs, filter_eps)

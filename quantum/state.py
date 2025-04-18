@@ -5,7 +5,7 @@ from math import log2
 from functools import reduce
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, eigh
+from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh
 from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
@@ -666,6 +666,28 @@ def dm_from_ensemble(probs, kets, check=2):
         for k in kets:
             assert_ket(k)
     return np.sum(p * np.outer(k, k.conj()) for p, k in zip(probs, kets))
+
+def ensemble_from_state(rho, filter_eps=1e-10, check=3):
+    if check:
+        rho = as_state(rho, check=check)
+    if rho.ndim == 1:
+        return np.array([1.]), np.array([rho])
+    return ensemble_from_dm(rho, filter_eps=filter_eps, check=check)
+
+def ensemble_from_dm(rho, filter_eps=1e-10, check=3):
+    if check:
+        rho = dm(rho, check=check)
+    n = count_qubits(rho)
+    if n > 5 and is_diag(rho, tol=0):
+        probs = np.diag(rho).real
+        kets = np.eye(2**n, dtype=complex)
+        return probs, kets
+    probs, kets = eigh(rho)
+    # filter out zero eigenvalues
+    mask = probs > filter_eps
+    probs = probs[mask]
+    kets = kets.T[mask]
+    return probs.real, kets
 
 def is_eigenstate(psi, H, tol=1e-10, check=2):
     if len(psi.shape) == 2:
