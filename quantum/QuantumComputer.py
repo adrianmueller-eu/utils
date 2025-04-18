@@ -22,6 +22,7 @@ class QuantumComputer:
     ENTROPY_EPS = 1e-12
     FILTER_EPS = 1e-12  # filter out small eigenvalues and zero operators
     KEEP_VECTOR = True
+    FILTER0 = True  # filter out zero operators
 
     """
     A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
@@ -92,37 +93,17 @@ class QuantumComputer:
 
         # multiply each operator with the new operators
         if self._track_operators:
-            if len(self.operators) == 0:
-                self.operators = [I_(self.n, dtype=complex)]
-            new_operators = []
-            for i, Ki in enumerate(operators):
-                for j, Kj in enumerate(self.operators):
-                    # (q x q) x (q x q x 2(n-q)) -> q x q x 2(n-q)
-                    Kij = np.tensordot(Ki, Kj, axes=1)
-                    new_operators.append(Kij)
-            self.operators = new_operators
+            self._update_operators(operators)
 
         # apply operators to state
-        if self.is_matrix_mode():
-            new_state = np.zeros_like(self.state, dtype=complex)
-            for K in operators:
-                if len(qubits) == self.n:
-                    # (q x q) x (q x q) x (q x q) -> q x q
-                    new_state += K @ self.state @ K.T.conj()
-                else:
-                    # (q x q) x (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x q x (n-q)
-                    tmp = np.tensordot(K, self.state, axes=1)
-                    # (q x (n-q) x q x (n-q)) x (q x q) -> q x (n-q) x (n-q) x q
-                    tmp = np.tensordot(tmp, K.T.conj(), axes=(2,0))
-                    # q x (n-q) x (n-q) x q -> q x (n-q) x q x (n-q)
-                    new_state += tmp.transpose([0, 1, 3, 2])
-            self.state = new_state
-        else:
-            assert len(operators) == 1, "WTF-Error: Non-unitary operators can't be applied to state vectors!"
-            U = operators[0]
-            # (q x q) x (q x (n-q)) -> q x (n-q)  or  (q x q) x q -> q
-            self.state = np.tensordot(U, self.state, axes=1)
+        self._apply_operators(operators, len(qubits))
         return self
+
+    def _update_operators(self, operators):
+        self.operators = combine_channels(operators, self.operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
+
+    def _apply_operators(self, operators, q):
+        self.state = apply_channel(operators, self.state, q != self.n, check=0)
 
     def get_state(self, qubits='all', obs=None):
         return self._get("state", qubits, obs)
