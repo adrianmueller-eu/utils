@@ -36,7 +36,9 @@ class QuantumComputer:
             qubits = count_qubits(state)
         if is_int(qubits):
             qubits = list(range(qubits))
-        if state is None:
+        if state is None and qubits is None:
+            pass
+        elif state is None:
             self.reset(qubits)
         else:
             self.init(state, qubits)
