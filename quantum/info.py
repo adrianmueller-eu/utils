@@ -7,9 +7,9 @@ except ImportError:
     pass
 
 from .state import count_qubits, partial_trace, op, ket, dm, ev, as_state, ensemble_from_state, assert_state
-from ..mathlib import trace_norm, matsqrth_psd, allclose0, eigvalsh, svd
+from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd
 from ..prob import entropy
-from ..utils import is_iterable, is_from_assert, is_int
+from ..utils import is_from_assert, is_int, warn
 
 def von_neumann_entropy(state, check=2):
     """ Calculate the von Neumann entropy of a given density matrix. """
@@ -307,31 +307,71 @@ def removal_channel(n):
     """
     return np.eye(2**n)[:,None,:]  # [ket(i, n=q)[None,:] for i in range(2**q)]
 
-def choi_from_operators(operators, n=None, check=3):
+def choi_from_channel(operators, n=(None, None), check=3):
     """
     Create the Choi matrix from a set of Kraus operators.
     """
-    operators = np.asarray(operators)
-    n = n or count_qubits(operators[0])
-    assert_kraus(operators, n_qubits=n, check=check)
-    Choi = np.zeros((2**(2*n), 2**(2*n)), dtype=complex)
+    operators = assert_kraus(operators, n_qubits=n, check=check)
+    choi_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
+    if choi_dim*len(operators) > 1e6:
+        warn(f"Constructing {choi_dim,choi_dim} Choi matrix for {len(operators)} operators may take a while")
+
+    if "scipy" in sys.modules:
+        array = sp.csr_array  # maybe try bsr_array
+    else:
+        array = np.asarray
+
+    Choi = array((choi_dim, choi_dim), dtype=complex)
     for K in operators:
-        Kvec = K.reshape(-1, 1)  # column vectorization
-        Choi += Kvec @ Kvec.conj().T
+        Kvec = array(K.reshape(-1, 1))
+        Choi += Kvec @ Kvec.conj().T  # outer product
     return Choi
 
-def operators_from_choi(choi, n=None, filter_eps=1e-10, check=3):
+def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
     """
-    Create the Kraus operators from a Choi matrix.
+    Create the Kraus operators from a Choi matrix. Either `n_out` or `n_in` must be provided.
     """
-    choi = np.asarray(choi)
-    n = n or int(np.log2(choi.shape[0]) / 2)
-    assert choi.shape == (2**(2*n), 2**(2*n)), f"Choi matrix has invalid shape: {choi.shape} ≠ {(2**(2*n), 2**(2*n))}"
-    U, S, _ = svd(choi)
+    if not hasattr(choi, 'shape'):
+        choi = np.asarray(choi)
+    assert is_square(choi), f"Choi matrix is not square: {choi.shape}"
+
+    # infer Choi dimensions
+    n_out, n_in = n
+    if n_out is not None and n_in is not None:
+        choi_dim = 2**(n_out + n_in)
+        assert choi.shape == (choi_dim, choi_dim), f"Choi matrix has invalid shape: {choi.shape} ≠ {(choi_dim, choi_dim)}"
+    else:
+        assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
+        n_total = int(np.log2(choi.shape[0]))
+        if n_out is None:
+            n_out = n_total - n_in
+            assert n_out >= 0, f"Invalid n_out: {n_out} for {choi.shape} and {n}"
+        elif n_in is None:
+            n_in = n_total - n_out
+            assert n_in >= 0, f"Invalid n_in: {n_in} for {choi.shape} and {n}"
+        choi_dim = 2**(n_out + n_in)
+
+    # warning to the user
+    k = k or choi_dim
+    if choi_dim*k > 1e6:
+        warn(f"SVD for {choi.shape} Choi matrix may take a while (k = {k}).")
+
+    # perform SVD
+    try:
+        assert k < choi_dim//4  # use dense SVD for large k
+        U, S, _ = sp.linalg.svds(sp.csr_array(choi), k=k, return_singular_vectors='u')
+    except Exception as e:
+        if hasattr(choi, 'toarray'):
+            choi = choi.toarray()
+        U, S, _ = svd(choi)
+
+    # filter small singular values out
     mask = S > filter_eps
     S = S[mask]
     U = U[:, mask]
+
+    # generate minimal set of Kraus operators
     S = np.sqrt(S)
-    operators = [S[i] * U[:, i].reshape(2**n, 2**n) for i in range(len(S))]
-    assert_kraus(operators, n_qubits=n, check=check)
+    operators = [S[i] * U[:, i].reshape(2**n_out, 2**n_in) for i in range(len(S))]
+    # assert_kraus(operators, n_qubits=(n_out, n_in), check=3)
     return operators
