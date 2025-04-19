@@ -62,7 +62,6 @@ class QuantumComputer:
         self.state = np.array([1.])
         self.qubits = []
         self.original_order = []
-        self.added_qubits = []
         self.reset_operators()
         return self
 
@@ -482,6 +481,7 @@ class QuantumComputer:
             self.operators = [I_(self.n, dtype=complex)]
         else:
             self.operators = []
+        self.added_qubits = []
 
     def _reorder(self, new_order, reshape):
         correct_order = self.qubits[:len(new_order)] == new_order
