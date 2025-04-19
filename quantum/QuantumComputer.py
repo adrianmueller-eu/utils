@@ -50,9 +50,13 @@ class QuantumComputer:
 
     @property
     def _track_operators(self):
-        return self.track_operators and not (
-            self.track_operators == 'auto' and self.n > self.MATRIX_SLOW
-        )
+        if isinstance(self.track_operators, bool):
+            return self.track_operators
+        # track until it gets too large
+        if self.n > self.MATRIX_SLOW:
+            self.track_operators = False
+            return False
+        return True
 
     def clear(self):
         self.state = np.array([1.])
