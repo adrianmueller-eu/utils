@@ -149,6 +149,11 @@ class QuantumComputer:
             raise ValueError("Operator tracking is disabled")
         return self._get("operators", self.original_order, None)
 
+    def is_unitary(self):
+        if not self._track_operators:
+            raise ValueError("Operator tracking is disabled")
+        return is_unitary_channel(self.operators, check=0)
+
     def _get(self, prop, qubits, obs):
         with self.observable(obs, qubits) as qubits:
             self._reorder(qubits, reshape=False)
