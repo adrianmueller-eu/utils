@@ -144,15 +144,13 @@ class QuantumComputer:
             raise ValueError("Current channel is non-unitary")
         return self.operators[0]
 
-    def get_operators(self, qubits='all', obs=None):  # TODO: add support for Kraus operators on subsystem
+    def get_operators(self):
         if not self._track_operators:
             raise ValueError("Operator tracking is disabled")
-        return self._get("operators", qubits, obs, assert_n=True)
+        return self._get("operators", self.original_order, None)
 
-    def _get(self, prop, qubits, obs, assert_n=False):
+    def _get(self, prop, qubits, obs):
         with self.observable(obs, qubits) as qubits:
-            if assert_n:
-                assert len(qubits) == self.n, f"{prop} is not available for subsystems"
             self._reorder(qubits, reshape=False)
             a = getattr(self, prop)
             if len(qubits) == self.n:
