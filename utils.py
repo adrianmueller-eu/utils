@@ -176,6 +176,13 @@ def is_numeric(x):
 def is_iterable(x):
     return isinstance(x, Iterable)
 
+def as_list_not_str(a):
+    if isinstance(a, list):
+        return a
+    if not is_iterable(a) or isinstance(a, str):
+        a = [a]
+    return list(a)
+
 def is_from_assert(func, print_error=True):
     def inner(*args, **kwargs):
         try:
