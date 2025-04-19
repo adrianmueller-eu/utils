@@ -79,7 +79,6 @@ class QuantumComputer:
 
     def __call__(self, operators, qubits='all'):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
-        assert qubits, "No qubits provided"
         self._alloc_qubits(to_alloc)
         operators = assert_kraus(operators, check=0)  # just basic checks
 
@@ -392,8 +391,6 @@ class QuantumComputer:
         return imshow(U, **imshow_args)
 
     def _check_qubit_arguments(self, qubits, allow_new):
-        if not allow_new and self.n == 0:
-            raise ValueError("No qubits allocated yet")
         if isinstance(qubits, slice):
             qubits = self.qubits[qubits]
         elif qubits == 'all':
