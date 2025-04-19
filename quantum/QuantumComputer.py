@@ -26,7 +26,32 @@ class QuantumComputer:
     FILTER0 = True  # filter out zero operators
 
     """
-    A naive simulation of a quantum computer. Can simulate as state vector or density matrix.
+    Simulate a quantum computer! Simulate state vectors or density matrices,
+    optionally tracking of the effective quantum channel.
+
+    Additional features:
+    - Allows to dynamically add and remove qubits from the system
+    - Collapse and decoherent measurements
+    - Shortcuts for common channels (like Pauli rotations, noise models, quantum fourier transform)
+    - Channel compression via Choi matrix
+    - Calculates quantum information metrics (entropy, purity, mutual information)
+    - Supports correlation analysis and Schmidt decomposition
+
+    Example:
+        # Create a Bell state and track its evolution through a phase estimation circuit
+        state_register, energy_register = range(2), range(2, 5)
+        qc = QC(np.array([1,0,0,1])/np.sqrt(2), track_operators=True)
+        qc.add(energy_register)  # Add 3 ancilla qubits
+        qc.pe(unitary, state_register, energy_register)
+        qc.measure(energy_register, collapse=False)
+        print(qc[0,1])  # look at the state register reduced density matrix
+        operators = qc.get_operators()  # Look at the effective channel
+
+    Parameters:
+        qubits (list): List of qubits to be allocated.
+        state (array): Initial state of the system (default: |0>).
+        track_operators (bool): Whether to track the effective quantum channel. Default is 'auto'.
+        check (int): Check level for input validation.
     """
     def __init__(self, qubits=None, state=None, track_operators='auto', check=2):
         self.track_operators = track_operators
