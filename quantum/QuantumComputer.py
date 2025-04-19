@@ -183,7 +183,7 @@ class QuantumComputer:
         with self.observable(obs, qubits, return_energies=True) as (qubits, energies):
             if collapse:
                 if self.track_operators == True:
-                    warn("Collapse is incompatible with Kraus operators. Resetting operators.")
+                    raise ValueError("Collapse is incompatible with Kraus operators.")
                 self.reset_operators()
             probs = self._probs(qubits)
             q = len(qubits)
@@ -336,6 +336,9 @@ class QuantumComputer:
         return self
 
     def remove(self, qubits, collapse=False, obs=None):
+        if collapse and self.track_operators == True:
+            raise ValueError("Collapse is incompatible with Kraus operators.")
+
         with self.observable(obs, qubits) as qubits:
             if len(qubits) == self.n:
                 return self.clear()
@@ -385,13 +388,6 @@ class QuantumComputer:
         for q in qubits:
             if q in self.added_qubits:
                 self.added_qubits.remove(q)
-
-        # update operators (collapse case)
-        if self._track_operators and collapse:
-            # if self.track_operators == True:
-            #     warn("Collapse is incompatible with Kraus operators. Resetting operators.")
-            self.reset_operators()  # this should be *after* `qubits` are removed from `self.qubits`
-
         return self
 
     def rename(self, qubit_name_dict):
