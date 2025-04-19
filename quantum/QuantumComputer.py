@@ -8,13 +8,13 @@ except ImportError:
     pass
 
 from .constants import *
-from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, as_state, ensemble_from_state
+from .state import partial_trace, ket, dm, unket, count_qubits, random_ket, random_dm, plotQ, is_state, ensemble_from_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag, trace_product, eigh
 from ..plot import imshow
-from ..utils import is_int, duh, warn
+from ..utils import is_int, duh, warn, as_list_not_str
 from ..prob import entropy
 
 class QuantumComputer:
@@ -396,11 +396,9 @@ class QuantumComputer:
             raise ValueError("No qubits allocated yet")
         if isinstance(qubits, slice):
             qubits = self.qubits[qubits]
-        elif isinstance(qubits, str) and qubits == 'all':
+        elif qubits == 'all':
             qubits = self.original_order
-        elif not isinstance(qubits, (list, tuple, np.ndarray, range)):
-            qubits = [qubits]
-        qubits = list(qubits)
+        qubits = as_list_not_str(qubits)
         to_alloc = []
         for q in qubits:
             if q not in self.qubits:
@@ -969,12 +967,9 @@ class QuantumComputer:
         return self(Toffoli, [control1, control2, target])
 
     def c(self, U, control, target, negative=False):
-        if not isinstance(control, (list, np.ndarray)):
-            control = [control]
-        control = list(control)
-        if not isinstance(target, (list, np.ndarray)):
-            target = [target]
-        target = list(target)
+        control = as_list_not_str(control)
+        target  = as_list_not_str(target)
+
         U = self.parse_unitary(U, len(target), check=self.check_level)
         for _ in control:
             U = C_(U, negative=negative)
