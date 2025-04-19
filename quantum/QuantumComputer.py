@@ -929,7 +929,7 @@ class QuantumComputer:
         return f"qubits {self.qubits} in state {state}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.original_order}) at {hex(id(self))}"
+        return self.__str__() + f" at {hex(id(self))}"
 
     def _repr_pretty_(self, p, cycle):
         if cycle:
