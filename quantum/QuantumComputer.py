@@ -79,6 +79,7 @@ class QuantumComputer:
 
     def __call__(self, operators, qubits='all'):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
+        assert qubits, "No qubits provided"
         self._alloc_qubits(to_alloc)
         operators = assert_kraus(operators, check=0)  # just basic checks
 
@@ -275,17 +276,8 @@ class QuantumComputer:
         self.state[outcome] = keep
         return binstr_from_int(outcome, q)
 
-    def init(self, state, qubits='all', collapse=True, track_in_operators='auto'):
-        if self.n == 0:
-            n = None if qubits == 'all' else len(qubits)
-            self.state = as_state(state, n=n, check=self.check_level)
-            n = n or count_qubits(self.state)
-            self.qubits = list(range(n)) if qubits == 'all' else qubits.copy()
-            self.original_order = self.qubits.copy()
-            self.reset_operators()  # set Kraus operators to appropriate identity for initial state
-            return self
-
-        qubits, to_alloc = self._check_qubit_arguments(qubits, True)  # rejects empty qubits list
+    def init(self, state, qubits='all', collapse=True):
+        qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         original_order = self.original_order + to_alloc  # we want `to_alloc` at the end, but `qubits` may not have them at the end
 
         # trace out already allocated qubits to be re-initialized
@@ -355,7 +347,7 @@ class QuantumComputer:
                     # self._reorder(qubits, reshape=False)  # self.entanglement_entropy() already does this
                     new_state = partial_trace(self.state, retain, reorder=False)
 
-        # update operators (non-collapse case)
+        # update operators (non-collapse)
         if self._track_operators and not collapse:
             # construct Kraus operators of the partial trace
             ops = removal_channel(len(qubits))
@@ -409,7 +401,6 @@ class QuantumComputer:
         elif not isinstance(qubits, (list, tuple, np.ndarray, range)):
             qubits = [qubits]
         qubits = list(qubits)
-        assert len(qubits) > 0, "No qubits provided"
         to_alloc = []
         for q in qubits:
             if q not in self.qubits:
