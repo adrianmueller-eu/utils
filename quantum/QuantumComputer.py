@@ -1050,7 +1050,7 @@ class QuantumComputer:
             assert is_unitary(U), f"Matrix is not unitary: {U}"
         if n_qubits is not None:
             n_U = count_qubits(U)
-            assert n_U == n_qubits or n_U == 1, f"Unitary has {n_U} qubits, but {n_qubits} qubits were provided"
+            assert n_U == n_qubits, f"Unitary has {n_U} qubits, but {n_qubits} qubits were provided"
         return U
 
     @staticmethod
