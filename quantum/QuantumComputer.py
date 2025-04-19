@@ -41,10 +41,8 @@ class QuantumComputer:
             qubits = list(range(qubits))
         if state is None and qubits is None:
             pass
-        elif state is None:
-            self.reset(qubits)
-        else:
-            self.init(state, qubits)
+
+        self._alloc_qubits(qubits, state=state, track_in_operators=False)
 
     @property
     def n(self):
@@ -292,28 +290,14 @@ class QuantumComputer:
             assert not any(q in self.added_qubits for q in to_alloc), f"WTF-Error: Qubits to be allocated {to_alloc} are already in added_qubits {self.added_qubits}"
             added_qubits_removed = [q for q in qubits if q in self.added_qubits]
             self.remove([q for q in qubits if q not in to_alloc], collapse=collapse)
-            self.added_qubits += added_qubits_removed + to_alloc
+            self.added_qubits += added_qubits_removed
             to_alloc = qubits  # (re-)allocate all qubits to be initialized
-        else:  # all qubits are new
-            self.added_qubits += to_alloc
-
-        # prepare new state
-        if (isinstance(state, str) and (state == 'random_dm' or state == 'random_mixed')) \
-                or (hasattr(state, 'shape') and len(state.shape) == 2):
-            new_state = dm(state, n=len(qubits), check=self.check_level)
-            if self.n > 0 and not self.is_matrix_mode():
-                self.to_dm()  # switch to matrix mode
-        else:
-            if isinstance(state, str) and state == 'random_pure':
-                state = 'random'
-            if self.is_matrix_mode():
-                new_state = dm(state, n=len(qubits), check=self.check_level)
-            else:
-                new_state = ket(state, n=len(qubits), check=self.check_level)
+        elif collapse and self.track_operators == True:
+            warn(f"The initialized state of qubits {qubits} is not being tracked. Consider using `collapse=False` if you want to include the new state in the operators.")
 
         # assert to_alloc == qubits
-        self._alloc_qubits(to_alloc, state=new_state, track_in_operators=not collapse)
-        assert sorted(self.qubits) == sorted(original_order), f"Invalid qubit bookkeeping: {self.qubits} != {original_order}"
+        self._alloc_qubits(to_alloc, state=state, track_in_operators=not collapse)
+        assert sorted(self.qubits) == sorted(original_order), f"Invalid qubit bookkeeping: {self.qubits} != {original_order}"  # sanity check
         # restore original order
         self.original_order = original_order
         return self
@@ -327,12 +311,9 @@ class QuantumComputer:
             self.init(random_ket(n))
         return self
 
-    def add(self, qubits, state=None):
-        if state is None:
-            qubits, to_alloc = self._check_qubit_arguments(qubits, True)
-            self._alloc_qubits(to_alloc)
-        else:
-            self.init(state, qubits)
+    def add(self, qubits, state=None, track_in_operators=False):
+        qubits, to_alloc = self._check_qubit_arguments(qubits, True)
+        self._alloc_qubits(to_alloc, state=state, track_in_operators=track_in_operators)
         return self
 
     def remove(self, qubits, collapse=False, obs=None):
@@ -457,21 +438,38 @@ class QuantumComputer:
                 warn(f"Insufficient RAM! ({self.n + q}-qubit state would require {duh(RAM_required)})", stacklevel=3)
 
         self._reorder(self.qubits, reshape=False)
-        if self.is_matrix_mode():
-            state = state if state is not None else dm(0, n=q)
-            self.state = np.kron(self.state, state)
+
+        # prepare new state
+        if state is None:
+            if self.is_matrix_mode():
+                state = dm(0, n=q)
+            else:
+                state = ket(0, n=q)
         else:
-            state = state if state is not None else ket(0, n=q)
-            self.state = np.kron(self.state, state)
+            if (isinstance(state, str) and (state == 'random_dm' or state == 'random_mixed')) \
+                    or (hasattr(state, 'shape') and len(state.shape) == 2):
+                state = dm(state, n=len(new_qubits), check=self.check_level)
+                if self.n > 0 and not self.is_matrix_mode():
+                    self.to_dm()  # switch to matrix mode
+            else:
+                if isinstance(state, str) and state == 'random_pure':
+                    state = 'random'
+                if self.is_matrix_mode():
+                    state = dm(state, n=len(new_qubits), check=self.check_level)
+                else:
+                    state = ket(state, n=len(new_qubits), check=self.check_level)
+
+        self.state = np.kron(self.state, state)
 
         self.qubits += new_qubits
         self.original_order += new_qubits
         if self._track_operators:
-            if not track_in_operators:
-                self.operators = [np.kron(o, I_(q)) for o in self.operators]
+            if track_in_operators:
+                ops = extension_channel(state, n=q, check=0)  # state already checked above
+                self.operators = [np.kron(oi, oj) for oi in self.operators for oj in ops]  # extend output space, but not input space
+                self.added_qubits += new_qubits
             else:
-                ops = extension_channel(state, n=q, check=0)  # state already checked in .init
-                self.operators = [np.kron(oi, oj) for oi in self.operators for oj in ops]
+                self.operators = [np.kron(o, I_(q)) for o in self.operators]  # extend both output *and* input space
         else:
             self.operators = []  # if tracking is 'auto', but self.n got too large
 
