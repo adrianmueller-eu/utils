@@ -473,6 +473,8 @@ def unket(state, as_dict=False, prec=5, check=1):
 
     if prec is not None:
         state = np.round(state, prec)
+    if n == 0:
+        return str(state[0])
     # group by weight
     weights = {}
     for i in range(2**n):
