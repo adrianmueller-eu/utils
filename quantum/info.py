@@ -132,46 +132,52 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
     Returns:
         np.ndarray: Kraus operators as a numpy array of shape (n_ops, n_out, n_in).
     """
-    Ks = np.asarray(operators)
     # 1. Check ndim
-    assert len(Ks) > 0, f"No operators provided"
-    if Ks.ndim == 2:
-        Ks = Ks[None, ...]
-    assert Ks.ndim in (3,4,5), f"Operators must be a list of 2D, 3D, or 4D arrays, but got {Ks.shape}"
+    assert len(operators) > 0, f"No operators provided"
+    if isinstance(operators, list) and not isinstance(operators[0], np.ndarray):
+        operators = np.asarray(operators)  # check same shape of all operators
+    if isinstance(operators, np.ndarray):
+        # just based on ndim, we can't distinguish list of 2d vs a single 3d operators and list of 3d vs a single 4d operator
+        # -> assume it's a list
+        if operators.ndim == 2:
+            operators = [operators]
+        else:
+            operators = list(operators)
+    assert operators[0].ndim in (2,3,4), f"Operators must be a list of 2D, 3D, or 4D arrays, but got {operators[0].shape}"
 
     if check < 1:
-        return Ks
+        return operators
     # 2. Check size matches n_qubits and n_qubits_out
     n_out, n_in = n
     if n_out is None:
-        n_out = count_qubits(Ks.shape[-2])  # check if it's a power of 2
+        n_out = count_qubits(operators[0].shape[-2])  # check if it's a power of 2
     else:
         shape_exp = 2**n_out
-        assert Ks.shape[-2] == shape_exp, f"Operators have invalid shape for {n_out} output qubits: {Ks.shape} != {shape_exp}"
+        assert operators[0].shape[-2] == shape_exp, f"Operators have invalid shape for {n_out} output qubits: {shape_exp} x {operators[0].shape}"
     if n_in is None:
-        n_in = count_qubits(Ks.shape[-1])  # check if it's a power of 2
+        n_in = count_qubits(operators[0].shape[-1])  # check if it's a power of 2
     else:
         shape_exp = 2**n_in
-        assert Ks.shape[-1] == shape_exp, f"Operators have invalid shape for {n_in} input qubits: {Ks.shape} != {shape_exp}"
+        assert operators[0].shape[-1] == shape_exp, f"Operators have invalid shape for {n_in} input qubits: {operators[0].shape} x {shape_exp}"
 
     if check < 2:
-        return Ks  # trace and orthogonality checks are expensive
+        return operators  # trace and orthogonality checks are expensive
     # 3. Check trace-preserving / contractive
-    res = np.sum([K.conj().T @ K for K in Ks], axis=0)
+    res = np.sum([K.conj().T @ K for K in operators], axis=0)
     if trace_preserving:
-        assert allclose0(res - np.eye(Ks.shape[-1]), tol), f"Operators are not trace-preserving"
+        assert allclose0(res - np.eye(operators[0].shape[-1]), tol), f"Operators are not trace-preserving"
     elif check >= 3:
         assert np.max(np.abs(eigvalsh(res))) < 1 + tol, f"Operators are not contractive"
     # 4. Check orthogonality
     if orthogonal:
-        # for K1, K2 in itertools.combinations(Ks, 2):
-        for i, Ki in enumerate(Ks):
-            for j, Kj in enumerate(Ks):
+        # for K1, K2 in itertools.combinations(operators, 2):
+        for i, Ki in enumerate(operators):
+            for j, Kj in enumerate(operators):
                 if i == j:
                     continue
                 res = np.trace(Ki.conj().T @ Kj)
                 assert np.abs(res) < tol, f"Operators {i,j} are not orthogonal: {res}"
-    return Ks
+    return operators
 
 def is_unitary_channel(operators, check=3):
     """ Check if given operators form a unitary quantum channel. """
