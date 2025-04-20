@@ -59,14 +59,15 @@ class QuantumComputer:
 
         self.clear()
 
+        if state is None and qubits is None:
+            return
         if state is None and qubits is not None and not is_int(qubits) and is_state(qubits, print_errors=False, check=self.check_level):
             state = qubits
             qubits = count_qubits(state)
         if is_int(qubits):
-            qubits = list(range(qubits))
-        if state is None and qubits is None:
-            pass
+            qubits = range(qubits)
 
+        qubits = self._check_qubit_arguments(qubits, True)[1]
         self._alloc_qubits(qubits, state=state, track_in_operators=False)
 
     @property
