@@ -469,16 +469,16 @@ class QuantumComputer:
         else:
             if (isinstance(state, str) and (state == 'random_dm' or state == 'random_mixed')) \
                     or (hasattr(state, 'shape') and len(state.shape) == 2):
-                state = dm(state, n=len(new_qubits), check=self.check_level)
+                state = dm(state, n=q, check=self.check_level)
                 if self.n > 0 and not self.is_matrix_mode():
                     self.to_dm()  # switch to matrix mode
             else:
                 if isinstance(state, str) and state == 'random_pure':
                     state = 'random'
                 if self.is_matrix_mode():
-                    state = dm(state, n=len(new_qubits), check=self.check_level)
+                    state = dm(state, n=q, check=self.check_level)
                 else:
-                    state = ket(state, n=len(new_qubits), check=self.check_level)
+                    state = ket(state, n=q, check=self.check_level)
 
         self._state = np.kron(self._state, state)
 
