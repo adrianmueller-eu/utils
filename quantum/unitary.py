@@ -4,7 +4,8 @@ from functools import reduce
 from math import log2, sqrt
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
-from .state import ket, op, count_qubits, plotQ, reverse_qubit_order, transpose_qubit_order
+from .utils import count_qubits, transpose_qubit_order, reverse_qubit_order
+from .state import ket, op, plotQ, partial_trace
 from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh
 from ..utils import is_int
 
