@@ -14,6 +14,14 @@ def transpose_qubit_order(state, new_order, assume_square=True):
     state = np.asarray(state)
     n = count_qubits(state)
 
+    # parse new_order
+    if isinstance(new_order, int) and new_order == -1:
+        new_order = list(range(n)[::-1])
+    else:
+        new_order = list(new_order)
+    assert all(0 <= q < n for q in new_order), f"Invalid qubit order: {new_order}"
+    assert len(set(new_order)) == len(new_order), f"Invalid qubit order: {new_order}"
+
     # infer batch shape
     if len(state.shape) == 2 and state.shape[0] == state.shape[1]:  # state is not necessarily a density matrix or ket (e.g. hamiltonian, unitary)
         if assume_square:
@@ -28,21 +36,15 @@ def transpose_qubit_order(state, new_order, assume_square=True):
         batch_shape = ()
     batch_shape = list(batch_shape)
 
-    # parse new_order
-    if isinstance(new_order, int) and new_order == -1:
-        new_order = list(range(n)[::-1])
-    else:
-        new_order = list(new_order)
-
     # transpose
     batch_idcs = list(range(len(batch_shape)))
     new_order_all = new_order + [q for q in range(n) if q not in new_order]
     new_order_all = [q + len(batch_idcs) for q in new_order_all]  # move after batch dimensions
-    if len(state.shape) == 1 + len(batch_shape):
+    if len(state.shape) == 1 + len(batch_shape):  # vector
         state = state.reshape(batch_shape + [2]*n)
         state = state.transpose(batch_idcs + new_order_all)
         state = state.reshape(batch_shape + [2**n])
-    elif len(state.shape) == 2 + len(batch_shape) and state.shape[-2] == state.shape[-1]:
+    elif len(state.shape) == 2 + len(batch_shape) and state.shape[-2] == state.shape[-1]:  # matrix
         state = state.reshape(batch_shape + [2,2]*n)
         new_order_all = new_order_all + [i + n for i in new_order_all]
         state = state.transpose(batch_idcs + new_order_all)
