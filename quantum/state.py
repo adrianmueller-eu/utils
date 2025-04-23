@@ -128,7 +128,7 @@ def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
         state = state.reshape(batch_shape + [2**n, 2**n])
 
     if reorder:
-        state = transpose_qubit_order(state, retain_qubits, True)
+        state = transpose_qubit_order(state, np.argsort(retain_qubits), True)
 
     if remove_batch:
         return state[0]
