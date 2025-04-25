@@ -172,6 +172,14 @@ class QuantumComputer:
             assert is_unitary(U1), f"Unitary is not separable on requested subsystem: {qubits}"
         return U1
 
+    def get_isometry(self):
+        if not self.track_operators:
+            raise ValueError("Operator tracking is disabled")
+        if len(self._operators) != 1:
+            raise NotImplementedError("Can't deduce local operation of non-isometric channel")
+        self._reorder(self._original_order, reshape=False)
+        return self._operators[0].copy()
+
     def get_operators(self):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
@@ -200,6 +208,9 @@ class QuantumComputer:
             if len(qubits) == self.n:
                 return a.copy()
             return partial_trace(a, range(len(qubits)), reorder=False)
+
+    def is_isometric(self):
+        return len(self._operators) == 1
 
     @contextmanager
     def observable(self, obs=None, qubits='all', return_energies=False):
