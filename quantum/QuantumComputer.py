@@ -55,16 +55,20 @@ class QuantumComputer:
         track_operators (bool): Whether to track the effective quantum channel. Default is 'auto'.
         check (int): Check level for input validation.
     """
-    def __init__(self, qubits=None, state=None, track_operators='auto', check=2):
+    def __init__(self, qubits=None, state=0, track_operators='auto', check=2):
         self._track_operators = track_operators
         self.check_level = check
 
         self.clear()
 
-        if state is None and qubits is None:
-            return
-        if state is None and qubits is not None and not is_int(qubits) and is_state(qubits, print_errors=False, check=self.check_level):
-            state = qubits
+        if is_int(state) and state == 0:
+            if qubits is None:
+                return  # avoid adding a qubit
+            if not is_int(qubits) and is_state(qubits, print_errors=False, check=self.check_level):
+                state = as_state(qubits, check=self.check_level)
+                qubits = count_qubits(state)
+        elif qubits is None and is_state(state, print_errors=False, check=self.check_level):
+            state = as_state(state, check=self.check_level)
             qubits = count_qubits(state)
         if is_int(qubits):
             qubits = range(qubits)
@@ -374,7 +378,7 @@ class QuantumComputer:
         self._original_order = original_order
         return self
 
-    def add(self, qubits, state=None, track_in_operators=False):
+    def add(self, qubits, state=0, track_in_operators=True):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         self._alloc_qubits(to_alloc, state=state, track_in_operators=track_in_operators)
         return self
@@ -477,7 +481,7 @@ class QuantumComputer:
             return qubits, to_alloc
         return qubits
 
-    def _alloc_qubits(self, new_qubits, state=None, track_in_operators=False):
+    def _alloc_qubits(self, new_qubits, state=0, track_in_operators=False):
         if not new_qubits:
             return
         for q in new_qubits:
