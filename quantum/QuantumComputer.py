@@ -500,28 +500,7 @@ class QuantumComputer:
                 warn(f"Insufficient RAM! ({self.n + q}-qubit state would require {duh(RAM_required)})", stacklevel=3)
 
         self._reorder(self._qubits, reshape=False)
-
-        # prepare new state
-        if state is None:
-            if self.is_matrix_mode():
-                state = dm(0, n=q)
-            else:
-                state = ket(0, n=q)
-        else:
-            if (isinstance(state, str) and (state == 'random_dm' or state == 'random_mixed')) \
-                    or (hasattr(state, 'shape') and len(state.shape) == 2):
-                state = dm(state, n=q, check=self.check_level)
-                if self.n > 0 and not self.is_matrix_mode():
-                    self.to_dm()  # switch to matrix mode
-            else:
-                if isinstance(state, str) and state == 'random_pure':
-                    state = 'random'
-                if self.is_matrix_mode():
-                    state = dm(state, n=q, check=self.check_level)
-                else:
-                    state = ket(state, n=q, check=self.check_level)
-
-        self._state = np.kron(self._state, state)
+        self._extend_state(state, q)
 
         self._qubits += new_qubits
         self._original_order += new_qubits
@@ -534,6 +513,16 @@ class QuantumComputer:
                 self._operators = [np.kron(o, I_(q)) for o in self._operators]  # extend both output *and* input space
         else:
             self._operators = []  # if tracking is 'auto', but self.n got too large
+
+    def _extend_state(self, new_state, q):
+        # prepare new state
+        if is_square(new_state) and not self.is_matrix_mode():
+            self.to_dm()  # switch to matrix mode
+        if self.is_matrix_mode():
+            new_state = dm(new_state, n=q, check=self.check_level)
+        else:
+            new_state = ket(new_state, n=q, check=self.check_level)
+        self._state = np.kron(self._state, new_state)
 
     def reset_operators(self):
         if self.track_operators:
