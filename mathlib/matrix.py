@@ -141,7 +141,7 @@ def is_orthogonal_eig(eigs, tol=1e-12):
         found[i] = True
     return True
 
-def is_diag(a, tol=1e-12):
+def is_diag(a, diag=None, tol=1e-12):
     # return _sq_matrix_allclose(a, lambda a: (
     #     np.diag(np.diag(a)), a
     # ), rtol=rtol, atol=atol)
@@ -149,7 +149,12 @@ def is_diag(a, tol=1e-12):
         return False
 
     # a[np.isnan(a)] = 0
-    a = a.reshape(-1)[:-1].reshape(a.shape[0]-1, a.shape[1]+1)[:,1:]  # remove diagonal
+    a = a.reshape(-1)[:-1].reshape(a.shape[0]-1, a.shape[1]+1)
+    if diag is not None:
+        d = a[:,0]   # diagonal
+        if not allclose0(d - diag, tol=tol):
+            return False
+    a = a[:,1:]  # remove diagonal
     return allclose0(a, tol=tol)
 
 def is_square(a):
