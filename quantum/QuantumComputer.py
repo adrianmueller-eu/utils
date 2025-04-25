@@ -180,10 +180,18 @@ class QuantumComputer:
     def get_qubits(self):
         return self._qubits.copy()
 
-    def is_unitary(self):
+    def is_unitary(self, qubits='all', obs=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
-        return is_unitary_channel(self._operators, check=0)
+        with self.observable(obs, qubits) as qubits:
+            if len(qubits) == self.n:
+                return is_unitary_channel(self._operators, check=0)
+            # if current channel is unitary, check if unitary can be decomposed into unitaries U = U1 \otimes U2
+            if not is_unitary_channel(self._operators, check=0):
+                raise NotImplementedError("Can't deduce if local operation of non-unitary channel is unitary")
+            qubits_idcs = [self._qubits.index(q) for q in qubits]
+            U = self._operators[0].reshape(2**self.n, -1)
+            return is_separable_unitary(U, qubits_idcs, check=0)
 
     def _get(self, prop, qubits, obs):
         with self.observable(obs, qubits) as qubits:
