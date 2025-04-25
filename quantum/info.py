@@ -217,7 +217,12 @@ def apply_channel(operators, state, reshaped, check=3):
 
     state_is_dm = reshaped and state.ndim in (3,4) or not reshaped and state.ndim == 2
     if state_is_dm:
-        new_state = np.zeros_like(state, dtype=complex)
+        n_out = operators[0].shape[0]
+        if reshaped:
+            assert state.shape[1] == state.shape[3], f"State must be a square matrix: {state.shape}"
+            new_state = np.zeros((n_out, state.shape[1], n_out, state.shape[1]), dtype=complex)
+        else:
+            new_state = np.zeros((n_out, n_out), dtype=complex)
         for K in operators:
             if not reshaped:
                 # (m x q) x (q x q) x (q x m) -> m x m
