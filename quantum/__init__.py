@@ -28,6 +28,7 @@ def test_quantum_all():
         _test_constants,
         _test_fourier_matrix,
         _test_parse_unitary,
+        _test_subunitary,
         _test_parse_hamiltonian,  # required by _test_random_ham
         _test_random_ham,  # required by _test_exp_i
         _test_exp_i,
@@ -130,6 +131,18 @@ def _test_parse_unitary():
     assert np.sum(np.where((parse_unitary('XCC') - I_(3)) != 0)) == 40
     assert np.sum(np.where((parse_unitary('CCC') - I_(3)) != 0)) == 0
     pass
+
+def _test_subunitary():
+    U1 = random_unitary(2**2)
+    U2 = random_unitary(2**3)
+    U = np.kron(U1, U2)
+    assert is_separable_unitary(U, [0,1])
+    assert not is_separable_unitary(U, [1])
+    assert not is_separable_unitary(U, [2,1])
+    assert not is_separable_unitary(U, [0,1,2])
+    U1_ = get_subunitary(U, [0,1])
+    phases = U1/U1_
+    assert np.allclose(phases, phases[0,0]), phases
 
 def _test_parse_hamiltonian():
     H = parse_hamiltonian('0.5*(II + ZI - ZX + IX)')

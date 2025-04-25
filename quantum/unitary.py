@@ -299,3 +299,16 @@ def partial_operation(U, subsystem, env_state='0', check=1):
     for i in range(2**(n-q)):
         Kraus.append(np.tensordot(U[:, i, :, :], env_state, axes=(2, 0)))
     return Kraus
+
+def get_subunitary(U, subsystem, check=2):
+    if check >= 2:
+        assert is_unitary(U), f"U is not unitary: {U @ U.conj().T}"
+    # Tr_2(U1 \otimes U2) = U1 Tr(U2) -> find Tr(U2)
+    # partial trace over the remaining qubits
+    A = partial_trace(U, subsystem, reorder=False)
+    # recover Tr(U2) via the 2**q‑th root of det A (up to a phase)
+    Tr_U2 = np.linalg.det(A)**(1/A.shape[0])
+    U1 = A/Tr_U2
+    if check >= 2:
+        assert is_unitary(U1), f"Resulting U1 is not unitary. Probably U was not separable."
+    return U1
