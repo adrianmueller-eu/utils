@@ -127,14 +127,28 @@ class QuantumComputer:
             self._update_operators(operators)
 
         # apply operators to state
-        self._apply_operators(operators, len(qubits))
+        self._apply_operators(operators, qubits)
         return self
 
     def _update_operators(self, operators):
         self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
 
-    def _apply_operators(self, operators, q):
-        self._state = apply_channel(operators, self._state, q != self.n, check=0)
+    def _apply_operators(self, operators, qubits):
+        self._state = apply_channel(operators, self._state, len(qubits) != self.n, check=0)
+        n_in  = len(qubits)
+        n_out = count_qubits(operators[0].shape[0])
+        if n_out > n_in:
+            # add new qubits to bookkeeping
+            new_qubits = list(np.arange(n_out - n_in) + (max(self._qubits) + 1))
+            self._qubits += new_qubits
+            self._original_order += new_qubits
+            self._added_qubits += new_qubits
+        elif n_out < n_in:
+            # remove the last n_in - n_out in qubits
+            to_remove = qubits[-(n_in - n_out):]
+            self._qubits = [q for q in self._qubits if q not in to_remove]
+            self._original_order = [q for q in self._original_order if q not in to_remove]
+            self._added_qubits = [q for q in self._added_qubits if q not in to_remove]
 
     def get_state(self, qubits='all', obs=None):
         return self._get("_state", qubits, obs)
