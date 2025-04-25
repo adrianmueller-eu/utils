@@ -12,7 +12,7 @@ from .utils import count_qubits, partial_trace
 from .state import ket, dm, unket, plotQ, is_state, ensemble_from_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
-from .unitary import parse_unitary, get_unitary, Fourier_matrix
+from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions
 from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer
 from ..plot import imshow
@@ -153,13 +153,24 @@ class QuantumComputer:
     def get_state(self, qubits='all', obs=None):
         return self._get("_state", qubits, obs)
 
-    def get_unitary(self):
+    def get_unitary(self, qubits='all', check=True):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
-        self._reorder(self._original_order, reshape=False)
+        qubits = self._check_qubit_arguments(qubits, False)
+        if len(qubits) == self.n:
+            if not is_unitary_channel(self._operators, check=0):
+                raise ValueError("Current channel is non-unitary")
+            self._reorder(qubits, reshape=False)
+            return self._operators[0].copy()
+
         if not is_unitary_channel(self._operators, check=0):
-            raise ValueError("Current channel is non-unitary")
-        return self._operators[0].copy()
+            raise NotImplementedError("Can't deduce local operation of non-unitary channel")
+        U = self._operators[0].reshape(2**self.n, -1)
+        qubits_idcs = [self._qubits.index(q) for q in qubits]
+        U1 = get_subunitary(U, qubits_idcs, check=0)
+        if check and self.check_level >= 2:
+            assert is_unitary(U1), f"Unitary is not separable on requested subsystem: {qubits}"
+        return U1
 
     def get_operators(self):
         if not self.track_operators:
