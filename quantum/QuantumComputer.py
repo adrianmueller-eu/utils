@@ -9,7 +9,7 @@ except ImportError:
 
 from .constants import *
 from .utils import count_qubits
-from .state import partial_trace, ket, dm, unket, random_ket, random_dm, plotQ, is_state, ensemble_from_state
+from .state import partial_trace, ket, dm, unket, plotQ, is_state, ensemble_from_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
@@ -327,15 +327,6 @@ class QuantumComputer:
         assert sorted(self._qubits) == sorted(original_order), f"Invalid qubit bookkeeping: {self._qubits} != {original_order}"  # sanity check
         # restore original order
         self._original_order = original_order
-        return self
-
-    def random(self, n=None):
-        n = n or self.n
-        assert n, 'No qubits have been allocated yet'
-        if self.is_matrix_mode():
-            self.init(random_dm(n))
-        else:
-            self.init(random_ket(n))
         return self
 
     def add(self, qubits, state=None, track_in_operators=False):
