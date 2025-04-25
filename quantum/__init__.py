@@ -32,12 +32,12 @@ def test_quantum_all():
         _test_random_ham,  # required by _test_exp_i
         _test_exp_i,
         _test_get_H_energies_eq_get_pe_energies,
-        _test_QuantumComputer,
         _test_channels,
         _test_random_ket,  # required _test_reverse_qubit_order
         _test_random_dm,   # required by _test_partial_trace
         _test_reverse_qubit_order,
         _test_partial_trace,
+        _test_QuantumComputer,
         _test_ket_unket,
         _test_op_dm,
         _test_is_ket,
@@ -330,22 +330,22 @@ def _test_QuantumComputer():
     # test basic functionality
     qc = QuantumComputer()
     qc.x(0)
-    assert unket(qc.get_state()) == '1'
+    assert unket(qc.get_state()) == '1', f"{unket(qc.get_state())} ≠ '1'"
     qc.cx(0, 1)
-    assert unket(qc.get_state()) == '11'
+    assert unket(qc.get_state()) == '11', f"{unket(qc.get_state())} ≠ '11'"
     qc.reset()
-    assert unket(qc.get_state()) == '00'
+    assert unket(qc.get_state()) == '00', f"{unket(qc.get_state())} ≠ '00'"
     qc.h()
     qc.x(2)
     qc.init(2, [0,1])
-    assert unket(qc.get_state()) == '101'
+    assert unket(qc.get_state()) == '101', f"{unket(qc.get_state())} ≠ '101'"
     qc.z([0,2])  # noop
     qc.swap(1,2)
-    assert unket(qc.get_state()) == '110'
+    assert unket(qc.get_state()) == '110', f"{unket(qc.get_state())} ≠ '110'"
     qc.reset(1)
-    assert unket(qc.get_state()) == '100'
+    assert unket(qc.get_state()) == '100', f"{unket(qc.get_state())} ≠ '100'"
     qc.remove([0,2])
-    assert unket(qc.get_state()) == '0'
+    assert unket(qc.get_state()) == '0', f"{unket(qc.get_state())} ≠ '0'"
     qc.reset(1)
     qc.x(2)
     result = qc.measure('all')
