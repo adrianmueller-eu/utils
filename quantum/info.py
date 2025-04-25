@@ -114,6 +114,18 @@ def correlation_quantum(state, obs_A, obs_B, check=2):
     rho_B = partial_trace(state, list(range(n_A, n_A + n_B)), reorder=False)
     return ev(obs_AB, state, check=min(1, check)) - ev(obs_A, rho_A, check) * ev(obs_B, rho_B, check)
 
+def get_channel_dims(operators, as_qubits=False):
+    if as_qubits:
+        dim_out, dim_in = get_channel_dims(operators, as_qubits=False)
+        return count_qubits(dim_out), count_qubits(dim_in)
+
+    K = np.asarray(operators[0])
+    if K.ndim == 2:
+        return K.shape
+    elif K.ndim in (3,4):
+        return prod(K.shape[:2]), prod(K.shape[2:])
+    raise ValueError(f"Not a valid shape for an operator: {K.shape}")
+
 def is_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10, print_errors=True):
     """ Check if the given operators form a valid Kraus decomposition. See `assert_kraus` for detailed doc. """
     return is_from_assert(assert_kraus, print_errors)(operators, n, trace_preserving, orthogonal, check, tol)
@@ -136,7 +148,7 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
     # 1. Check ndim
     assert len(operators) > 0, f"No operators provided"
     if isinstance(operators, list) and not isinstance(operators[0], np.ndarray):
-        operators = np.asarray(operators)  # check same shape of all operators
+        np.asarray(operators)  # check same shape of all operators
     if isinstance(operators, np.ndarray):
         # just based on ndim, we can't distinguish list of 2d vs a single 3d operators and list of 3d vs a single 4d operator
         # -> assume it's a list
@@ -148,27 +160,24 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
 
     if check < 1:
         return operators
-    # 2. Check size matches n_qubits and n_qubits_out
-    n_out, n_in = n
-    if n_out is None:
-        n_out = count_qubits(operators[0].shape[-2])  # check if it's a power of 2
-    else:
-        shape_exp = 2**n_out
-        assert operators[0].shape[-2] == shape_exp, f"Operators have invalid shape for {n_out} output qubits: {shape_exp} x {operators[0].shape}"
-    if n_in is None:
-        n_in = count_qubits(operators[0].shape[-1])  # check if it's a power of 2
-    else:
-        shape_exp = 2**n_in
-        assert operators[0].shape[-1] == shape_exp, f"Operators have invalid shape for {n_in} input qubits: {operators[0].shape} x {shape_exp}"
+
+    # 2. Check size matches n parameter
+    n_out, n_in = get_channel_dims(operators, as_qubits=True)
+    if n[0] is not None:
+        assert n[0] == n_out, f"Operators have invalid shape for {n[0]} output qubits: {2**n[0]} x {operators[0].shape}"
+    if n[1] is not None:
+        assert n[1] == n_in, f"Operators have invalid shape for {n[1]} input qubits: {operators[0].shape} x {2**n[1]}"
 
     if check < 2:
         return operators  # trace and orthogonality checks are expensive
+
     # 3. Check trace-preserving / contractive
     res = np.sum([K.conj().T @ K for K in operators], axis=0)
     if trace_preserving:
         assert allclose0(res - np.eye(operators[0].shape[-1]), tol), f"Operators are not trace-preserving"
     elif check >= 3:
         assert np.max(np.abs(eigvalsh(res))) < 1 + tol, f"Operators are not contractive"
+
     # 4. Check orthogonality
     if orthogonal:
         # for K1, K2 in itertools.combinations(operators, 2):
