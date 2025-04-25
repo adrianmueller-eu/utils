@@ -354,6 +354,14 @@ def _test_QuantumComputer():
     qc.reset([1,2])
     assert qc.n == 3, f"qc.n = {qc.n} ≠ 3"
     qc.copy()
+    qc1 = QC(state=1)
+    assert qc1.get_qubits() == [0], f"{qc1.get_qubits()} ≠ [0]"
+
+    k1 = random_ket(2)
+    k2 = random_ket(3)
+    qc = QC(np.kron(k1, k2))
+    qc.remove([0,1])
+    assert np.allclose(abs(qc.get_state().conj() @ k2), 1), f"{qc.get_state()} ≠ {k2}"
 
     # Heisenberg uncertainty principle
     qc = QuantumComputer(1, 'random')
