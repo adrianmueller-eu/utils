@@ -180,13 +180,21 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
                 assert np.abs(res) < tol, f"Operators {i,j} are not orthogonal: {res}"
     return operators
 
+def is_isometric_channel(operators, check=3):
+    """ Check if given operators form an isometric quantum channel. """
+    return is_kraus(operators, check=check) and len(operators) == 1
+
+def is_square_channel(operators, check=3):
+    try:
+        operators = assert_kraus(operators, check=check)
+    except AssertionError:
+        return False
+    return (operators[0].ndim == 2 and operators[0].shape[0] == operators[0].shape[1]) or \
+           (operators[0].ndim in (3,4) and prod(operators[0].shape[:2]) == prod(operators[0].shape[2:]))
+
 def is_unitary_channel(operators, check=3):
     """ Check if given operators form a unitary quantum channel. """
-    operators = assert_kraus(operators, check=check)
-    return len(operators) == 1 and ( \
-        (operators[0].ndim == 2 and operators[0].shape[0] == operators[0].shape[1]) or \
-        (operators[0].ndim in (3,4) and prod(operators[0].shape[:2]) == prod(operators[0].shape[2:])) \
-    )
+    return is_isometric_channel(operators, check=check) and is_square_channel(operators, check=0)
 
 def apply_channel(operators, state, reshaped, check=3):
     state = np.asarray(state)
