@@ -40,14 +40,14 @@ Level 1: Minimal burden, disable only for high performance
 | L[:,None] * A | 1
 | L @ A | 1
 | allclose0(A) | 1.25
+| trace_product(A, A) | 1.2
 | norm(A) | 1.3
 | A/1 | 1.4
-| trace_product(A, A) | 2
-| np.abs(A) | 3
-| is_diag(A) | 3.2
+| is_diag(A) | 1.6
+| np.abs(A) | 3.2
 | A.T.copy() | 3.8
-| normalize(A) | 4
-| np.all(A > 0) | 5
+| normalize(A) | 3.6
+| np.all(A > 0) | 4.9
 | A**4 | 5.3
 
 Level 2: Medium overhead, deactivate if used often
