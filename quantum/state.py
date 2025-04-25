@@ -1,7 +1,6 @@
 import psutil, warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from math import log2
 from functools import reduce
 
 from .utils import count_qubits, transpose_qubit_order
@@ -11,83 +10,6 @@ from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_
 from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
-
-def partial_trace(state, retain_qubits, reorder=False, assume_square=True):
-    """
-    Trace out all qubits not specified in `retain_qubits` and returns the reduced density matrix (or a scalar, if all qubits are traced out).
-    If `reorder=True` (default: False), order the output according to `retain_qubits`.
-    """
-    state = np.asarray(state)
-    n = count_qubits(state)
-
-    # add a dummy axis to make it a batch if necessary
-    if len(state.shape) == 1:
-        state = state[None,:]
-        remove_batch = True
-        isket = True
-    elif len(state.shape) == 2 and state.shape[0] == state.shape[1]:
-        if assume_square:
-            state = state[None,:,:]
-            remove_batch = True
-            isket = False
-        else:
-            remove_batch = False
-            isket = True
-    else:
-        remove_batch = False
-        isket = is_ket(state[*[0]*len(state.shape[:-2]),0,:], False, check=1)  # check=1 -> check norm
-
-    if isket:
-        # assert_ket(state[*[0]*len(state.shape[:-2]),0,:])
-        batch_shape = state.shape[:-1]
-    else:
-        # assert_dm(state[*[0]*len(state.shape[:-3]),0,:,:], check=1)
-        assert len(state.shape) >= 3 and state.shape[-2] == state.shape[-1], f"Invalid state shape {state.shape}"
-        batch_shape = state.shape[:-2]
-    batch_shape = list(batch_shape)
-
-    # pre-process retain_qubits
-    if is_int(retain_qubits):
-        retain_qubits = [retain_qubits]
-    assert all(0 <= q < n for q in retain_qubits), f"Invalid qubit indices {retain_qubits} for {n}-qubit state"
-
-    # get qubits to trace out
-    trace_out = np.array(sorted(set(range(n)) - set(retain_qubits)))
-
-    if isket:
-        if len(trace_out) == n:
-            return np.linalg.norm(state, axis=-1)  # Tr(|p><p|) = <p|p> -> inner product
-        elif len(trace_out) == 0:
-            res = state[...,None] * state.conj()[...,None,:]  # outer product
-        else:
-            state = state.reshape(batch_shape + [2]*n)
-            res   = np.zeros(batch_shape + [2]*len(retain_qubits)*2, dtype=state.dtype)
-            for idcs in shape_it(batch_shape):
-                res[idcs] = np.tensordot(state[idcs], state[idcs].conj(), axes=(trace_out,trace_out))
-        state = res.reshape(batch_shape + [2**len(retain_qubits)]*2)
-    # if trace out all qubits, just return the normal trace
-    elif len(trace_out) == n:
-        res = np.trace(state, axis1=-2, axis2=-1).reshape(batch_shape)
-        if remove_batch:
-            return res[0]
-        return res
-    else:
-        assert state.shape[-2] == state.shape[-1], f"Can't trace a non-square matrix {state.shape}"
-
-        state = state.reshape(batch_shape + [2]*(2*n))
-        trace_out = np.array(trace_out) + len(batch_shape)
-        for qubit in trace_out:
-            state = np.trace(state, axis1=qubit, axis2=qubit+n)
-            n -= 1         # one qubit less
-            trace_out -= 1 # rename the axes (only "higher" ones are left)
-        state = state.reshape(batch_shape + [2**n, 2**n])
-
-    if reorder:
-        state = transpose_qubit_order(state, np.argsort(retain_qubits), True)
-
-    if remove_batch:
-        return state[0]
-    return state
 
 def state_trace(state, retain_qubits, reorder=True):
     """This is a pervert version of the partial trace, but for state vectors. I'm not sure about the physical 

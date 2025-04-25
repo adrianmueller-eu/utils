@@ -6,7 +6,8 @@ try:
 except ImportError:
     pass
 
-from .state import count_qubits, partial_trace, op, ket, dm, ev, as_state, ensemble_from_state, assert_state
+from .utils import count_qubits, partial_trace
+from .state import op, ket, dm, ev, as_state, ensemble_from_state, assert_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd
 from ..prob import entropy
 from ..utils import is_from_assert, is_int, warn

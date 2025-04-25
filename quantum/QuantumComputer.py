@@ -8,8 +8,8 @@ except ImportError:
     pass
 
 from .constants import *
-from .utils import count_qubits
-from .state import partial_trace, ket, dm, unket, plotQ, is_state, ensemble_from_state
+from .utils import count_qubits, partial_trace
+from .state import ket, dm, unket, plotQ, is_state, ensemble_from_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
