@@ -33,6 +33,12 @@ try:
 except ImportError:
     pass
 
+def outer(a, b=None):
+    # faster than np.outer for small vectors and batch-enabled
+    if b is None:
+        b = a.conj()
+    return a[...,None] * b[...,None,:]
+
 #######################
 ### Property checks ###
 #######################

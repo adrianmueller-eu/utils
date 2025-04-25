@@ -1,7 +1,7 @@
 from math import log2
 import numpy as np
 
-from ..mathlib import is_square
+from ..mathlib import is_square, outer
 from ..utils import is_int, shape_it
 
 def count_qubits(obj):
@@ -131,7 +131,7 @@ def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
         if len(trace_out) == n:
             return np.linalg.norm(state, axis=-1)  # Tr(|p><p|) = <p|p> -> inner product
         elif len(trace_out) == 0:
-            res = np.outer(state, state.conj())
+            res = outer(state)
         else:
             state = state.reshape(batch_shape + [2]*n)
             res   = np.zeros(batch_shape + [2]*len(retain_qubits)*2, dtype=state.dtype)

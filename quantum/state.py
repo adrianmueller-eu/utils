@@ -6,7 +6,7 @@ from functools import reduce
 from .utils import count_qubits, transpose_qubit_order
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh
+from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer
 from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
@@ -212,7 +212,7 @@ def random_dm(n=1, rank='full'):
 
     if rank == 1:
         state = random_ket(n)
-        return np.outer(state, state.conj())
+        return outer(state)
 
     kets = random_ket(n, rank, kind='ortho')
     probs = random_p(len(kets), kind='uniform')
@@ -401,7 +401,7 @@ def op(specification1, specification2=None, n=None, check=1):
         s1 = ket(specification1, n=n, renormalize=True, check=check)
         s2 = ket(specification2, n=n or count_qubits(s1), renormalize=True, check=check)
 
-    return np.outer(s1, s2.conj())
+    return outer(s1, s2.conj())
 
 def dm(kets, p=None, n=None, renormalize=True, check=3):
     """
@@ -436,7 +436,7 @@ def dm(kets, p=None, n=None, renormalize=True, check=3):
             kets = 'random'
 
     psi = ket(kets, n, renormalize=renormalize, check=check)
-    return np.outer(psi, psi.conj())
+    return outer(psi)
 
 def as_state(state, renormalize=True, n=None, check=2):
     try:
@@ -544,7 +544,7 @@ def dm_from_ensemble(probs, kets, check=2):
     if check >= 2:
         for k in kets:
             assert_ket(k)
-    return sum(p * np.outer(k, k.conj()) for p, k in zip(probs, kets))
+    return sum(p * outer(k) for p, k in zip(probs, kets))
 
 def ensemble_from_state(rho, filter_eps=1e-10, check=3):
     if check:

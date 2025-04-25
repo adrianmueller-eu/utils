@@ -13,7 +13,8 @@ from .state import ket, dm, unket, plotQ, is_state, ensemble_from_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix
-from ..mathlib import choice, normalize, binstr_from_int, bipartitions, is_unitary, is_hermitian, is_diag, trace_product, eigh
+from ..mathlib import choice, normalize, binstr_from_int, bipartitions
+from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer
 from ..plot import imshow
 from ..utils import is_int, duh, warn, as_list_not_str
 from ..prob import entropy
@@ -665,7 +666,7 @@ class QuantumComputer:
 
         q = self._state.shape[0]  # keep original reshaping
         self._state = self._state.reshape(2**self.n)
-        self._state = np.outer(self._state, self._state.conj())
+        self._state = outer(self._state)
         if q != 2**self.n:
             nq = 2**self.n // q
             self._state = self._state.reshape(q, nq, q, nq)
@@ -939,7 +940,7 @@ class QuantumComputer:
     def __getitem__(self, qubits):
         state = self.get_state(qubits)
         if len(state.shape) == 1:
-            state = np.outer(state, state.conj())
+            state = outer(state, state)
         return state
 
     def __setitem__(self, qubits, state):
@@ -1044,7 +1045,7 @@ class QuantumComputer:
 
     @classmethod
     def from_ensemble(cls, probs, kets):
-        state = np.sum(p * np.outer(k, k.conj()) for p, k in zip(probs, kets))
+        state = np.sum(p * outer(k) for p, k in zip(probs, kets))
         return cls(state)
 
     @staticmethod
