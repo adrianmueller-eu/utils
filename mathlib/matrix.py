@@ -157,6 +157,9 @@ def is_diag(a, diag=None, tol=1e-12):
     a = a[:,1:]  # remove diagonal
     return allclose0(a, tol=tol)
 
+def is_eye(a, tol=0):
+    return is_diag(a, 1, tol=tol)
+
 def is_square(a):
     if not hasattr(a, 'shape'):  # don't hide a sparse matrix inside a numpy array
         a = np.asarray(a)
