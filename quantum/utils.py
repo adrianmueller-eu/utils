@@ -8,7 +8,7 @@ def verify_subsystem(subsystem, n):
     if is_int(subsystem):
         subsystem = [subsystem]
     subsystem = list(subsystem)
-    assert all(0 <= q < n for q in subsystem), f"Subsystem is has invalid qubits: {subsystem}"
+    assert all(0 <= q < n for q in subsystem), f"Subsystem is invalid for {n} qubits: {subsystem}"
     return subsystem
 
 def count_qubits(obj):
