@@ -479,6 +479,7 @@ class QuantumComputer:
                 else:
                     raise ValueError(f"Invalid qubit: {q}")
         assert len(set(qubits)) == len(qubits), f"Qubits should not contain a qubit multiple times, but was {qubits}"
+        assert not any(q in self._added_qubits for q in to_alloc), f"WTF-Error: Qubits to be allocated {to_alloc} are already in added_qubits {self._added_qubits}"
         if allow_new:
             return qubits, to_alloc
         return qubits
