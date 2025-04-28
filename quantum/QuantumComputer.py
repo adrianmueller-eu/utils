@@ -736,11 +736,10 @@ class QuantumComputer:
                 return self  # either no operator tracking or already single Kraus operator
 
             # construct purification
-            ancilla_basis = I_(n_ancillas)[:r_out]
-            pkets = np.sqrt(probs)[:, None] * kets
-            # self._state = sum(np.kron(k, a) for k, a in zip(pkets, ancilla_basis))
-            # self._state = np.einsum('ia,ib->ab', pkets, ancilla_basis).reshape(-1)  # even slower!
-            self._state = np.tensordot(pkets, ancilla_basis, axes=(0, 0)).reshape(-1)
+            # self._state = np.tensordot(pkets, ancilla_basis, axes=(0, 0)).reshape(-1)  # general basis
+            state = np.zeros((2**n_ancillas, len(kets[0])), dtype=complex)
+            state[:len(kets)] = np.sqrt(probs)[:, None] * kets
+            self._state = state.T.ravel()
 
             if self.track_operators:
                 # Stinespring dilation
