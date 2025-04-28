@@ -356,27 +356,26 @@ def unket(state, as_dict=False, prec=5, check=1):
         return str(state[0])
     # group by weight
     weights = {}
-    for i in range(2**n):
-        if np.abs(state[i]) > eps:
-            weight = state[i]
-            pre = ''
-            # Find a close value in weights
-            for w in weights:
-                if abs(w - weight) < eps:
-                    weight = w
-                    break
-                if abs(w + weight) < eps:
-                    weight = w
-                    pre = '-'
-                    break
-            else:
-                # remove imaginary part if it's zero
-                if np.abs(weight.imag) < eps:
-                    weight = weight.real
-                # create new weight
-                weights[weight] = []
-            # add state to weight
-            weights[weight].append(pre + binstr_from_int(i, n))
+    for i in np.where(np.abs(state) > eps)[0]:
+        weight = state[i]
+        pre = ''
+        # Find a close value in weights
+        for w in weights:
+            if abs(w - weight) < eps:
+                weight = w
+                break
+            if abs(w + weight) < eps:
+                weight = w
+                pre = '-'
+                break
+        else:
+            # remove imaginary part if it's zero
+            if np.abs(weight.imag) < eps:
+                weight = weight.real
+            # create new weight
+            weights[weight] = []
+        # add state to weight
+        weights[weight].append(pre + binstr_from_int(i, n))
 
     # convert to string
     res = []
