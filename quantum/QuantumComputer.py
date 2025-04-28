@@ -921,7 +921,10 @@ class QuantumComputer:
     def is_separable(self, qubits='all', obs=None):
         with self.observable(obs, qubits) as qubits:
             qubits_idcs = [self._qubits.index(q) for q in qubits]
-            state = self._state.reshape(2**self.n,-1)
+            if self.is_matrix_mode():
+                state = self._state.reshape(2**self.n,-1)
+            else:
+                state = self._state.reshape(2**self.n)
             return is_separable_state(state, qubits_idcs, check=0) and self.is_unitary(qubits)
 
     def purity(self, qubits='all'):
