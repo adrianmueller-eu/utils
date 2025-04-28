@@ -679,10 +679,10 @@ class QuantumComputer:
 
     def rank(self, qubits='all', obs=None):
         qubits = self._check_qubit_arguments(qubits, False)
+        if self.is_matrix_mode():
+            state = self.get_state(qubits, collapse=False)
+            return np.linalg.matrix_rank(state)
         if len(qubits) == self.n:
-            if self.is_matrix_mode():
-                state = self.get_state(qubits, obs=obs)
-                return np.linalg.matrix_rank(state)
             return 1
         return self.schmidt_number(qubits, obs)  # faster than matrix_rank
 
