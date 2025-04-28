@@ -102,28 +102,14 @@ def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
     n = count_qubits(state)
 
     # add a dummy axis to make it a batch if necessary
-    remove_batch = False
-    isket = True
-    if state.ndim == 1:
-        state = state[None,:]
-        remove_batch = True
-    elif assume_ket or not is_square(state):
+    if state.ndim == 1 or assume_ket or not is_square(state):
+        isket = True
+        batch_shape = state.shape[:-1]
         # psi = state[*[0]*len(state.shape[:-2]),0,:]
         # isket = len(psi) == 2**n and abs(np.linalg.norm(psi) - 1) < 1e-10
         # assert isket
-        pass
     else:
-        if state.ndim == 2:
-            state = state[None,:,:]
-            remove_batch = True
         isket = False
-
-    if isket:
-        # assert_ket(state[*[0]*len(state.shape[:-2]),0,:])
-        batch_shape = state.shape[:-1]
-    else:
-        # assert_dm(state[*[0]*len(state.shape[:-3]),0,:,:], check=1)
-        assert state.ndim >= 3 and is_square(state), f"Invalid state shape {state.shape}"
         batch_shape = state.shape[:-2]
     batch_shape = list(batch_shape)
 
@@ -162,6 +148,4 @@ def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
     if reorder:
         state = transpose_qubit_order(state, np.argsort(retain_qubits), reshape=False, batch_shape=batch_shape)
 
-    if remove_batch:
-        return state[0]
     return state
