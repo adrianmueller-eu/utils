@@ -47,8 +47,7 @@ def count_qubits(obj):
         return len(obj.qubits)
     raise ValueError(f'Unkown object: {obj}')
 
-def transpose_qubit_order(state, new_order, reshape=False, assume_square=True):
-    # TODO: allow non-square operators
+def transpose_qubit_order(state, new_order, reshape=False, batch_shape=()):
     state = np.asarray(state)
     n = count_qubits(state)
 
@@ -57,36 +56,27 @@ def transpose_qubit_order(state, new_order, reshape=False, assume_square=True):
         new_order = range(n)[::-1]
     new_order = verify_subsystem(new_order, n)
     q = len(new_order)
-    # fill up missing qubits in the end
-    if q < n:
-        new_order = new_order + [q for q in range(n) if q not in new_order]
+    new_order_all = new_order + [q for q in range(n) if q not in new_order]
 
-    # infer batch shape
-    if state.ndim == 2 and is_square(state):  # state is not necessarily a density matrix or ket (e.g. hamiltonian, unitary)
-        if assume_square:
-            batch_shape = ()
-        else:  # kets
-            batch_shape = state.shape[:1]
-    elif state.ndim >= 2 and not is_square(state):
-        batch_shape = state.shape[:-1]
-    elif state.ndim >= 3 and is_square(state):
-        batch_shape = state.shape[:-2]
+    # parse batch shape
+    batch_idcs, batch_shape = [], list(batch_shape)
+    if batch_shape:
+        batch_ndim = len(batch_shape)
+        is_ket = state.ndim - batch_ndim == 1
+        batch_idcs = list(range(batch_ndim))
+        new_order_all = [q + batch_ndim for q in new_order_all]  # move after batch dimensions
     else:
-        batch_shape = ()
-    batch_shape = list(batch_shape)
+        is_ket = state.ndim == 1
 
     # transpose
-    batch_idcs = list(range(len(batch_shape)))
-    new_order_all = new_order + [q for q in range(n) if q not in new_order]
-    new_order_all = [q + len(batch_idcs) for q in new_order_all]  # move after batch dimensions
-    if len(state.shape) == 1 + len(batch_shape):  # vector
+    if is_ket:
         state = state.reshape(batch_shape + [2]*n)
         state = state.transpose(batch_idcs + new_order_all)
         if reshape:
             state = state.reshape(batch_shape + [2**q, 2**(n-q)])
         else:
             state = state.reshape(batch_shape + [2**n])
-    elif len(state.shape) == 2 + len(batch_shape) and state.shape[-2] == state.shape[-1]:  # matrix
+    elif is_square(state):
         state = state.reshape(batch_shape + [2,2]*n)
         new_order_all = new_order_all + [i + n for i in new_order_all]
         state = state.transpose(batch_idcs + new_order_all)
@@ -94,13 +84,14 @@ def transpose_qubit_order(state, new_order, reshape=False, assume_square=True):
             state = state.reshape(batch_shape + [2**q, 2**(n-q), 2**q, 2**(n-q)])
         else:
             state = state.reshape(batch_shape + [2**n, 2**n])
+    # TODO: allow non-square operators
     else:
         raise ValueError(f"Not a valid shape: {state.shape}")
     return state
 
-def reverse_qubit_order(state, assume_square=True):
+def reverse_qubit_order(state, batch_shape=()):
     """ So the last will be first, and the first will be last. """
-    return transpose_qubit_order(state, -1, assume_square)
+    return transpose_qubit_order(state, -1, reshape=False, batch_shape=batch_shape)
 
 def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
     """
@@ -169,7 +160,7 @@ def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
         state = state.reshape(batch_shape + [2**n, 2**n])
 
     if reorder:
-        state = transpose_qubit_order(state, np.argsort(retain_qubits), True)
+        state = transpose_qubit_order(state, np.argsort(retain_qubits), reshape=False, batch_shape=batch_shape)
 
     if remove_batch:
         return state[0]

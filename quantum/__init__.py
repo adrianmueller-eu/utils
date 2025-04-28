@@ -691,7 +691,7 @@ def _test_partial_trace():
     rhos = partial_trace(kets, [0,1])
     assert np.allclose(np.trace(rhos, axis1=-2, axis2=-1), np.ones(10))
     rhos_rev  = partial_trace(kets, [1,0], reorder=True)
-    rhos_rev2 = reverse_qubit_order(rhos)
+    rhos_rev2 = reverse_qubit_order(rhos, batch_shape=(10,))
     assert np.allclose(rhos_rev, rhos_rev2)
 
 def _test_is_eigenstate():
