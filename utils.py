@@ -133,9 +133,7 @@ def shape_it(shape, progress=False):
     if progress:
         from tqdm.auto import tqdm as tq
         gen = tq(gen, total=np.prod(shape))
-
-    for n in gen:
-        yield n
+    return gen
 
 def size_samples(f, size):
     """ Create a numpy array of shape `size, ...` by sampling using the function `f`. """
