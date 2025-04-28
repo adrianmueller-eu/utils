@@ -121,8 +121,8 @@ class QuantumComputer:
             return self
         operators = assert_kraus(operators, n=(None, len(qubits)), check=self.check_level)
 
-        # non-unitary operators require density matrix representation
-        if not is_unitary_channel(operators, check=0):
+        # non-isometric operators require density matrix representation
+        if not is_isometric_channel(operators, check=0):
             self.to_dm()
 
         self._reorder(qubits, reshape=True)  # required by both update and apply
@@ -716,11 +716,12 @@ class QuantumComputer:
         if not self.is_matrix_mode():
             # warn("State is already a vector")
             return self
-        if not is_unitary_channel(self._operators, check=0):
+
+        if not is_isometric_channel(self._operators, check=0):
             if self._track_operators == True:
-                raise ValueError("State vector representation is not compatible with a non-unitary channel")
+                raise ValueError("State vector representation is not compatible with a non-isometric channel")
             elif self.track_operators:
-                warn("State vector representation is not compatible with a non-unitary channel. Resetting operators.")
+                # warn("State vector representation is not compatible with a non-isometric channel.")
                 self._reset_operators()
 
         p, kets = self.ensemble(filter_eps=filter_eps)
