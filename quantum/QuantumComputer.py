@@ -471,14 +471,20 @@ class QuantumComputer:
             to_retain = [q for q in self._qubits if q not in qubits]
             new_state = self.get_state(to_retain, collapse=collapse)
 
-            # update operators (non-collapse)
-            if self.track_operators and not collapse:
-                # construct Kraus operators of the partial trace
-                ops = removal_channel(len(qubits))
-                self._reorder(qubits, reshape=True)
-                self._update_operators(ops)
-                # sync operator shaping with new_state (reshape=False, new_state is output space)
-                self._operators = [o.reshape(new_state.shape[0], -1) for o in self._operators]
+            # update operators
+            if self.track_operators:
+                assert not collapse, "WTF-Error: Collapse is incompatible with operator tracking."
+                if new_state.ndim == 1:
+                    # unitary was separable
+                    self._operators = [self.get_unitary(to_retain)]
+                else:
+                    # construct Kraus operators of the partial trace
+                    ops = removal_channel(len(qubits))
+                    self._reorder(qubits, reshape=True)
+                    self._update_operators(ops)
+                    # sync operator shaping with new_state (reshape=False, new_state is output space)
+                    self._operators = [o.reshape(new_state.shape[0], -1) for o in self._operators]
+
             # update the state after updating the operators, so we can still reorder them simultaneously
             self._state = new_state
 
