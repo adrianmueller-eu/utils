@@ -656,7 +656,7 @@ class QuantumComputer:
         for p, ket in zip(probs, kets):
             print(f"{p:.6f}  {unket(ket)}")
 
-    def purify(self, sample=False, obs=None):
+    def purify(self, obs=None):
         """
         Convert density matrix to a state vector representation by purification.
         `sample=True` will sample from the ensemble, otherwise a deterministic purification is performed.
@@ -666,10 +666,9 @@ class QuantumComputer:
             return self
 
         with self.observable(obs):
-            probs, kets = self.ensemble()
-            if sample or len(probs) == 1:
-                outcome = choice(len(probs), p=normalize(probs, p=1))
-                new_state = kets[outcome]
+            probs, kets = self.ensemble()  # calls _reorder(reshape=False)
+            if len(probs) == 1:
+                new_state = kets[0]
                 n_ancillas = 0
             else:
                 # construct purification
@@ -712,13 +711,16 @@ class QuantumComputer:
             self._state = self._state.reshape(q, nq, q, nq)
         return self
 
-    def to_ket(self, kind='max', return_outcome=False, filter_eps=FILTER_EPS):
+    def to_ket(self, kind='sample', return_outcome=False, filter_eps=FILTER_EPS):
         """
         Convert density matrix to state vector representation.
         """
         if not self.is_matrix_mode():
             # warn("State is already a vector")
             return self
+        if kind == 'purify':
+            self.purify()
+            outcome = None
 
         if not is_isometric_channel(self._operators, check=0):
             if self._track_operators == True:
@@ -728,14 +730,14 @@ class QuantumComputer:
                 self._reset_operators()
 
         p, kets = self.ensemble(filter_eps=filter_eps)
-        if kind == 'max':
-            outcome = np.argmax(p)
-            self._state = kets[outcome]
-        elif kind == 'sample':
+        if kind == 'sample':
             outcome = choice(len(p), p=normalize(p, p=1))
             self._state = kets[outcome]
+        elif kind == 'max':
+            outcome = np.argmax(p)
+            self._state = kets[outcome]
         else:
-            raise ValueError(f"Invalid kind: {kind}. Use 'max' or 'sample'.")
+            raise ValueError(f"Invalid kind: {kind}. Use 'purify', 'sample', or 'max'.")
         if return_outcome:
             return outcome
         return self

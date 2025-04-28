@@ -478,7 +478,7 @@ def _test_QuantumComputer():
     assert qc.is_matrix_mode()
     qc.x(2)
     assert np.allclose(qc.get_state(), (dm('01') + dm('10'))/2)
-    qc.purify(sample=True)
+    qc.to_ket(kind='sample')
 
     # test kraus operators
     qc = QuantumComputer(2)
