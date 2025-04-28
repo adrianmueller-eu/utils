@@ -341,7 +341,7 @@ def _test_Wigner():
 
 def _test_QuantumComputer():
     # test basic functionality
-    qc = QuantumComputer()
+    qc = QuantumComputer(track_operators=False)  # remove() would turn it into density matrix mode, but we want to keep state vector here
     qc.x(0)
     assert unket(qc.get_state()) == '1', f"{unket(qc.get_state())} ≠ '1'"
     qc.cx(0, 1)
