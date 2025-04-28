@@ -714,37 +714,42 @@ class QuantumComputer:
 
     def purify(self, obs=None):
         """
-        Convert density matrix to a state vector representation by purification.
-        `sample=True` will sample from the ensemble, otherwise a deterministic purification is performed.
+        Convert density matrix to a state vector representation using state purification and Stinespring dilation.
         """
         if not self.is_matrix_mode():
-            warn("State is already a vector")
+            # warn("State is already a vector")
             return self
 
         with self.observable(obs):
             probs, kets = self.ensemble()  # calls _reorder(reshape=False)
-            if len(probs) == 1:
-                new_state = kets[0]
-                n_ancillas = 0
-            else:
-                # construct purification
-                n_ancillas = int(np.ceil(np.log2(len(probs))))
-                ancilla_basis = I_(n_ancillas)[:len(probs)]
-                pkets = np.sqrt(probs)[:, None] * kets
-                # new_state = sum(np.kron(k, a) for k, a in zip(pkets, ancilla_basis))
-                # new_state = np.einsum('ia,ib->ab', pkets, ancilla_basis).reshape(-1)  # even slower!
-                new_state = np.tensordot(pkets, ancilla_basis, axes=(0, 0)).reshape(-1)
-                self._state = new_state
 
-                if self.track_operators:
-                    # Stinespring dilation
-                    Ks = self._operators
-                    # V = sum(np.kron(K, a) for K, a in zip(Ks, ancilla_basis))
-                    dout, din = Ks[0].shape
-                    V = np.zeros((dout*2**n_ancillas, din), dtype=complex)
-                    for i, K in enumerate(Ks):
-                        V[i*dout:(i+1)*dout, :] = K
-                    self._operators = [V]  # V is an isometry
+            # get dimensions
+            r = r_out = len(probs)
+            if self.track_operators:
+                Ks = self._operators
+                r_K   = len(Ks)
+                r = max(r_out, r_K)
+            n_ancillas = int(np.ceil(np.log2(r)))
+
+            if n_ancillas == 0:
+                self._state = kets[0]
+                return self  # either no operator tracking or already single Kraus operator
+
+            # construct purification
+            ancilla_basis = I_(n_ancillas)[:r_out]
+            pkets = np.sqrt(probs)[:, None] * kets
+            # self._state = sum(np.kron(k, a) for k, a in zip(pkets, ancilla_basis))
+            # self._state = np.einsum('ia,ib->ab', pkets, ancilla_basis).reshape(-1)  # even slower!
+            self._state = np.tensordot(pkets, ancilla_basis, axes=(0, 0)).reshape(-1)
+
+            if self.track_operators:
+                # Stinespring dilation
+                # V = sum(np.kron(K, a) for K, a in zip(Ks, ancilla_basis))
+                dout, din = Ks[0].shape
+                V = np.zeros((dout*2**n_ancillas, din), dtype=complex)
+                for i, K in enumerate(Ks):
+                    V[i*dout:(i+1)*dout, :] = K
+                self._operators = [V]    # V is an isometry
 
             # add ancillas to bookkeeping
             ancillas = list(np.arange(n_ancillas) + (max(self._qubits)+1))
