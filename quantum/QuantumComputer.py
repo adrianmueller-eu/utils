@@ -467,7 +467,9 @@ class QuantumComputer:
         if isinstance(qubits, slice):
             qubits = self._qubits[qubits]
         elif qubits == 'all':
-            qubits = self._original_order
+            if allow_new:
+                return self._original_order, []
+            return self._original_order
         qubits = as_list_not_str(qubits)
         to_alloc = []
         for q in qubits:
