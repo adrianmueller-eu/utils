@@ -154,8 +154,56 @@ class QuantumComputer:
             self._original_order = [q for q in self._original_order if q not in to_remove]
             self._added_qubits = [q for q in self._added_qubits if q not in to_remove]
 
-    def get_state(self, qubits='all', obs=None):
-        return self._get("_state", qubits, obs)
+    def get_state(self, qubits='all', collapse=False, allow_vector=True, obs=None):
+        """ Moves `qubits` to the *end* of `self._qubits`. """
+        with self.observable(obs, qubits) as qubits:
+            q = len(qubits)
+            if q == 0:
+                return np.array([1.] if allow_vector else [[1.]])
+            elif q == self.n:
+                self._reorder(qubits, reshape=False)
+                if not allow_vector and not self.is_matrix_mode():
+                    return outer(self._state)
+                return self._state.copy()
+
+            to_remove = [q for q in self._qubits if q not in qubits]
+            nq = self.n - q
+            if collapse:
+                probs = self._probs(to_remove)  # calls _reorder(reshape=True) for vector and _reorder(reshape=False) for matrix
+                outcome = choice(2**nq, p=probs)
+                if self.is_matrix_mode():
+                    idcs = slice(outcome*2**nq, (outcome+1)*2**nq)
+                    new_state = self._state[idcs, idcs] / probs[outcome]
+                else:
+                    new_state = self._state[outcome] / sqrt(probs[outcome])
+                    if q == 1:
+                        new_state = new_state.reshape([2])
+                    if not allow_vector:
+                        return outer(new_state)
+                return new_state
+
+            if q > self.MATRIX_BREAK:
+                warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
+            self._reorder(to_remove, reshape=False)
+            rdm = partial_trace(self._state, list(range(nq, self.n)), reorder=False)
+            if not self.is_matrix_mode() and allow_vector and self.KEEP_VECTOR and self.n - q < self.MATRIX_SLOW:
+                # check if to_remove is separable in state and unitary
+                if np.linalg.matrix_rank(rdm, hermitian=True, tol=self.ENTROPY_EPS) == 1:
+                    unitary = self.get_unitary(qubits, check=False)
+                    if is_unitary(unitary):
+                        # find a non-zero state (-> no diagonalization required)
+                        self._reorder(to_remove, reshape=True)
+                        new_state = None
+                        for i in range(2**nq):
+                            if not allclose0(self._state[i]):
+                                new_state = self._state[i]
+                                break
+                        assert new_state is not None, f"WTF-Error: No non-zero state found in {self._state}"
+                        new_state = normalize(new_state)
+                        if q == 1:
+                            new_state = new_state.reshape([2])
+                        return new_state
+            return rdm
 
     def get_unitary(self, qubits='all', check=True):
         if not self.track_operators:
@@ -253,7 +301,7 @@ class QuantumComputer:
 
     def _probs(self, qubits='all'):
         if self.is_matrix_mode():
-            state = self.get_state(qubits)  # calls _reorder(reshape=False)
+            state = self.get_state(qubits, collapse=False)  # calls _reorder(reshape=False)
             return np.diag(state).real  # computational basis
         else:
             self._reorder(qubits, reshape=True)
@@ -330,8 +378,8 @@ class QuantumComputer:
             return binstr_from_int(outcome, len(qubits))
         return outcome
 
-    def reset(self, qubits='all', collapse=True):
-        return self.init(0, qubits, collapse=collapse)
+    def reset(self, qubits='all', collapse='auto', track_in_operators='auto'):
+        return self.init(0, qubits, collapse, track_in_operators)
 
     def resetv(self, qubits=None):
         """
@@ -357,25 +405,48 @@ class QuantumComputer:
         self._state[outcome] = keep
         return binstr_from_int(outcome, q)
 
-    def init(self, state, qubits='all', collapse=True):
+    def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
-        original_order = self._original_order + to_alloc  # we want `to_alloc` at the end, but `qubits` may not have them at the end
+        if qubits == to_alloc:  # all new
+            if track_in_operators == 'auto':
+                track_in_operators = self.is_matrix_mode()
+            return self.add(qubits, state, track_in_operators)
+
+        if collapse == 'auto':
+            collapse = not self.is_matrix_mode()
+        if track_in_operators == 'auto':
+            track_in_operators = not collapse and self.track_operators
+
+        to_remove = [q for q in qubits if q not in to_alloc]
+        if not to_remove:
+            return self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
 
         # trace out already allocated qubits to be re-initialized
-        if qubits != to_alloc:  # avoid empty removal (_check_qubit_arguments guarantees same order)
-            assert not any(q in self._added_qubits for q in to_alloc), f"WTF-Error: Qubits to be allocated {to_alloc} are already in added_qubits {self._added_qubits}"
-            added_qubits_removed = [q for q in qubits if q in self._added_qubits]
-            self.remove([q for q in qubits if q not in to_alloc], collapse=collapse)
-            self._added_qubits += added_qubits_removed
-            to_alloc = qubits  # (re-)allocate all qubits to be initialized
-        elif collapse and self._track_operators == True:
-            warn(f"The initialized state of qubits {qubits} is not being tracked. Consider using `collapse=False` if you want to include the new state in the operators.")
+        if track_in_operators:
+            # bookkeeping
+            original_order = self._original_order + to_alloc  # we want `to_alloc` at the end, but `qubits` may not have them at the end
+            added_qubits = self._added_qubits.copy()  # stash
 
-        # assert to_alloc == qubits
-        self._alloc_qubits(to_alloc, state=state, track_in_operators=not collapse)
-        assert sorted(self._qubits) == sorted(original_order), f"Invalid qubit bookkeeping: {self._qubits} != {original_order}"  # sanity check
-        # restore original order
-        self._original_order = original_order
+            # remove qubits from state and operators
+            self.remove(to_remove, collapse=collapse, obs=None)
+            # extend state and operators by all `qubits`
+            self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
+
+            # bookkeeping
+            self._original_order = original_order
+            self._added_qubits = added_qubits + to_alloc  # do not count qubits in `qubits` that are not in `to_alloc` as "added"
+            assert sorted(self._qubits) == sorted(original_order), f"Invalid qubit bookkeeping: {self._qubits} != {original_order}"  # sanity check
+        else:
+            to_retain = [q for q in self._qubits if q not in to_remove]
+            reduced_state = self.get_state(to_retain, collapse=collapse, allow_vector=True)  # moves `to_retain` to the end in self._qubits
+            # extend operators by identity
+            self._alloc_qubits(to_alloc, track_in_operators=False)
+            # extend state with new state
+            self._state = reduced_state  # guarantees reshape=False for state
+            self._qubits = to_retain  # ._extend_state (.is_matrix_mode) requires self._qubits to be consistent with self._state.shape
+            self._extend_state(state, len(qubits))
+            # state has order to_retain + qubits
+            self._qubits = to_retain + qubits
         return self
 
     def add(self, qubits, state=0, track_in_operators=True):
@@ -384,58 +455,36 @@ class QuantumComputer:
         return self
 
     def remove(self, qubits, collapse=False, obs=None):
-        if collapse and self._track_operators == True:
-            raise ValueError("Collapse is incompatible with Kraus operators.")
+        if collapse:
+            if self._track_operators == True:
+                raise ValueError("Collapse is incompatible with Kraus operators.")
+            elif self.track_operators:
+                self._track_operators = False
 
         with self.observable(obs, qubits) as qubits:
             if len(qubits) == self.n:
                 return self.clear()
+            if len(qubits) == 0:
+                return self
 
-            if not collapse:
-                retain = list(range(len(qubits), self.n))
-            if self.is_matrix_mode():
-                if collapse:
-                    q = len(qubits)
-                    probs = self._probs(qubits)
-                    outcome = choice(2**q, p=probs)
-                    idcs = slice(outcome*2**(self.n-q), (outcome+1)*2**(self.n-q))
-                    new_state = self._state[idcs, idcs] / probs[outcome]
-                else:
-                    self._reorder(qubits, reshape=False)
-                    new_state = partial_trace(self._state, retain, reorder=False)
-            else:
-                if collapse or (self.KEEP_VECTOR and self.entanglement_entropy(qubits) < self.ENTROPY_EPS):
-                    # if `qubits` are separable, just remove them
-                    probs = self._probs(qubits)  # also moves qubits to the front and reshapes
-                    outcome = choice(2**len(qubits), p=probs)
-                    new_state = normalize(self._state[outcome])
-                    if len(qubits) == self.n - 1:
-                        new_state = new_state.reshape([2])
-                else:
-                    # otherwise, we need to decohere
-                    if len(retain) > self.MATRIX_BREAK:
-                        warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
-                        # return self.remove(qubits, collapse=True)
-                    # self._reorder(qubits, reshape=False)  # self.entanglement_entropy() already does this
-                    new_state = partial_trace(self._state, retain, reorder=False)
+            to_retain = [q for q in self._qubits if q not in qubits]
+            new_state = self.get_state(to_retain, collapse=collapse)
 
-        # update operators (non-collapse)
-        if self.track_operators and not collapse:
-            # construct Kraus operators of the partial trace
-            ops = removal_channel(len(qubits))
-            self._reorder(qubits, reshape=True)
-            self._update_operators(ops)
-            # sync operator shaping with new_state (reshape=False, new_state is output space)
-            self._operators = [o.reshape(new_state.shape[0], -1) for o in self._operators]
-        # update the state after updating the operators, so we can still reorder them simultaneously
-        self._state = new_state
+            # update operators (non-collapse)
+            if self.track_operators and not collapse:
+                # construct Kraus operators of the partial trace
+                ops = removal_channel(len(qubits))
+                self._reorder(qubits, reshape=True)
+                self._update_operators(ops)
+                # sync operator shaping with new_state (reshape=False, new_state is output space)
+                self._operators = [o.reshape(new_state.shape[0], -1) for o in self._operators]
+            # update the state after updating the operators, so we can still reorder them simultaneously
+            self._state = new_state
 
         # remove qubits from bookkeeping
-        self._qubits = [q for q in self._qubits if q not in qubits]
+        self._qubits = to_retain
         self._original_order = [q for q in self._original_order if q not in qubits]
-        for q in qubits:
-            if q in self._added_qubits:
-                self._added_qubits.remove(q)
+        self._added_qubits = [q for q in self._added_qubits if q not in qubits]
         return self
 
     def rename(self, qubit_name_dict):
@@ -454,7 +503,7 @@ class QuantumComputer:
         return self
 
     def plot(self, show_qubits='all', obs=None, **kw_args):
-        state = self.get_state(show_qubits, obs)
+        state = self.get_state(show_qubits, obs=obs)
         if len(state.shape) == 2:
             return imshow(state, **kw_args)
         return plotQ(state, **kw_args)
@@ -636,7 +685,7 @@ class QuantumComputer:
         qubits = self._check_qubit_arguments(qubits, False)
         if len(qubits) == self.n:
             if self.is_matrix_mode():
-                state = self.get_state(qubits, obs)
+                state = self.get_state(qubits, obs=obs)
                 return np.linalg.matrix_rank(state)
             return 1
         return self.schmidt_number(qubits, obs)  # faster than matrix_rank
@@ -837,7 +886,8 @@ class QuantumComputer:
         """
         Calculate the von Neumann entropy of the reduced density matrix of the given qubits.
         """
-        state = self.get_state(qubits, obs)
+        state = self.get_state(qubits, obs=obs, allow_vector=False)  # uses von_neumann_entropy to decide if vector is possible -> avoid infinite recursion
+        # shortcut for pure states
         return von_neumann_entropy(state, check=0)
 
     def entanglement_entropy(self, qubits, obs=None):
