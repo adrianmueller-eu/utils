@@ -87,6 +87,7 @@ class QuantumComputer:
         # track until it gets too large
         if self.n > self.MATRIX_SLOW:
             self._track_operators = False
+            self.reset_operators()
             return False
         return True
 
@@ -454,6 +455,7 @@ class QuantumComputer:
                 raise ValueError("Collapse is incompatible with Kraus operators.")
             elif self.track_operators:
                 self._track_operators = False
+                self.reset_operators()
 
         with self.observable(obs, qubits) as qubits:
             if len(qubits) == self.n:
@@ -775,8 +777,8 @@ class QuantumComputer:
             if self._track_operators == True:
                 raise ValueError("State vector representation is not compatible with a non-isometric channel")
             elif self.track_operators:
-                # warn("State vector representation is not compatible with a non-isometric channel.")
-                self._reset_operators()
+                self._track_operators = False
+                self.reset_operators()
 
         p, kets = self.ensemble(filter_eps=filter_eps)
         if kind == 'sample':
