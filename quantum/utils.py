@@ -4,6 +4,13 @@ import numpy as np
 from ..mathlib import is_square, outer
 from ..utils import is_int, shape_it
 
+def verify_subsystem(subsystem, n):
+    if is_int(subsystem):
+        subsystem = [subsystem]
+    subsystem = list(subsystem)
+    assert all(0 <= q < n for q in subsystem), f"Subsystem is has invalid qubits: {subsystem}"
+    return subsystem
+
 def count_qubits(obj):
     def asint(x):
         n = int(log2(x))
