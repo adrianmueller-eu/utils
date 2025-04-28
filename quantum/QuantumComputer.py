@@ -918,14 +918,21 @@ class QuantumComputer:
         if printed_all:
             print(f"\nFull state (i.e. classical) entropy: {self.von_neumann_entropy(qubits):.{precision}f}".rstrip('0'))
 
-    def is_separable(self, qubits='all', obs=None):
+    def is_separable_state(self, qubits='all', obs=None):
+        """
+        Check if the state is separable with respect to the given qubits.
+        """
         with self.observable(obs, qubits) as qubits:
             qubits_idcs = [self._qubits.index(q) for q in qubits]
             if self.is_matrix_mode():
                 state = self._state.reshape(2**self.n,-1)
             else:
                 state = self._state.reshape(2**self.n)
-            return is_separable_state(state, qubits_idcs, check=0) and self.is_unitary(qubits)
+            return is_separable_state(state, qubits_idcs, check=0)
+
+    def is_separable(self, qubits='all', obs=None):
+        with self.observable(obs, qubits) as qubits:
+            return self.is_separable_state(qubits) and self.is_unitary(qubits)
 
     def purity(self, qubits='all'):
         return purity(self.get_state(qubits))
