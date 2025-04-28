@@ -781,8 +781,9 @@ class QuantumComputer:
             # warn("State is already a vector")
             return self
         if kind == 'purify':
-            self.purify()
-            outcome = None
+            if return_outcome:
+                raise ValueError("return_outcome is not supported for kind='purify'")
+            return self.purify()
 
         if not is_isometric_channel(self._operators, check=0):
             if self._track_operators == True:
