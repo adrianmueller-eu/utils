@@ -678,17 +678,23 @@ class QuantumComputer:
                 # new_state = sum(np.kron(k, a) for k, a in zip(pkets, ancilla_basis))
                 # new_state = np.einsum('ia,ib->ab', pkets, ancilla_basis).reshape(-1)  # even slower!
                 new_state = np.tensordot(pkets, ancilla_basis, axes=(0, 0)).reshape(-1)
+                self._state = new_state
 
-            # find n_ancillas integers that are not in self._qubits
-            ancillas = []
-            i = self.n
-            while len(ancillas) < n_ancillas:
-                while i in self._qubits or i in ancillas:
-                    i += 1
-                ancillas.append(i)
+                if self.track_operators:
+                    # Stinespring dilation
+                    Ks = self._operators
+                    # V = sum(np.kron(K, a) for K, a in zip(Ks, ancilla_basis))
+                    dout, din = Ks[0].shape
+                    V = np.zeros((dout*2**n_ancillas, din), dtype=complex)
+                    for i, K in enumerate(Ks):
+                        V[i*dout:(i+1)*dout, :] = K
+                    self._operators = [V]  # V is an isometry
 
-            # initialize the new purified state
-            self.init(new_state, self._qubits + ancillas)
+            # add ancillas to bookkeeping
+            ancillas = list(np.arange(n_ancillas) + (max(self._qubits)+1))
+            self._qubits += ancillas
+            self._original_order += ancillas
+            self._added_qubits += ancillas
         return self
 
     def to_dm(self):
