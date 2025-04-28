@@ -6,8 +6,8 @@ from math import log2, sqrt
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .utils import count_qubits, transpose_qubit_order, reverse_qubit_order, partial_trace, verify_subsystem
 from .state import ket, op, plotQ
-from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye
-from ..utils import is_int, shape_it
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0
+from ..utils import is_int
 
 def Fourier_matrix(n, swap=False):
     """ Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT).
@@ -330,30 +330,44 @@ def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
     q = len(subsystem)
     if q == 0 or q == n:
         return True
-    if q > n - q:  # subsystem should be the smaller part of the bipartition
-        subsystem = [q for q in range(n) if q not in subsystem]
-    U = transpose_qubit_order(U, subsystem, reshape=True)
 
-    # last block is reference
-    B = U[:,-1,:,-1]
-    # find a nonzero element in B
-    idx = None
-    for i,j in shape_it(B):
-        if abs(B[i,j]) > 1e-7:
-            idx = (i,j)
-            break
-    assert idx is not None, f"Could not find a nonzero element in: {B}"
-    B_ref = B[idx]
-
-    # check if the first block is proportional to B
-    B00 = U[:,0,:,0]
-    s = B_ref/B00[idx]
-    if not np.allclose(s*B00, B, atol=tol):
-        return False
-
-    U = U.reshape(2**n, -1)
     if is_eye(U):  # fails fast
         return True
-    # above fails faster than the below, but below is much faster if it doesn't fail
-    U_ = get_subunitary(U, subsystem, check=0)
-    return is_unitary(U_)
+
+    if q > n - q:  # subsystem should be the smaller part of the bipartition
+        subsystem = [q for q in range(n) if q not in subsystem]
+        q = n - q
+    U_ = transpose_qubit_order(U, subsystem, reshape=True)
+    U_ = U_.transpose(0, 2, 1, 3).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
+
+    # find a nonzero block and a nonzero element in it
+    B = np.zeros(U_.shape[0], complex)
+    idx = None
+    for i in range(U_.shape[1]):
+        nonzero_idcs = np.where(np.abs(U_[:,i]) > tol)[0]
+        if len(nonzero_idcs) > 0:
+            B = U_[:,i]
+            idx = nonzero_idcs[0]
+            break
+    assert idx is not None, f"No non-zero elements ({i}) in {U}"
+    # find the second non-zero block
+    B2 = np.zeros(U_.shape[0], complex)
+    for j in range(i+1, U_.shape[1]):
+        if not allclose0(U_[:,j], tol=tol):
+            B2 = U_[:,j]
+            break
+    # check if B and B2 are proportional
+    s = B2[idx]/B[idx]
+    if not np.allclose(B2, s*B, atol=tol):
+        return False
+
+    A = partial_trace(U, subsystem, reorder=False)
+    detA = np.linalg.det(A)
+    if abs(detA) > tol:
+        phase = detA**(-1/A.shape[0])
+        return is_unitary(phase*A, tol=tol)
+
+    # Fallback to svd
+    S = np.linalg.svd(U_, compute_uv=False)
+    return np.count_nonzero(S > tol) == 1
+    # return schmidt_operator_rank(U, subsystem) == 1
