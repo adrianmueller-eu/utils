@@ -9,10 +9,10 @@ except ImportError:
 
 from .constants import *
 from .utils import count_qubits, partial_trace
-from .state import ket, dm, unket, plotQ, is_state, ensemble_from_state
+from .state import ket, dm, unket, plotQ, is_state, ensemble_from_state, is_separable_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
-from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary
+from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary, is_separable_unitary
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions
 from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer
 from ..plot import imshow
@@ -871,6 +871,12 @@ class QuantumComputer:
         # add full state entropy
         if printed_all:
             print(f"\nFull state (i.e. classical) entropy: {self.von_neumann_entropy(qubits):.{precision}f}".rstrip('0'))
+
+    def is_separable(self, qubits='all', obs=None):
+        with self.observable(obs, qubits) as qubits:
+            qubits_idcs = [self._qubits.index(q) for q in qubits]
+            state = self._state.reshape(2**self.n,-1)
+            return is_separable_state(state, qubits_idcs, check=0) and self.is_unitary(qubits)
 
     def purity(self, qubits='all'):
         return purity(self.get_state(qubits))
