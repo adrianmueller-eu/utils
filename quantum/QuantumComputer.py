@@ -315,7 +315,9 @@ class QuantumComputer:
             if collapse:
                 if self._track_operators == True:
                     raise ValueError("Collapse is incompatible with Kraus operators.")
-                self.reset_operators()
+                elif self.track_operators:
+                    self.track_operators = False
+
             probs = self._probs(qubits)
             q = len(qubits)
             if self.is_matrix_mode():
