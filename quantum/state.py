@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functools import reduce
 
-from .utils import count_qubits, transpose_qubit_order
+from .utils import count_qubits, transpose_qubit_order, verify_subsystem, partial_trace
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
 from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer
@@ -523,6 +523,56 @@ def is_pure_dm(rho, check=3, tol=1e-12):
     if check >= 1:
         return abs(trace_product(rho, rho) - 1) < tol
     return True
+
+def is_separable_state(state, subsystem, n=None, tol=1e-12, check=3):
+    """
+    Check if the state is separable with respect to the given qubits.
+    """
+    state = as_state(state, n=n, check=check)
+    n = n or count_qubits(state)
+    subsystem = verify_subsystem(subsystem, n)
+    q = len(subsystem)
+    if q == 0 or q == n:
+        return True
+
+    # if ket, check if the rdm is pure
+    if state.ndim == 1:
+        # use the smaller subsystem
+        if q > n - q:
+            subsystem = [q for q in range(n) if q not in subsystem]
+            q = n - q
+        rdm = partial_trace(state, subsystem)
+        return is_pure_dm(rdm, tol=tol)
+
+    assert state.ndim == 2, f"Invalid state shape: {state.shape}"
+    # if dm, check if all branches are the same
+    # use smaller subsystem -> more branches -> faster failure
+    if q > n - q:
+        subsystem = [q for q in range(n) if q not in subsystem]
+    state = transpose_qubit_order(state, subsystem, reshape=True)
+    # last block is reference
+    B = state[:,-1,:,-1]
+    # find a nonzero diagonal element in B (all nonnegative and real by definition)
+    idx = None
+    for i in range(len(B)):  # n-q x n-q block
+        if B[i,i] > 1e-7:
+            idx = (i,i)
+            break
+    assert idx is not None, f"Could not find a nonzero diagonal element in: {B}"
+    B_ref = B[idx]
+
+    # check if the first block is the same as B
+    B00 = state[:,0,:,0]
+    s = B_ref/B00[idx]
+    if not np.allclose(s*B00, B, atol=tol):
+        return False
+
+    # faster than iterating over all blocks if it is separable
+    state = state.reshape(2**n, -1)
+    rdm = partial_trace(state, subsystem)
+    rdm2 = partial_trace(state, [q for q in range(n) if q not in subsystem])
+    rdm_full = np.kron(rdm, rdm2)
+    return np.allclose(rdm_full, state, atol=tol)
 
 def ket_from_dm(rho, kind='sample', tol=0, check=3):
     """ Convert a density matrix `rho` to a state vector. """
