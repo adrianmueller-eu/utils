@@ -6,7 +6,7 @@ try:
 except ImportError:
     pass
 
-from .utils import count_qubits, partial_trace
+from .utils import count_qubits, partial_trace, transpose_qubit_order
 from .state import op, ket, dm, ev, as_state, ensemble_from_state, assert_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd
 from ..prob import entropy
@@ -75,21 +75,11 @@ def trace_distance(rho1, rho2, check=1):
     rho1, rho2 = dm(rho1, check=check), dm(rho2, check=check)
     return 0.5 * trace_norm(rho1 - rho2)
 
-def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps=1e-10, check=2):
+def schmidt_decomposition(state, subsystem, coeffs_only=False, filter_eps=1e-10, check=1):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
     state = ket(state, renormalize=check>0, check=check)
-    n = count_qubits(state)
-
-    assert len(state.shape) == 1, f"State must be a vector, but has shape: {state.shape}"
-    assert len(subsystem_qubits) <= n-1, f"Too many subsystem qubits: {len(subsystem_qubits)} >= {n}"
-
-    # reorder the qubits so that the subsystem qubits are at the beginning
-    subsystem_qubits = list(subsystem_qubits)
-    other_qubits = [i for i in range(n) if i not in subsystem_qubits]
-    # but only if the subsystem qubits are not already at the beginning
-    if subsystem_qubits != list(range(len(subsystem_qubits))):
-        state = state.reshape([2]*n).transpose(subsystem_qubits + other_qubits)
-    a_jk = state.reshape([2**len(subsystem_qubits), 2**len(other_qubits)])
+    state = transpose_qubit_order(state, subsystem, reshape=True)
+    assert state.ndim == 2, f"Subsystem needs to be a bipartition, but was: {subsystem} {state.shape}"
 
     def filterS(S):
         S = S[S > filter_eps]
@@ -99,9 +89,9 @@ def schmidt_decomposition(state, subsystem_qubits, coeffs_only=False, filter_eps
 
     # calculate the Schmidt coefficients and basis using SVD
     if coeffs_only:
-        S = np.linalg.svd(a_jk, compute_uv=False)
+        S = np.linalg.svd(state, compute_uv=False)
         return filterS(S)
-    U, S, V = np.linalg.svd(a_jk, full_matrices=False)
+    U, S, V = np.linalg.svd(state, full_matrices=False)
     S = filterS(S)
     U = U[:, :len(S)]
     V = V[:len(S), :]
