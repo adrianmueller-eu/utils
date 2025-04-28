@@ -86,10 +86,17 @@ class QuantumComputer:
             return self._track_operators
         # track until it gets too large
         if self.n > self.MATRIX_SLOW:
-            self._track_operators = False
-            self.reset_operators()
+            self.track_operators = False
             return False
         return True
+
+    @track_operators.setter
+    def track_operators(self, value):
+        if not isinstance(value, bool):
+            raise ValueError("track_operators must be a boolean")
+        self._track_operators = value
+        if not value:
+            self.reset_operators()
 
     def clear(self):
         self._state = np.array([1.])
@@ -384,7 +391,7 @@ class QuantumComputer:
         if self._track_operators == True:
             raise ValueError("Reset is incompatible with operator tracking.")
         elif self.track_operators:
-            self.reset_operators()
+            self.track_operators = False
 
         q = len(qubits)
         new_state = ket(0, n=q)
@@ -453,8 +460,7 @@ class QuantumComputer:
             if self._track_operators == True:
                 raise ValueError("Collapse is incompatible with Kraus operators.")
             elif self.track_operators:
-                self._track_operators = False
-                self.reset_operators()
+                self.track_operators = False
 
         with self.observable(obs, qubits) as qubits:
             if len(qubits) == self.n:
@@ -776,8 +782,7 @@ class QuantumComputer:
             if self._track_operators == True:
                 raise ValueError("State vector representation is not compatible with a non-isometric channel")
             elif self.track_operators:
-                self._track_operators = False
-                self.reset_operators()
+                self.track_operators = False
 
         p, kets = self.ensemble(filter_eps=filter_eps)
         if kind == 'sample':
