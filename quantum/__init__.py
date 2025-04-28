@@ -419,6 +419,8 @@ def _test_QuantumComputer():
     qc.purify()
     assert np.allclose(qc.get_state(), ket('000 + 111'))  # purification only needs one ancilla qubit in this case
     assert not qc.is_matrix_mode()
+    assert not qc.is_unitary()
+    assert qc.is_isometric()
     qc.remove([0])
     qc.remove(1)
     QC(random_dm(3, rank=3)).purify()
@@ -473,9 +475,14 @@ def _test_QuantumComputer():
     assert np.isclose(qc.entanglement_entropy(3), 0)
     qc.remove(3)
     assert not qc.is_matrix_mode()
-    assert np.isclose(qc.entanglement_entropy(1), 1)
     qc.remove(1)
     assert qc.is_matrix_mode()
+    qc = QuantumComputer('0100 + 1010')
+    qc.KEEP_VECTOR = False
+    qc.remove(3)
+    assert qc.is_matrix_mode()
+    assert np.isclose(qc.entanglement_entropy(1), 1)
+    qc.remove(1)
     qc.x(2)
     assert np.allclose(qc.get_state(), (dm('01') + dm('10'))/2)
     qc.to_ket(kind='sample')
@@ -637,6 +644,9 @@ def _test_partial_trace():
     rhoA_expect = np.array([[ 5, 9], [21, 25]])
     rhoA_actual = partial_trace(rho, 0)
     assert np.allclose(rhoA_actual, rhoA_expect), f"rho_actual = {rhoA_actual}\nrho_expect = {rhoA_expect}"
+    rhoB_expect = np.array([[10, 12], [18, 20]])
+    rhoB_actual = partial_trace(rho, [1], reorder=True)
+    assert np.allclose(rhoB_actual, rhoB_expect), f"rho_actual = {rhoB_actual}\nrho_expect = {rhoB_expect}"
 
     # two separable density matrices
     rhoA = random_dm(2)
