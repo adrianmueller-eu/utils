@@ -17,6 +17,9 @@ def von_neumann_entropy(state, check=2):
     state = as_state(state, check=check)
     if len(state.shape) == 1:
         return 0  # pure state
+    # if it just has a single 1, it's also a pure state
+    # if len(state.shape) == 2 and np.count_nonzero(state) == 1:
+    #     return 0
     eigs = eigvalsh(state)
     if check >= 1:
         assert np.all(eigs >= -len(eigs)*sys.float_info.epsilon), f"Density matrix is not positive semidefinite: {eigs[:5]} ..."

@@ -381,10 +381,11 @@ class QuantumComputer:
         """
         if self.is_matrix_mode():
             raise ValueError("Special reset not available for matrix mode")
-
         if self._track_operators == True:
-            warn("Reset is incompatible with operator tracking. Resetting operators.")
-        self.reset_operators()
+            raise ValueError("Reset is incompatible with operator tracking.")
+        elif self.track_operators:
+            self.reset_operators()
+
         q = len(qubits)
         new_state = ket(0, n=q)
         if q == self.n:
@@ -1042,7 +1043,7 @@ class QuantumComputer:
     def __getitem__(self, qubits):
         state = self.get_state(qubits)
         if len(state.shape) == 1:
-            state = outer(state, state)
+            state = outer(state)
         return state
 
     def __setitem__(self, qubits, state):
