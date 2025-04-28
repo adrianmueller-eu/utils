@@ -972,9 +972,13 @@ class QuantumComputer:
             if self.is_matrix_mode():
                 state = '\n' + str(state)
             else:
-                state = f"'{unket(state)}'"
-        except:
-            state = None
+                n_terms = np.count_nonzero(state)
+                if n_terms < 256:
+                    state = f"'{unket(state)}'"
+                else:
+                    state = f"vector with {n_terms} terms"
+        except Exception as e:
+            state = f'Error: {e}'
         return f"qubits {self._qubits} in state {state}"
 
     def __repr__(self):
