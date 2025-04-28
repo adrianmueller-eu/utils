@@ -4,10 +4,10 @@ from functools import reduce
 from math import log2, sqrt
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
-from .utils import count_qubits, transpose_qubit_order, reverse_qubit_order, partial_trace
+from .utils import count_qubits, transpose_qubit_order, reverse_qubit_order, partial_trace, verify_subsystem
 from .state import ket, op, plotQ
-from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh
-from ..utils import is_int
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye
+from ..utils import is_int, shape_it
 
 def Fourier_matrix(n, swap=False):
     """ Calculate the Fourier matrix of size `n`. The Fourier matrix is the matrix representation of the quantum Fourier transform (QFT).
@@ -284,10 +284,9 @@ def show_eigenvecs(U, showrho=False):
 def partial_operation(U, subsystem, env_state='0', check=1):
     """ Calculate the partial operation of a unitary U acting on a subsystem. Returns a set of Kraus operators. """
     n = count_qubits(U)
-    subsystem = list(subsystem)
+    subsystem = verify_subsystem(subsystem, n)
     q = len(subsystem)
     env = [i for i in range(n) if i not in subsystem]
-    assert max(subsystem) <= n and min(subsystem) >= 0, f"Subsystem is has invalid qubits: {subsystem}"
 
     U = transpose_qubit_order(U, subsystem + env)
     U = U.reshape([2**q, 2**(n-q), 2**q, 2**(n-q)])
@@ -312,3 +311,39 @@ def get_subunitary(U, subsystem, check=2):
     if check >= 2:
         assert is_unitary(U1), f"Resulting U1 is not unitary. Probably U was not separable."
     return U1
+
+def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
+    if check >= 2:
+        assert is_unitary(U), f"U is not unitary: {U @ U.conj().T}"
+    n = n or count_qubits(U)
+    subsystem = verify_subsystem(subsystem, n)
+    q = len(subsystem)
+    if q == 0 or q == n:
+        return True
+    if q > n - q:  # subsystem should be the smaller part of the bipartition
+        subsystem = [q for q in range(n) if q not in subsystem]
+    U = transpose_qubit_order(U, subsystem, reshape=True)
+
+    # last block is reference
+    B = U[:,-1,:,-1]
+    # find a nonzero element in B
+    idx = None
+    for i,j in shape_it(B):
+        if abs(B[i,j]) > 1e-7:
+            idx = (i,j)
+            break
+    assert idx is not None, f"Could not find a nonzero element in: {B}"
+    B_ref = B[idx]
+
+    # check if the first block is proportional to B
+    B00 = U[:,0,:,0]
+    s = B_ref/B00[idx]
+    if not np.allclose(s*B00, B, atol=tol):
+        return False
+
+    U = U.reshape(2**n, -1)
+    if is_eye(U):  # fails fast
+        return True
+    # above fails faster than the below, but below is much faster if it doesn't fail
+    U_ = get_subunitary(U, subsystem, check=0)
+    return is_unitary(U_)
