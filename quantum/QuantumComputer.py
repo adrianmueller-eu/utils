@@ -235,7 +235,8 @@ class QuantumComputer:
     def get_operators(self):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
-        return self._get("_operators", self._original_order, None)
+        self._reorder(self._original_order, reshape=False)
+        return self._operators.copy()
 
     def get_qubits(self):
         return self._qubits.copy()
@@ -252,14 +253,6 @@ class QuantumComputer:
             qubits_idcs = [self._qubits.index(q) for q in qubits]
             U = self._operators[0].reshape(2**self.n, -1)
             return is_separable_unitary(U, qubits_idcs, check=0)
-
-    def _get(self, prop, qubits, obs):
-        with self.observable(obs, qubits) as qubits:
-            self._reorder(qubits, reshape=False)
-            a = getattr(self, prop)
-            if len(qubits) == self.n:
-                return a.copy()
-            return partial_trace(a, range(len(qubits)), reorder=False)
 
     def is_isometric(self):
         return len(self._operators) == 1
