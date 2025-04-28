@@ -186,12 +186,10 @@ class QuantumComputer:
             if q > self.MATRIX_BREAK:
                 warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
             self._reorder(to_remove, reshape=False)
-            rdm = partial_trace(self._state, list(range(nq, self.n)), reorder=False)
             if not self.is_matrix_mode() and allow_vector and self.KEEP_VECTOR and self.n - q < self.MATRIX_SLOW:
                 # check if to_remove is separable in state and unitary
-                if np.linalg.matrix_rank(rdm, hermitian=True, tol=self.ENTROPY_EPS) == 1:
-                    unitary = self.get_unitary(qubits, check=False)
-                    if is_unitary(unitary):
+                if self.is_separable_state(to_remove):
+                    if not self.track_operators or self.is_unitary(to_remove):
                         # find a non-zero state (-> no diagonalization required)
                         self._reorder(to_remove, reshape=True)
                         new_state = None
@@ -204,9 +202,9 @@ class QuantumComputer:
                         if q == 1:
                             new_state = new_state.reshape([2])
                         return new_state
-            return rdm
+            return partial_trace(self._state, list(range(nq, self.n)), reorder=False)
 
-    def get_unitary(self, qubits='all', check=True):
+    def get_unitary(self, qubits='all'):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
         qubits = self._check_qubit_arguments(qubits, False)
@@ -220,9 +218,10 @@ class QuantumComputer:
             raise NotImplementedError("Can't deduce local operation of non-unitary channel")
         U = self._operators[0].reshape(2**self.n, -1)
         qubits_idcs = [self._qubits.index(q) for q in qubits]
-        U1 = get_subunitary(U, qubits_idcs, check=0)
-        if check and self.check_level >= 2:
-            assert is_unitary(U1), f"Unitary is not separable on requested subsystem: {qubits}"
+        try:
+            U1 = get_subunitary(U, qubits_idcs, check=0, check_output=True)
+        except AssertionError:
+            return ValueError(f"Unitary is not separable on requested subsystem: {qubits}")
         return U1
 
     def get_isometry(self):
