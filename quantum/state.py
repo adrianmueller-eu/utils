@@ -567,7 +567,7 @@ def is_separable_state(state, subsystem, n=None, tol=1e-12, check=3):
     if not np.allclose(s*B00, B, atol=tol):
         return False
 
-    # faster than iterating over all blocks if it is separable
+    # faster than svd or iterating over all blocks if it is separable
     state = state.reshape(2**n, -1)
     rdm = partial_trace(state, subsystem)
     rdm2 = partial_trace(state, [q for q in range(n) if q not in subsystem])
