@@ -433,6 +433,8 @@ def dm(kets, p=None, n=None, renormalize=True, check=3):
             return random_dm(n or 1, rank='full')
         elif kets == 'random_pure':
             kets = 'random'
+    elif n is None and is_int(p):
+        n = p
 
     psi = ket(kets, n, renormalize=renormalize, check=check)
     return outer(psi)
