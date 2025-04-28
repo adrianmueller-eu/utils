@@ -313,10 +313,7 @@ class QuantumComputer:
     def measure(self, qubits='all', collapse=True, obs=None, return_as='binstr'):
         with self.observable(obs, qubits, return_energies=True) as (qubits, energies):
             if collapse:
-                if self._track_operators == True:
-                    raise ValueError("Collapse is incompatible with Kraus operators.")
-                elif self.track_operators:
-                    self.track_operators = False
+                self._no_tracking("Collapse is incompatible with operator tracking.")
 
             probs = self._probs(qubits)
             q = len(qubits)
@@ -390,10 +387,7 @@ class QuantumComputer:
         """
         if self.is_matrix_mode():
             raise ValueError("Special reset not available for matrix mode")
-        if self._track_operators == True:
-            raise ValueError("Reset is incompatible with operator tracking.")
-        elif self.track_operators:
-            self.track_operators = False
+        self._no_tracking("Resetv is incompatible with operator tracking.")
 
         q = len(qubits)
         new_state = ket(0, n=q)
@@ -459,10 +453,7 @@ class QuantumComputer:
 
     def remove(self, qubits, collapse=False, obs=None):
         if collapse:
-            if self._track_operators == True:
-                raise ValueError("Collapse is incompatible with Kraus operators.")
-            elif self.track_operators:
-                self.track_operators = False
+            self._no_tracking("Collapse is incompatible with operator tracking.")
 
         with self.observable(obs, qubits) as qubits:
             if len(qubits) == self.n:
@@ -591,6 +582,13 @@ class QuantumComputer:
         else:
             self._operators = []
         self._added_qubits = []
+
+    def _no_tracking(self, message):
+        if self._track_operators == True:
+            raise ValueError(message)
+        elif self.track_operators:
+            self.track_operators = False
+            # warn(message, stacklevel=3)
 
     def _reorder(self, new_order, reshape):
         correct_order = self._qubits[:len(new_order)] == new_order
@@ -792,10 +790,7 @@ class QuantumComputer:
             return self.purify()
 
         if not is_isometric_channel(self._operators, check=0):
-            if self._track_operators == True:
-                raise ValueError("State vector representation is not compatible with a non-isometric channel")
-            elif self.track_operators:
-                self.track_operators = False
+            self._no_tracking("State vector representation is not compatible with a non-isometric channel")
 
         p, kets = self.ensemble(filter_eps=filter_eps)
         if kind == 'sample':
