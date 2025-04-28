@@ -299,17 +299,27 @@ def partial_operation(U, subsystem, env_state='0', check=1):
         Kraus.append(np.tensordot(U[:, i, :, :], env_state, axes=(2, 0)))
     return Kraus
 
-def get_subunitary(U, subsystem, check=2):
+def get_subunitary(U, subsystem, tol=1e-10, check=2, check_output=True):
     if check >= 2:
         assert is_unitary(U), f"U is not unitary: {U @ U.conj().T}"
     # Tr_2(U1 \otimes U2) = U1 Tr(U2) -> find Tr(U2)
     # partial trace over the remaining qubits
     A = partial_trace(U, subsystem, reorder=False)
-    # recover Tr(U2) via the 2**q‑th root of det A (up to a phase)
-    Tr_U2 = np.linalg.det(A)**(1/A.shape[0])
-    U1 = A/Tr_U2
-    if check >= 2:
-        assert is_unitary(U1), f"Resulting U1 is not unitary. Probably U was not separable."
+    detA = np.linalg.det(A)
+    if abs(detA) > tol:
+        # recover Tr(U2) via the 2**q‑th root of det A (up to a phase)
+        Tr_U2 = detA**(1/A.shape[0])
+        U1 = A/Tr_U2
+        if check_output:
+            assert is_unitary(U1), f"U is not separable."
+    else:
+        # fall back to svd
+        q = len(subsystem)
+        U = transpose_qubit_order(U, subsystem, reshape=True)
+        U = U.transpose([0,2,1,3]).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
+        U_, S, Vh = np.linalg.svd(U, full_matrices=False)
+        assert len(S[S > tol]) == 1, f"U is not separable: {U} ({S[S > tol]})"
+        U1 = U_[:, 0].reshape([2**q, 2**q])
     return U1
 
 def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
