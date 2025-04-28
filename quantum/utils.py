@@ -47,17 +47,19 @@ def count_qubits(obj):
         return len(obj.qubits)
     raise ValueError(f'Unkown object: {obj}')
 
-def transpose_qubit_order(state, new_order, assume_square=True):
+def transpose_qubit_order(state, new_order, reshape=False, assume_square=True):
+    # TODO: allow non-square operators
     state = np.asarray(state)
     n = count_qubits(state)
 
     # parse new_order
     if isinstance(new_order, int) and new_order == -1:
-        new_order = list(range(n)[::-1])
-    else:
-        new_order = list(new_order)
-    assert all(0 <= q < n for q in new_order), f"Invalid qubit order: {new_order}"
-    assert len(set(new_order)) == len(new_order), f"Invalid qubit order: {new_order}"
+        new_order = range(n)[::-1]
+    new_order = verify_subsystem(new_order, n)
+    q = len(new_order)
+    # fill up missing qubits in the end
+    if q < n:
+        new_order = new_order + [q for q in range(n) if q not in new_order]
 
     # infer batch shape
     if state.ndim == 2 and is_square(state):  # state is not necessarily a density matrix or ket (e.g. hamiltonian, unitary)
@@ -80,12 +82,18 @@ def transpose_qubit_order(state, new_order, assume_square=True):
     if len(state.shape) == 1 + len(batch_shape):  # vector
         state = state.reshape(batch_shape + [2]*n)
         state = state.transpose(batch_idcs + new_order_all)
-        state = state.reshape(batch_shape + [2**n])
+        if reshape:
+            state = state.reshape(batch_shape + [2**q, 2**(n-q)])
+        else:
+            state = state.reshape(batch_shape + [2**n])
     elif len(state.shape) == 2 + len(batch_shape) and state.shape[-2] == state.shape[-1]:  # matrix
         state = state.reshape(batch_shape + [2,2]*n)
         new_order_all = new_order_all + [i + n for i in new_order_all]
         state = state.transpose(batch_idcs + new_order_all)
-        state = state.reshape(batch_shape + [2**n, 2**n])
+        if reshape:
+            state = state.reshape(batch_shape + [2**q, 2**(n-q), 2**q, 2**(n-q)])
+        else:
+            state = state.reshape(batch_shape + [2**n, 2**n])
     else:
         raise ValueError(f"Not a valid shape: {state.shape}")
     return state
