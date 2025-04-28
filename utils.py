@@ -161,6 +161,10 @@ def last(gen):
 
 def is_int(x):
     # https://stackoverflow.com/questions/3501382/checking-whether-a-variable-is-an-integer-or-not
+    if hasattr(x, 'ndim'):
+        if x.ndim != 0:
+            return False
+        x = x.item()
     try:
         return int(x) == x
     except:
