@@ -97,6 +97,23 @@ def schmidt_decomposition(state, subsystem, coeffs_only=False, filter_eps=1e-10,
     V = V[:len(S), :]
     return S, U.T, V
 
+def schmidt_rank(state, subsystem, tol=1e-10, check=1):
+    """Calculate the Schmidt rank of a pure state with respect to the given subsystem."""
+    state = ket(state, renormalize=check>0, check=check)
+    # if is_pure_dm(partial_trace(state, subsystem)):
+    #     return 1
+    state = transpose_qubit_order(state, subsystem, reshape=True)
+    assert state.ndim == 4, f"Subsystem needs to be a bipartition, but was: {subsystem} {state.shape}"
+    return np.linalg.matrix_rank(state, tol=tol)
+
+def schmidt_operator_rank(op, subsystem, tol=1e-10):
+    """Calculate the Schmidt operator rank of a given operator with respect to the given subsystem."""
+    op = transpose_qubit_order(op, subsystem, reshape=True)
+    if op.ndim == 2:  # q == 0 or q == n
+        return 1
+    op = op.transpose(0, 2, 1, 3).reshape(2**(2*len(subsystem)), -1)
+    return np.linalg.matrix_rank(op, tol=tol)
+
 def correlation_quantum(state, obs_A, obs_B, check=2):
     n_A = count_qubits(obs_A)
     n_B = count_qubits(obs_B)
