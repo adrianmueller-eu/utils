@@ -382,13 +382,14 @@ class QuantumComputer:
 
     def resetv(self, qubits=None):
         """
-        Special reset for state vector collapse of existing qubits. For this case, this is ~2x faster than (but equivalent to) the general reset method.
+        Special reset for state vector collapse of existing qubits (with operator tracking deactivated). For this case, this is equivalent to but faster than the general reset method.
         Returns the outcome (standard basis) as binary string.
         """
         if self.is_matrix_mode():
             raise ValueError("Special reset not available for matrix mode")
         self._no_tracking("Resetv is incompatible with operator tracking.")
 
+        qubits = self._check_qubit_arguments(qubits, False)
         q = len(qubits)
         new_state = ket(0, n=q)
         if q == self.n:
@@ -398,8 +399,7 @@ class QuantumComputer:
         probs = self._probs(qubits)  # also moves qubits to the front and reshapes
         outcome = np.random.choice(2**q, p=probs)
         keep = self._state[outcome] / sqrt(probs[outcome])
-        self._state = np.zeros_like(self._state)
-        self._state[outcome] = keep
+        self._state = np.kron(new_state, keep)  # same order as self._qubits
         return binstr_from_int(outcome, q)
 
     def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):

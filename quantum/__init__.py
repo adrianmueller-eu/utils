@@ -348,6 +348,11 @@ def _test_QuantumComputer():
     assert unket(qc.get_state()) == '11', f"{unket(qc.get_state())} ≠ '11'"
     qc.reset()
     assert unket(qc.get_state()) == '00', f"{unket(qc.get_state())} ≠ '00'"
+    qc.init('00 + 11')
+    outcome = qc.resetv([1])
+    assert outcome in ['0', '1']
+    qc.resetv(0)
+    assert unket(qc.get_state()) == '00', f"{unket(qc.get_state())} ≠ '00'"
     qc.h()
     qc.x(2)
     qc.init(2, [0,1])
