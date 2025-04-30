@@ -8,7 +8,7 @@ except ImportError:
 
 from .utils import count_qubits, partial_trace, transpose_qubit_order
 from .state import op, ket, dm, ev, as_state, ensemble_from_state, assert_state
-from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd
+from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd, is_eye
 from ..prob import entropy
 from ..utils import is_from_assert, is_int, warn
 
@@ -184,9 +184,10 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
     # 3. Check trace-preserving / contractive
     res = np.sum([K.conj().T @ K for K in operators], axis=0)
     if trace_preserving:
-        assert allclose0(res - np.eye(operators[0].shape[-1]), tol), f"Operators are not trace-preserving"
+        assert is_eye(res, tol), f"Operators are not trace-preserving:\n{res}"
     elif check >= 3:
-        assert np.max(np.abs(eigvalsh(res))) < 1 + tol, f"Operators are not contractive"
+        evals = eigvalsh(res)
+        assert np.max(np.abs(evals)) < 1 + tol, f"Operators are not contractive: {evals}"
 
     # 4. Check orthogonality
     if orthogonal:
