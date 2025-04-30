@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 import itertools
 from math import log2, sin, cos, sqrt, factorial
+from functools import reduce
 try:
     import scipy
     import scipy.sparse as sp
@@ -402,6 +403,18 @@ def characteristic_polynomial(A):
     D = eigvals(A)
     p = Polynomial.from_roots(D)
     return p
+
+def matmoment(A, n):
+    A = np.asarray(A)
+    assert is_square(A), f"Expected square matrix, got {A.shape}"
+    assert A.ndim == 3, f"Expected 3D array, got {A.shape}"
+    if n == 1:
+        return np.mean([np.trace(x) for x in A])
+    elif n == 2:
+        return np.mean([trace_product(x.T.conj(), x) for x in A])
+    elif n == 0:
+        return np.eye(A.shape[0])
+    return np.mean([np.trace(reduce(np.matmul, [x] * n)) for x in A])
 
 def commutator(A, B):
     return A @ B - B @ A
