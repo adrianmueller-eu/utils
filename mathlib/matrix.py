@@ -152,7 +152,10 @@ def is_diag(a, diag=None, tol=1e-12):
     # return _sq_matrix_allclose(a, lambda a: (
     #     np.diag(np.diag(a)), a
     # ), rtol=rtol, atol=atol)
-    if abs(a[0,-1]) > tol:  # shortcut
+    a = np.asarray(a)
+    if a.ndim != 2 or a.shape[0] != a.shape[1]:
+        raise ValueError(f"Expected square matrix, got {a.shape}")
+    if a.shape[0] > 1 and abs(a[0,-1]) > tol:  # shortcut
         return False
 
     # a[np.isnan(a)] = 0
