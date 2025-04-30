@@ -984,8 +984,11 @@ def _test_pauli_decompose():
     assert len(basis) == N**2, f"len(basis) = {len(basis)} ≠ {N**2}"
 
     # check if the decomposition is correct
-    H_decomposed = sum([c*parse_hamiltonian(b) for c, b in zip(coeff, basis)])
-    assert np.allclose(H, H_decomposed), f"H = {H}\nH_decomposed = {H_decomposed}"
+    H_recomposed = sum([c*parse_hamiltonian(b) for c, b in zip(coeff, basis)])
+    assert np.allclose(H, H_recomposed), f"H = {H}\nH_decomposed = {H_recomposed}"
+    H_str = pauli_decompose(H, eps=1e-10, as_str=True)
+    H_recomposed2 = parse_hamiltonian(H_str)
+    assert np.allclose(H, H_recomposed2, atol=1e-9), f"H = {H}\nH_decomposed = {H_recomposed2}"
 
     # check if `eps=0` always returns the whole basis
     n = 4
