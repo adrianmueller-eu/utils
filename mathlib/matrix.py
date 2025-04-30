@@ -10,6 +10,8 @@ try:
 except ImportError:
     from numpy.linalg import eig, eigvals, svd, det, inv, pinv
 
+from ..utils import shape_it
+
 def eigh(A, **kwargs):
     """Eigenvalue decomposition of a hermitian matrix."""
     if len(A) <= 68:
@@ -958,42 +960,53 @@ def random_symmetric(n, params=(0,1)):
     a[a == 0] = a.T[a == 0]
     return a
 
-def random_orthogonal(n, params=(0,1)):
+def random_orthogonal(n, size=(), params=(0,1)):
     """
     Sample a random orthogonal matrix according to the real Haar measure.
     """
-    a = random_square(n, params=params, complex=False)
+    a = random_vec(size + (n,n), params=params, complex=False)
     return np.linalg.qr(a)[0]
 
-def random_hermitian(n, params=(0,1)):
+def random_hermitian(n, size=(), std=1, normalized=True):
     """
     Sample a random Hermitian matrix from the Gaussian Unitary Ensemble (GUE).
     """
+    if not hasattr(size, '__len__'):
+        size = (size,)
+    if normalized:
+        std /= sqrt(n)
     if n > 30:
-        a = np.diag(random_vec(n, params=params, complex=False).astype(complex))
-        params = (params[0], params[1]/sqrt(2))  # 2 dof for each off-diagonal element
-        a[np.triu_indices(n, 1)] = random_vec(n*(n-1)//2, params=params, complex=True)
-        a[a == 0] = a.T.conj()[a == 0]
+        a = np.zeros(size + (n,n), dtype=complex)
+        for i in shape_it(size):
+            a[i] = np.diag(random_vec(n, params=(0, std), complex=False).astype(complex))
+        params = (0, std/sqrt(2))  # 2 dof for each off-diagonal element
+        n_tri  = n*(n-1)//2  # number of triangular elements
+        a[...,np.triu_indices(n, 1)] = random_vec(size + (n_tri,), params=params, complex=True)
+        a[a == 0] = a.moveaxis(a, -1, -2).conj()[a == 0]
         return a
     # equivalent, but faster for small matrices
-    a = random_vec((n,n), params=params, complex=True, kind='normal')
-    return (a + a.T.conj())/2
+    a = random_vec(size + (n,n), params=(0, std), complex=True, kind='normal')
+    return (a + np.moveaxis(a, -1, -2).conj())/2
 
-def random_unitary(n, kind='haar'):
+def random_unitary(n, size=(), kind='haar'):
     """
     Sample a random unitary.
     - `kind = 'haar'` samples from the complex Haar measure (default).
     - `kind = 'gue'` samples a GUE matrix and returns its eigenbasis. Also Haar-distributed, but slower than above.
     - `kind = 'polar'` is the fastest for very small matrices.
     """
+    if not hasattr(size, '__len__'):
+        size = (size,)
     if kind == 'haar':
-        A = random_square(n, complex=True, kind='normal')
+        A = random_vec(size + (n,n), complex=True, kind='normal')
         Q, R = np.linalg.qr(A)
-        R_d = np.diag(R)
-        L = R_d / np.abs(R_d)
-        return Q * L[None,:]
+        R_n = np.zeros(size + (n,), dtype=complex)
+        for i in shape_it(size):
+            R_n[i] = np.diag(R[i])
+        L = R_n / np.abs(R_n)
+        return Q * L[..., None, :]
     elif kind == 'gue':
-        return eigh(random_hermitian(n))[1]
+        return eigh(random_hermitian(n, size=size))[1]
     elif kind == 'polar':  # fastest for very small and slowest for very large matrices
         A = random_square(n, complex=True, kind='normal')
         D, U = eigh(A.T.conj() @ A)
@@ -1003,8 +1016,8 @@ def random_unitary(n, kind='haar'):
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
 
-def unitary_noise(d, s):
-    H = random_hermitian(d)
+def unitary_noise(d, s, size=()):
+    H = random_hermitian(d, size=size)
     return matexp(1j*s*H)
 
 def random_psd(n, params=(0,1), complex=True):
