@@ -454,6 +454,10 @@ class QuantumComputer:
             original_order = self._original_order + to_alloc  # we want `to_alloc` at the end, but `qubits` may not have them at the end
             added_qubits = self._added_qubits.copy()  # stash
 
+            # if input is dm, switch to matrix mode
+            if not self.is_matrix_mode() and not is_ket(state, print_errors=False, check=0) and is_dm(state, print_errors=False, check=0):
+                self.to_dm()
+
             # remove qubits from state and operators
             self.remove(to_remove, collapse=collapse, obs=None)
             # extend state and operators by all `qubits`
