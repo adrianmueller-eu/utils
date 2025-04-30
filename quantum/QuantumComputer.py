@@ -72,6 +72,8 @@ class QuantumComputer:
             qubits = count_qubits(state)
         if is_int(qubits):
             qubits = range(qubits)
+        elif isinstance(qubits, str):
+            qubits = list(qubits)
 
         qubits = self._check_qubit_arguments(qubits, True)[1]
         self._alloc_qubits(qubits, state=state, track_in_operators=False)
