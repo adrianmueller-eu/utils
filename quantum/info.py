@@ -217,14 +217,14 @@ def is_unitary_channel(operators, check=3):
     return is_isometric_channel(operators, check=check) and is_square_channel(operators, check=0)
 
 def apply_channel(operators, state, reshaped, check=3):
-    state = np.asarray(state)
     # sanity checks
     if check:
+        state = np.asarray(state)
         n = count_qubits(state)
         tmp_state = state.reshape(prod(state.shape[:2]), -1) if reshaped else state
         assert_state(tmp_state, n=n, check=check)
         operators = assert_kraus(operators, n=(None, n), check=check)
-    assert operators[0].shape[1] == state.shape[0], f"Input dimension of the operators does not match the state dimension: {operators[0].shape} x {state.shape}"
+        assert operators[0].shape[1] == state.shape[0], f"Input dimension of the operators does not match the state dimension: {operators[0].shape} x {state.shape}"
 
     state_is_dm = reshaped and state.ndim in (3,4) or not reshaped and state.ndim == 2
     if state_is_dm:
