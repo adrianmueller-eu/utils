@@ -147,3 +147,10 @@ def shuffle(a):
         return "".join(a)
     np.random.shuffle(a)
     return a
+
+def gmean(a, axis=None):
+    """ Geometric mean. """
+    # ignore <= 0 and NaN values
+    a = np.asarray(a)
+    a = np.where(a <= 0, np.nan, a)
+    return np.exp(np.nanmean(np.log(a), axis=axis))
