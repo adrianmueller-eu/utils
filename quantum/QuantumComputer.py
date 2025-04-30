@@ -1111,7 +1111,7 @@ class QuantumComputer:
         return state
 
     def __setitem__(self, qubits, state):
-        self.init(state, qubits, collapse=False)
+        self.init(state, qubits)
         return
 
     def __delitem__(self, qubits):
