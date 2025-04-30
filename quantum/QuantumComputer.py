@@ -562,6 +562,8 @@ class QuantumComputer:
     def _check_qubit_arguments(self, qubits, allow_new):
         if isinstance(qubits, slice):
             qubits = self._qubits[qubits]
+        elif isinstance(qubits, int) and qubits < 0:
+            qubits = self._qubits[qubits]
         elif qubits == 'all':
             if allow_new:
                 return self._original_order, []
