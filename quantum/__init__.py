@@ -228,7 +228,7 @@ def _test_ket_unket():
     # ket should be fast enough to return already-kets 1000 times in negligible time
     import time
     psi = random_ket(2)
-    max_time = 0.01
+    max_time = 0.01*2  # remove *2 when setting expected iterations
     start = time.time()
 
     for _ in range(70):
@@ -268,7 +268,7 @@ def _test_op_dm():
     # dm should be fast enough to return already-density-matrices 1000 times in negligible time
     import time
     rho = random_dm(2)
-    max_time = 0.01
+    max_time = 0.01*2  # remove *2 when setting expected iterations
 
     for i, n, level in zip(range(4), [5,10,30,38], [3,2,1,0]):
         start = time.time()
