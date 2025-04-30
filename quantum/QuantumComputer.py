@@ -421,15 +421,15 @@ class QuantumComputer:
 
         qubits = self._check_qubit_arguments(qubits, False)
         q = len(qubits)
-        new_state = ket(0, n=q)
         if q == self.n:
-            self._state = new_state
+            self._state = ket_from_int(0, n=q)
             self._qubits = qubits
             return self
         probs = self._probs(qubits)  # also moves qubits to the front and reshapes
         outcome = np.random.choice(2**q, p=probs)
         keep = self._state[outcome] / sqrt(probs[outcome])
-        self._state = np.kron(new_state, keep)  # same order as self._qubits
+        self._state = np.zeros_like(self._state, dtype=self._state.dtype)
+        self._state[0] = keep  # same order as self._qubits
         return binstr_from_int(outcome, q)
 
     def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):
