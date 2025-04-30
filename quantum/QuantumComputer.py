@@ -83,6 +83,10 @@ class QuantumComputer:
         return len(self._qubits)
 
     @property
+    def qubits(self):
+        return self._qubits
+
+    @property
     def track_operators(self):
         return not self._too_large_to_track_operators(0)
 
@@ -273,9 +277,6 @@ class QuantumComputer:
             raise ValueError("Operator tracking is disabled")
         self._reorder(self._original_order, reshape=False)
         return self._operators.copy()
-
-    def get_qubits(self):
-        return self._qubits.copy()
 
     def is_unitary(self, qubits='all', obs=None):
         if not self.track_operators:

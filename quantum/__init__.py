@@ -373,7 +373,7 @@ def _test_QuantumComputer():
     assert qc.n == 3, f"qc.n = {qc.n} ≠ 3"
     qc.copy()
     qc1 = QC(state=1)
-    assert qc1.get_qubits() == [0], f"{qc1.get_qubits()} ≠ [0]"
+    assert qc1.qubits == [0], f"{qc1.qubits} ≠ [0]"
 
     k1 = random_ket(2)
     k2 = random_ket(3)
@@ -450,10 +450,10 @@ def _test_QuantumComputer():
     # more complex test
     qc = QuantumComputer(15)
     U = parse_unitary('XYZCZYX')
-    qc(U, choice(qc.get_qubits(), 7, False))
+    qc(U, choice(qc.qubits, 7, False))
     qc.remove([5,7,6,10,2])
     U = random_unitary(2**5)
-    qc(U, choice(qc.get_qubits(), 5, False))
+    qc(U, choice(qc.qubits, 5, False))
     assert qc.n == 10
 
     # test phase estimation
@@ -480,7 +480,7 @@ def _test_QuantumComputer():
     rho_actual = np.sum([l_i**2 * np.outer(A_i, A_i.conj()) for l_i, A_i in zip(S, U)], axis=0)
     assert np.allclose(rho_actual, rho_expect), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
     # check RDM for subsystem B
-    rho_expect = qc[[i for i in qc.get_qubits() if i not in bip]]
+    rho_expect = qc[[i for i in qc.qubits if i not in bip]]
     rho_actual = np.sum([l_i**2 * np.outer(B_i, B_i.conj()) for l_i, B_i in zip(S, V)], axis=0)
     assert np.allclose(rho_actual, rho_expect), f"rho_expect - rho_actual = {rho_expect - rho_actual}"
 
