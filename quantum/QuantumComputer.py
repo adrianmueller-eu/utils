@@ -285,7 +285,8 @@ class QuantumComputer:
                 return is_unitary_channel(self._operators, check=0)
             # if current channel is unitary, check if unitary can be decomposed into unitaries U = U1 \otimes U2
             if not is_unitary_channel(self._operators, check=0):
-                raise NotImplementedError("Can't deduce if local operation of non-unitary channel is unitary")
+                return False  # Technically, it could still be locally unitary
+                # raise NotImplementedError("Can't deduce if local operation of non-unitary channel is locally unitary")
             qubits_idcs = [self._qubits.index(q) for q in qubits]
             U = self._operators[0].reshape(2**self.n, -1)
             return is_separable_unitary(U, qubits_idcs, check=0)
