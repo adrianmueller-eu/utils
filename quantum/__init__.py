@@ -373,7 +373,7 @@ def _test_QuantumComputer():
     assert qc.n == 3, f"qc.n = {qc.n} ≠ 3"
     qc.copy()
     qc1 = QC(state=1)
-    assert qc1.qubits == [0], f"{qc1.qubits} ≠ [0]"
+    assert qc1.qubits == (0,), f"{qc1.qubits} ≠ (0,)"
 
     k1 = random_ket(2)
     k2 = random_ket(3)

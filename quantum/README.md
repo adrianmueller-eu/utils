@@ -19,7 +19,7 @@ qc = QC('01')
 qc(SWAP, [0,1])
 ```
 ```
-qubits [0, 1] in state '10'
+qubits (0, 1) in state '10'
 ```
 It allows to track the total quantum channel of the operations that have been applied
 ```py
@@ -48,7 +48,7 @@ qc
 ```
 Number of Kraus operators: 4
 
-qubits [0, 1] in state
+qubits (0, 1) in state
 [[0.5+0.j 0. +0.j 0. +0.j 0. +0.j]
  [0. +0.j 0. +0.j 0. +0.j 0. +0.j]
  [0. +0.j 0. +0.j 0. +0.j 0. +0.j]

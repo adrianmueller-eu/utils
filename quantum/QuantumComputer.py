@@ -130,7 +130,7 @@ class QuantumComputer:
 
     def clear(self):
         self._state = np.array([1.])
-        self._qubits = []
+        self._qubits = ()
         self._original_order = []
         self._operators = []
         self.reset_operators()
@@ -139,7 +139,7 @@ class QuantumComputer:
     def copy(self):
         qc = QuantumComputer()
         qc._state = self._state.copy()
-        qc._qubits = self._qubits.copy()
+        qc._qubits = self._qubits
         qc._added_qubits = self._added_qubits.copy()
         qc._original_order = self._original_order.copy()
         qc._track_operators = self._track_operators
@@ -185,13 +185,13 @@ class QuantumComputer:
         if n_out > n_in:
             # add new qubits to bookkeeping
             new_qubits = self._get_new_qubits_ids(n_out - n_in)
-            self._qubits += new_qubits
+            self._qubits += tuple(new_qubits)
             self._original_order += new_qubits
             self._added_qubits += new_qubits
         elif n_out < n_in:
             # remove the last n_in - n_out in qubits
             to_remove = qubits[-(n_in - n_out):]
-            self._qubits = [q for q in self._qubits if q not in to_remove]
+            self._qubits = tuple(q for q in self._qubits if q not in to_remove)
             self._original_order = [q for q in self._original_order if q not in to_remove]
             self._added_qubits = [q for q in self._added_qubits if q not in to_remove]
 
@@ -424,7 +424,7 @@ class QuantumComputer:
         q = len(qubits)
         if q == self.n:
             self._state = ket_from_int(0, n=q)
-            self._qubits = qubits
+            self._qubits = tuple(qubits)
             return self
         probs = self._probs(qubits)  # also moves qubits to the front and reshapes
         outcome = np.random.choice(2**q, p=probs)
@@ -476,14 +476,14 @@ class QuantumComputer:
             self._alloc_qubits(to_alloc, track_in_operators=False)  # add to_alloc at the end
             # extend state with new state
             self._state = reduced_state  # guarantees reshape=False for state
-            self._qubits = to_retain     # ._extend_state (.is_matrix_mode) requires self._qubits to be consistent with self._state.shape
+            self._qubits = tuple(to_retain)     # ._extend_state (.is_matrix_mode) requires self._qubits to be consistent with self._state.shape
             # we need `state` in the order to_remove + to_alloc, to be in sync with operators
             if not isinstance(state, str) and hasattr(state, '__len__'):
                 new_order = [qubits.index(q) for q in to_remove] + [qubits.index(q) for q in to_alloc]
                 state = transpose_qubit_order(state, new_order, reshape=False)
             self._extend_state(state, len(qubits))
             # order is now:
-            self._qubits = to_retain + to_remove + to_alloc
+            self._qubits = tuple(to_retain + to_remove + to_alloc)
             # recover order to_retain + qubits
             if to_remove + to_alloc != qubits:  # they are set-wise the same, but could be in a different order
                 self._reorder(to_retain + qubits)  # move to_alloc where it is in `qubits`
@@ -525,16 +525,18 @@ class QuantumComputer:
             self._state = new_state
 
         # remove qubits from bookkeeping
-        self._qubits = to_retain
+        self._qubits = tuple(to_retain)
         self._original_order = [q for q in self._original_order if q not in qubits]
         self._added_qubits = [q for q in self._added_qubits if q not in qubits]
         return self
 
     def rename(self, qubit_name_dict):
+        tmp_qubits = list(self._qubits)
         for q, name in qubit_name_dict.items():
-            assert q in self._qubits, f"Qubit {q} not allocated"
-            self._qubits[self._qubits.index(q)] = name
+            assert q in tmp_qubits, f"Qubit {q} not allocated"
+            tmp_qubits[tmp_qubits.index(q)] = name
             self._original_order[self._original_order.index(q)] = name
+        self._qubits = tuple(tmp_qubits)
         return self
 
     def reorder(self, new_order='original'):
@@ -606,7 +608,7 @@ class QuantumComputer:
         self._reorder(None, reshape=False)
         self._extend_state(state, q)
 
-        self._qubits += new_qubits
+        self._qubits += tuple(new_qubits)
         self._original_order += new_qubits
         if not self._too_large_to_track_operators(q):
             if track_in_operators:
@@ -707,7 +709,7 @@ class QuantumComputer:
             for i, o in enumerate(self._operators):
                 self._operators[i] = _reorder(o, axes_new, True)
 
-        self._qubits = new_order_all  # update index dictionary with new locations
+        self._qubits = tuple(new_order_all)  # update index dictionary with new locations
         self._added_qubits = [q for q in new_order_all if q in self._added_qubits]  # sort the added qubits to the new order
         assert all(q in new_order_all for q in self._added_qubits), f"Added qubits not in new order: {self._added_qubits} not all in {new_order_all}"
 
@@ -793,7 +795,7 @@ class QuantumComputer:
 
             # add ancillas to bookkeeping
             ancillas = self._get_new_qubits_ids(n_ancillas)
-            self._qubits += ancillas
+            self._qubits += tuple(ancillas)
             self._original_order += ancillas
             self._added_qubits += ancillas
         return self
