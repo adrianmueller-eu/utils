@@ -84,26 +84,51 @@ class QuantumComputer:
 
     @property
     def track_operators(self):
-        if isinstance(self._track_operators, bool):
-            return self._track_operators
-        # track until it gets too large
-        if self.n > self.MATRIX_SLOW:
-            self.track_operators = False
-            return False
-        return True
+        return not self._too_large_to_track_operators(0)
 
     @track_operators.setter
     def track_operators(self, value):
         if not isinstance(value, bool):
-            raise ValueError("track_operators must be a boolean")
+            raise ValueError(f"Argument must be boolean, but was: {value}")
         self._track_operators = value
         if not value:
             self.reset_operators()
+
+    def reset_operators(self):
+        if self.track_operators:
+            self._operators = [I_(self.n, dtype=complex)]
+        else:
+            self._operators = []
+        self._added_qubits = []
+        return self
+
+    def _too_large_to_track_operators(self, added_n):
+        if isinstance(self._track_operators, bool):
+            return not self._track_operators
+        if len(self._operators) == 0:
+            too_large = self.n > self.MATRIX_SLOW
+        else:
+            o = self._operators[0]
+            n_in = count_qubits(o.shape[1] if o.ndim == 2 else prod(o.shape[2:]))
+            too_large = (n_in + self.n + added_n) > 2*self.MATRIX_SLOW
+        if too_large:
+            self.track_operators = False
+        return too_large
+
+    def _no_tracking(self, message):
+        if self._track_operators == False:
+            return
+        elif self._track_operators == True:
+            raise ValueError(message)
+        elif self.track_operators:
+            self.track_operators = False
+            # warn(message, stacklevel=3)
 
     def clear(self):
         self._state = np.array([1.])
         self._qubits = []
         self._original_order = []
+        self._operators = []
         self.reset_operators()
         return self
 
@@ -115,14 +140,13 @@ class QuantumComputer:
         qc._original_order = self._original_order.copy()
         qc._track_operators = self._track_operators
         qc.check_level = self.check_level
-        if self.track_operators:
-            qc._operators = [o.copy() for o in self._operators]
+        qc._operators = [o.copy() for o in self._operators]
         return qc
 
     def __call__(self, operators, qubits='all'):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         self._alloc_qubits(to_alloc)
-        operators = assert_kraus(operators, check=0)  # just basic checks
+        operators = assert_kraus(operators, check=0)  # convert into the correct format
 
         # if it's a 1-qubit channel and multiple qubits are given, apply it to all qubits
         if operators[0].shape == (2,2) and len(qubits) > 1:
@@ -137,15 +161,16 @@ class QuantumComputer:
 
         self._reorder(qubits, reshape=True)  # required by both update and apply
         # multiply each operator with the new operators
-        if self.track_operators:
-            self._update_operators(operators)
+        self._update_operators(operators)
 
         # apply operators to state
         self._apply_operators(operators, qubits)
         return self
 
     def _update_operators(self, operators):
-        self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
+        n_out = count_qubits(operators[0].shape[0])
+        if not self._too_large_to_track_operators(n_out - self.n):
+            self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
 
     def _apply_operators(self, operators, qubits):
         self._state = apply_channel(operators, self._state, len(qubits) != self.n, check=0)
@@ -558,15 +583,13 @@ class QuantumComputer:
 
         self._qubits += new_qubits
         self._original_order += new_qubits
-        if self.track_operators:
+        if not self._too_large_to_track_operators(q):
             if track_in_operators:
                 ops = extension_channel(state, n=q, check=0)  # state already checked above
                 self._operators = [np.kron(oi, oj) for oi in self._operators for oj in ops]  # extend output space, but not input space
                 self._added_qubits += new_qubits
             else:
                 self._operators = [np.kron(o, I_(q)) for o in self._operators]  # extend both output *and* input space
-        else:
-            self._operators = []  # if tracking is 'auto', but self.n got too large
 
     def _extend_state(self, new_state, q):
         # prepare new state
@@ -577,20 +600,6 @@ class QuantumComputer:
         else:
             new_state = ket(new_state, n=q, check=self.check_level)
         self._state = np.kron(self._state, new_state)
-
-    def reset_operators(self):
-        if self.track_operators:
-            self._operators = [I_(self.n, dtype=complex)]
-        else:
-            self._operators = []
-        self._added_qubits = []
-
-    def _no_tracking(self, message):
-        if self._track_operators == True:
-            raise ValueError(message)
-        elif self.track_operators:
-            self.track_operators = False
-            # warn(message, stacklevel=3)
 
     def _reorder(self, new_order, reshape):
         correct_order = self._qubits[:len(new_order)] == new_order
@@ -728,8 +737,7 @@ class QuantumComputer:
             # get dimensions
             r = r_out = len(probs)
             if self.track_operators:
-                Ks = self._operators
-                r_K   = len(Ks)
+                r_K   = len(self._operators)
                 r = max(r_out, r_K)
             n_ancillas = int(np.ceil(np.log2(r)))
 
@@ -743,12 +751,12 @@ class QuantumComputer:
             state[:len(kets)] = np.sqrt(probs)[:, None] * kets
             self._state = state.T.ravel()
 
-            if self.track_operators:
+            if not self._too_large_to_track_operators(n_ancillas):
                 # Stinespring dilation
-                # V = sum(np.kron(K, a) for K, a in zip(Ks, ancilla_basis))
-                dout, din = Ks[0].shape
+                # V = sum(np.kron(K, a) for K, a in zip(self._operators, ancilla_basis))
+                dout, din = self._operators[0].shape
                 V = np.zeros((dout*2**n_ancillas, din), dtype=complex)
-                for i, K in enumerate(Ks):
+                for i, K in enumerate(self._operators):
                     V[i*dout:(i+1)*dout, :] = K
                 self._operators = [V]    # V is an isometry
 
