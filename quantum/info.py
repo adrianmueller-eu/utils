@@ -202,7 +202,7 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
 
 def is_isometric_channel(operators, check=3):
     """ Check if given operators form an isometric quantum channel. """
-    return is_kraus(operators, check=check) and len(operators) == 1
+    return len(operators) == 1 and (check == 0 or is_kraus(operators, check=check))
 
 def is_square_channel(operators, check=3):
     try:
