@@ -316,6 +316,14 @@ def _test_random_hermitian():
     a = random_hermitian(randint(2,20))
     assert is_hermitian(a)
 
+    # check GUE
+    d = 2
+    Hs = random_hermitian(d, size=1000)
+    assert np.isclose(matmoment(Hs, 1), 0, atol=0.1), f"First moment is {matmoment(Hs, 1)} ≠ 0"
+    assert np.isclose(matmoment(Hs, 2), d, atol=0.1), f"Second moment is {matmoment(Hs, 2)} ≠ {d}"
+    assert np.isclose(matmoment(Hs, 3), 0, atol=0.5), f"Third moment is {matmoment(Hs, 3)} ≠ 0"
+    assert np.isclose(matmoment(Hs, 4), 2*d, atol=1), f"Fourth moment is {matmoment(Hs, 4)} ≠ {2*d}"
+
 def _test_is_unitary():
     assert is_unitary(np.eye(randint(2,20)))
 
@@ -339,6 +347,13 @@ def _test_is_unitary():
 def _test_random_unitary():
     a = random_unitary(randint(2,20))
     assert is_unitary(a)
+
+    # check they are Haar-distributed
+    Us = random_unitary(2, size=1000)
+    one_design = abs(matmoment(Us, 1))
+    assert np.isclose(one_design, 0, atol=0.1), f"One-design test failed! {one_design} != 0"
+    two_design = abs(matmoment(Us, 2))
+    assert np.isclose(two_design, 0, atol=0.1), f"Two-design test failed! {two_design} != 0"
 
 def _test_is_psd():
     # A @ A^\dagger => PSD
