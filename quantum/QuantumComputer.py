@@ -9,7 +9,7 @@ except ImportError:
 
 from .constants import *
 from .utils import count_qubits, partial_trace
-from .state import ket, dm, unket, plotQ, is_state, ensemble_from_state, is_separable_state
+from .state import ket, ket_from_int, dm, unket, plotQ, is_state, ensemble_from_state, is_separable_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary, is_separable_unitary
@@ -455,7 +455,7 @@ class QuantumComputer:
             added_qubits = self._added_qubits.copy()  # stash
 
             # if input is dm, switch to matrix mode
-            if not self.is_matrix_mode() and not is_ket(state, print_errors=False, check=0) and is_dm(state, print_errors=False, check=0):
+            if not self.is_matrix_mode() and is_square(state):
                 self.to_dm()
 
             # remove qubits from state and operators
@@ -617,7 +617,7 @@ class QuantumComputer:
 
     def _extend_state(self, new_state, q):
         # prepare new state
-        if is_square(new_state) and not self.is_matrix_mode():
+        if not self.is_matrix_mode() and is_square(new_state):
             self.to_dm()  # switch to matrix mode
         if self.is_matrix_mode():
             new_state = dm(new_state, n=q, check=self.check_level)
@@ -719,7 +719,6 @@ class QuantumComputer:
                 return False
             return True
         else:  # (q x (n-q)) form
-            assert self._state.shape[0] < 2**self.n, f"Invalid state shape: {self._state.shape} for {self.n} qubits {self._qubits}"
             if len(self._state.shape) == 2:
                 return False
             return True
