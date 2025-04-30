@@ -551,8 +551,8 @@ class QuantumComputer:
         return plotQ(state, **kw_args)
 
     def plotU(self, **imshow_args):
-        U = self.get_unitary()
-        return imshow(U, **imshow_args)
+        V = self.get_isometry()
+        return imshow(V, **imshow_args)
 
     def _get_new_qubits_ids(self, q):
         """ Returns the new qubit ids for the given number of qubits. """
