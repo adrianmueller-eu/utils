@@ -381,6 +381,14 @@ def _test_QuantumComputer():
     qc.remove([0,1])
     assert np.allclose(abs(qc.get_state().conj() @ k2), 1), f"{qc.get_state()} ≠ {k2}"
 
+    qc = QC(2)
+    qc[:2] = random_dm(2)
+    assert qc.n == 2, qc._qubits
+    assert qc.get_state().shape == (4,4), qc._state.shape
+    qc.remove(-1)
+    qc[-1] = '0'
+    assert qc.is_pure()
+
     # Heisenberg uncertainty principle
     qc = QuantumComputer(1, 'random')
     assert qc.std(X) * qc.std(Z) >= abs(qc.ev(1j*(X@Z - Z@X)))/2
@@ -436,6 +444,7 @@ def _test_QuantumComputer():
     assert np.isclose(trace_product(qc[0], qc[0]), 7/9)
     assert np.isclose(trace_product(qc[1], qc[1]), 7/9)
     qc = QC(3, 'random')
+    assert not qc.is_matrix_mode()
     assert np.isclose(np.sum(qc.schmidt_coefficients([0])**2), 1)
 
     # more complex test
