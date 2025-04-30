@@ -244,9 +244,7 @@ def ket(specification, n=None, renormalize=True, check=1):
         return ket_from_int(specification, n)
     if type(specification) == str:
         if specification == "random":
-            if n is None:
-                raise ValueError("Please specify the number of qubits for the random state")
-            return random_ket(n)
+            return random_ket(n or 1)
         # handle some special cases: |+>, |->, |i>, |-i>
         if specification in ["+", "-", "i", "-i", "0", "1"]:
             if n == None:
