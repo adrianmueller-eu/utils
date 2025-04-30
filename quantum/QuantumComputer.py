@@ -180,7 +180,7 @@ class QuantumComputer:
         n_out = n_in if K0shape[0] == K0shape[1] else count_qubits(K0shape[0])
         if n_out > n_in:
             # add new qubits to bookkeeping
-            new_qubits = list(np.arange(n_out - n_in) + (max(self._qubits) + 1))
+            new_qubits = self._get_new_qubits_ids(n_out - n_in)
             self._qubits += new_qubits
             self._original_order += new_qubits
             self._added_qubits += new_qubits
@@ -541,6 +541,11 @@ class QuantumComputer:
         U = self.get_unitary()
         return imshow(U, **imshow_args)
 
+    def _get_new_qubits_ids(self, q):
+        """ Returns the new qubit ids for the given number of qubits. """
+        max_id = max([q for q in self._qubits if isinstance(q, int)], default=-1)
+        return list(np.arange(q) + (max_id + 1))
+
     def _check_qubit_arguments(self, qubits, allow_new):
         if isinstance(qubits, slice):
             qubits = self._qubits[qubits]
@@ -763,7 +768,7 @@ class QuantumComputer:
                 self._operators = [V]    # V is an isometry
 
             # add ancillas to bookkeeping
-            ancillas = list(np.arange(n_ancillas) + (max(self._qubits)+1))
+            ancillas = self._get_new_qubits_ids(n_ancillas)
             self._qubits += ancillas
             self._original_order += ancillas
             self._added_qubits += ancillas
