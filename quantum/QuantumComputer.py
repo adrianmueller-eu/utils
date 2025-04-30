@@ -471,13 +471,21 @@ class QuantumComputer:
             to_retain = [q for q in self._qubits if q not in to_remove]
             reduced_state = self.get_state(to_retain, collapse=collapse, allow_vector=True)  # moves `to_retain` to the end in self._qubits
             # extend operators by identity
-            self._alloc_qubits(to_alloc, track_in_operators=False)
+            self._reorder(to_retain, reshape=False)                 # to_remove to the end of operators
+            self._alloc_qubits(to_alloc, track_in_operators=False)  # add to_alloc at the end
             # extend state with new state
             self._state = reduced_state  # guarantees reshape=False for state
-            self._qubits = to_retain  # ._extend_state (.is_matrix_mode) requires self._qubits to be consistent with self._state.shape
+            self._qubits = to_retain     # ._extend_state (.is_matrix_mode) requires self._qubits to be consistent with self._state.shape
+            # we need `state` in the order to_remove + to_alloc, to be in sync with operators
+            if not isinstance(state, str) and hasattr(state, '__len__'):
+                new_order = [qubits.index(q) for q in to_remove] + [qubits.index(q) for q in to_alloc]
+                state = transpose_qubit_order(state, new_order, reshape=False)
             self._extend_state(state, len(qubits))
-            # state has order to_retain + qubits
-            self._qubits = to_retain + qubits
+            # order is now:
+            self._qubits = to_retain + to_remove + to_alloc
+            # recover order to_retain + qubits
+            if to_remove + to_alloc != qubits:  # they are set-wise the same, but could be in a different order
+                self._reorder(to_retain + qubits)  # move to_alloc where it is in `qubits`
         return self
 
     def add(self, qubits, state=0, track_in_operators=True):
