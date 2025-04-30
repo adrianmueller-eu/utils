@@ -153,7 +153,8 @@ class QuantumComputer:
             for q in qubits:
                 self(operators, q)
             return self
-        operators = assert_kraus(operators, n=(None, len(qubits)), check=self.check_level)
+        if self.check_level > 0:
+            operators = assert_kraus(operators, n=(None, len(qubits)), check=self.check_level)
 
         # non-isometric operators require density matrix representation
         if not is_isometric_channel(operators, check=0):
@@ -174,8 +175,9 @@ class QuantumComputer:
 
     def _apply_operators(self, operators, qubits):
         self._state = apply_channel(operators, self._state, len(qubits) != self.n, check=0)
+        K0shape = operators[0].shape
         n_in  = len(qubits)
-        n_out = count_qubits(operators[0].shape[0])
+        n_out = n_in if K0shape[0] == K0shape[1] else count_qubits(K0shape[0])
         if n_out > n_in:
             # add new qubits to bookkeeping
             new_qubits = list(np.arange(n_out - n_in) + (max(self._qubits) + 1))
@@ -383,9 +385,9 @@ class QuantumComputer:
                     # play God
                     outcome = np.random.choice(2**q, p=probs)
                     # collapse
-                    keep = self._state[outcome]
+                    keep = self._state[outcome] / sqrt(probs[outcome])
                     self._state = np.zeros_like(self._state)
-                    self._state[outcome] = normalize(keep)  # may be 1 or vector
+                    self._state[outcome] = keep  # may be 1 or vector
                 else:
                     if self.KEEP_VECTOR and entropy(probs) < self.ENTROPY_EPS:  # deterministic outcome implies no entanglement, but loss of information can also happen with the "measurement device" (even if there is no entanglement)
                         warn('Outcome is deterministic -> no decoherence')
@@ -401,7 +403,7 @@ class QuantumComputer:
         elif return_as == 'energy':
             warn("No observable provided for return_as_energy=True. Returning as outcome index instead.")
         elif return_as == 'binstr':
-            return binstr_from_int(outcome, len(qubits))
+            return binstr_from_int(outcome, q)
         return outcome
 
     def reset(self, qubits='all', collapse='auto', track_in_operators='auto'):
