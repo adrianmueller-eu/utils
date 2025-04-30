@@ -602,7 +602,7 @@ class QuantumComputer:
             if RAM_required > psutil.virtual_memory().available:
                 warn(f"Insufficient RAM! ({self.n + q}-qubit state would require {duh(RAM_required)})", stacklevel=3)
 
-        self._reorder(self._qubits, reshape=False)
+        self._reorder(None, reshape=False)
         self._extend_state(state, q)
 
         self._qubits += new_qubits
@@ -626,11 +626,19 @@ class QuantumComputer:
         self._state = np.kron(self._state, new_state)
 
     def _reorder(self, new_order, reshape):
-        correct_order = self._qubits[:len(new_order)] == new_order
+        correct_order = new_order is None or self._qubits[:len(new_order)] == new_order
         if reshape:
             if correct_order and self._state.shape[0] == 2**len(new_order):
                 return
-        elif correct_order and self._state.shape[0] == 2**self.n:
+        elif correct_order:
+            N = 2**self.n
+            if self._state.shape[0] != N:
+                if self.is_matrix_mode():
+                    self._state = self._state.reshape(N, -1)
+                else:
+                    self._state = self._state.ravel()
+                if self.track_operators:
+                    self._operators = [o.reshape(N, -1) for o in self._operators]
             return
 
         assert all(q in self._qubits for q in new_order), f"Invalid qubit order: {new_order} not all in {self._qubits}"
@@ -696,7 +704,6 @@ class QuantumComputer:
             self._state = _reorder(self._state, axes_new, False)
         if self.track_operators:
             for i, o in enumerate(self._operators):
-                # print("reorder operator", i, o.shape, axes_new)
                 self._operators[i] = _reorder(o, axes_new, True)
 
         self._qubits = new_order_all  # update index dictionary with new locations
