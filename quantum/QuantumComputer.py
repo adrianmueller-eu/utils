@@ -584,6 +584,8 @@ class QuantumComputer:
 
     def _alloc_qubits(self, new_qubits, state=0, track_in_operators=False):
         if not new_qubits:
+            if not isinstance(state, int) or state != 0:
+                raise ValueError("No qubits to provided")
             return
         for q in new_qubits:
             assert q not in self._qubits, f"Qubit {q} already allocated"
