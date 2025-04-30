@@ -921,7 +921,7 @@ def pauli_decompose(H, as_str=False, eps=1e-5):
             obs_lst.append(term)
 
     if as_str:
-        return str_from_pauli(coeffs, obs_lst)
+        return str_from_pauli(coeffs, obs_lst, precision=5 if eps == 0 else int(np.ceil(-np.log10(eps))))
     return coeffs, obs_lst
 
 def str_from_pauli(coeffs, obs_lst, precision=5):
