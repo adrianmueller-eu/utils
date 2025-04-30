@@ -471,6 +471,8 @@ def assert_ket(psi, n=None, check=1):
             psi = ket(psi)
         except Exception as e:
             assert False, f"Invalid state vector: {psi}"
+    elif isinstance(psi, int):
+        return n is None or psi < 2**n
     try:
         psi = np.asarray(psi)
     except Exception as e:
@@ -487,11 +489,13 @@ def is_dm(rho, n=None, print_errors=True, check=3):
 
 def assert_dm(rho, n=None, check=3):
     """ Check if matrix `rho` is a density matrix. """
-    if isinstance(rho, (int, str)):
+    if isinstance(rho, str):
         try:
             rho = dm(rho, renormalize=False, check=0)
         except Exception as e:
             assert False, f"Invalid density matrix: {rho}"
+    elif isinstance(rho, int):
+        return n is None or rho < 2**n
     try:
         rho = np.asarray(rho, dtype=complex)  # float is no performance difference in np.trace
     except Exception as e:
