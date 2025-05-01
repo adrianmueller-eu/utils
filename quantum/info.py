@@ -8,7 +8,7 @@ except ImportError:
 
 from .utils import count_qubits, partial_trace, transpose_qubit_order
 from .state import op, ket, dm, ev, as_state, ensemble_from_state, assert_state
-from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd, is_eye, trace_product
+from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd, is_eye, trace_product, random_isometry
 from ..prob import entropy
 from ..utils import is_from_assert, is_int, warn
 
@@ -355,6 +355,22 @@ def removal_channel(n):
     Create a set of Kraus operators that remove `n` qubits. This is equivalent to the (partial) trace operation.
     """
     return np.eye(2**n)[:,None,:]  # [ket(i, n=q)[None,:] for i in range(2**q)]
+
+def random_channel(n, d=1):
+    """
+    Create a random quantum channel with `n` or `n=(n_out,n_in)` qubits.
+    """
+    if isinstance(n, tuple):
+        n_out, n_in = n
+    else:
+        n_out, n_in = n, n
+    N = max(n_out, n_in) + d
+    V = random_isometry(2**N, 2**n_in)
+    rem = removal_channel(N - n_out)
+    V = V.reshape(2**(N - n_out), 2**n_out, 2**n_in)
+    Ks = combine_channels(rem, [V])
+    Ks = [K.reshape(2**n_out, 2**n_in) for K in Ks]
+    return Ks
 
 def choi_from_channel(operators, n=(None, None), check=3):
     """
