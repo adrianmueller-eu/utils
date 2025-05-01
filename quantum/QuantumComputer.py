@@ -1078,19 +1078,22 @@ class QuantumComputer:
         else:
             p.text(str(self))
 
-    def __getitem__(self, qubits):
+    def _index_to_qubits(self, qubits):
         if isinstance(qubits, (slice, int)):
-            qubits = self._original_order[qubits]
+            return self._original_order[qubits]
+        qubits = as_list_not_str(qubits)
+        return [self._original_order[q] for q in qubits]
+
+    def __getitem__(self, qubits):
+        qubits = self._index_to_qubits(qubits)
         return self.get_state(qubits, allow_vector=False)
 
     def __setitem__(self, qubits, state):
-        if isinstance(qubits, (slice, int)):
-            qubits = self._qubits[qubits]
+        qubits = self._index_to_qubits(qubits)
         self.init(state, qubits)
 
     def __delitem__(self, qubits):
-        if isinstance(qubits, (slice, int)):
-            qubits = self._qubits[qubits]
+        qubits = self._index_to_qubits(qubits)
         self.remove(qubits)
 
     def __neg__(self):
