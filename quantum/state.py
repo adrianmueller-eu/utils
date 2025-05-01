@@ -438,7 +438,7 @@ def dm(kets, p=None, n=None, renormalize=True, check=3):
     return outer(psi)
 
 def as_state(state, renormalize=True, n=None, check=2):
-    if not check:
+    if hasattr(state, 'shape') and check == 0:
         return state
     try:
         return ket(state, n=n, renormalize=renormalize, check=check)
