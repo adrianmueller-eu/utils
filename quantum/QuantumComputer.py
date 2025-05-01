@@ -1100,7 +1100,9 @@ class QuantumComputer:
         if not self.is_matrix_mode():
             raise ValueError("Negation is not defined for state vectors")
 
-        self._state = I_(self.n) - self._state.reshape(2**self.n, 2**self.n)
+        state = I_(self.n) - self._state.reshape(2**self.n, -1)
+        state /= np.trace(state)
+        self._state = state
         return self
 
     def x(self, q):
