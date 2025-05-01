@@ -701,10 +701,7 @@ class QuantumComputer:
             return True
 
     def is_pure(self, qubits='all'):
-        rho = self.get_state(qubits)
-        if len(rho.shape) == 1:
-            return True
-        return np.isclose(self.purity(), 1)
+        return np.isclose(self.purity(qubits), 1)
 
     def rank(self, qubits='all', obs=None):
         qubits = self._check_qubit_arguments(qubits, False)
@@ -963,7 +960,7 @@ class QuantumComputer:
             return self.is_separable_state(qubits) and self.is_unitary(qubits)
 
     def purity(self, qubits='all'):
-        return purity(self.get_state(qubits))
+        return purity(self.get_state(qubits), check=0)
 
     def _purity_gen(self, qubits='all', obs=None):
         with self.observable(obs, qubits) as qubits:
