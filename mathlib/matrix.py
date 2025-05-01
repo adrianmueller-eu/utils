@@ -1012,13 +1012,7 @@ def random_unitary(n, size=(), kind='haar'):
     if not hasattr(size, '__len__'):
         size = (size,)
     if kind == 'haar':
-        A = random_vec(size + (n,n), complex=True, kind='normal')
-        Q, R = np.linalg.qr(A)
-        R_n = np.zeros(size + (n,), dtype=complex)
-        for i in shape_it(size):
-            R_n[i] = np.diag(R[i])
-        L = R_n / np.abs(R_n)
-        return Q * L[..., None, :]
+        return random_isometry(n, n, size=size)
     elif kind == 'gue':
         return eigh(random_hermitian(n, size=size))[1]
     elif kind == 'polar':  # fastest for very small and slowest for very large matrices
@@ -1029,6 +1023,16 @@ def random_unitary(n, size=(), kind='haar'):
         return A @ J_inv
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
+
+def random_isometry(n, m, size=()):
+    assert n >= m, f"n must be >= m, but got {n} < {m}"
+    A = random_vec(size + (n,m), complex=True, kind='normal')
+    Q, R = np.linalg.qr(A)
+    R_ = np.zeros(size + (m,), dtype=complex)
+    for i in shape_it(size):
+        R_[i] = np.diag(R[i])
+    L = R_ / np.abs(R_)
+    return Q * L[..., None, :]
 
 def unitary_noise(d, s, size=()):
     H = random_hermitian(d, size=size)
