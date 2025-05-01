@@ -438,6 +438,8 @@ def dm(kets, p=None, n=None, renormalize=True, check=3):
     return outer(psi)
 
 def as_state(state, renormalize=True, n=None, check=2):
+    if not check:
+        return state
     try:
         return ket(state, n=n, renormalize=renormalize, check=check)
     except:
@@ -600,8 +602,7 @@ def dm_from_ensemble(probs, kets, check=2):
     return sum(p * outer(k) for p, k in zip(probs, kets))
 
 def ensemble_from_state(rho, filter_eps=1e-10, check=3):
-    if check:
-        rho = as_state(rho, check=check)
+    rho = as_state(rho, check=check)
     if rho.ndim == 1:
         return np.array([1.]), np.array([rho])
     return ensemble_from_dm(rho, filter_eps=filter_eps, check=check)
