@@ -385,7 +385,7 @@ def _test_QuantumComputer():
     qc[:2] = random_dm(2)
     assert qc.n == 2, qc._qubits
     assert qc.get_state().shape == (4,4), qc._state.shape
-    qc.remove(-1)
+    qc.remove(1)
     qc[-1] = '0'
     assert qc.is_pure()
     assert qc._operators[0].shape == (2,4), qc._operators

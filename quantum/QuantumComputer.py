@@ -558,11 +558,7 @@ class QuantumComputer:
         return [q + start_id for q in range(q)]
 
     def _check_qubit_arguments(self, qubits, allow_new):
-        if isinstance(qubits, slice):
-            qubits = self._qubits[qubits]
-        elif isinstance(qubits, int) and qubits < 0:
-            qubits = self._qubits[qubits]
-        elif qubits == 'all':
+        if qubits == 'all':
             if allow_new:
                 return self._original_order, []
             return self._original_order
@@ -1085,18 +1081,19 @@ class QuantumComputer:
             p.text(str(self))
 
     def __getitem__(self, qubits):
-        state = self.get_state(qubits)
-        if len(state.shape) == 1:
-            state = outer(state)
-        return state
+        if isinstance(qubits, (slice, int)):
+            qubits = self._original_order[qubits]
+        return self.get_state(qubits, allow_vector=False)
 
     def __setitem__(self, qubits, state):
+        if isinstance(qubits, (slice, int)):
+            qubits = self._qubits[qubits]
         self.init(state, qubits)
-        return
 
     def __delitem__(self, qubits):
+        if isinstance(qubits, (slice, int)):
+            qubits = self._qubits[qubits]
         self.remove(qubits)
-        return self
 
     def __neg__(self):
         if not self.is_matrix_mode():
