@@ -226,22 +226,21 @@ class QuantumComputer:
             if q > self.MATRIX_BREAK:
                 warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
             self._reorder(to_remove, reshape=False)
-            if not self.is_matrix_mode() and allow_vector and self.KEEP_VECTOR and self.n - q < self.MATRIX_SLOW:
-                # check if to_remove is separable in state and unitary
-                if self.is_separable_state(to_remove):
-                    if not self.track_operators or self.is_unitary(to_remove):
-                        # find a non-zero state (-> no diagonalization required)
-                        self._reorder(to_remove, reshape=True)
-                        new_state = None
-                        for i in range(2**nq):
-                            if not allclose0(self._state[i]):
-                                new_state = self._state[i]
-                                break
-                        assert new_state is not None, f"WTF-Error: No non-zero state found in {self._state}"
-                        new_state = normalize(new_state)
-                        if q == 1:
-                            new_state = new_state.reshape([2])
-                        return new_state
+            if self.KEEP_VECTOR and allow_vector and self.n - q < self.MATRIX_SLOW and \
+                                                           (not self.track_operators or self.is_isometric()) and \
+                    self.is_separable_state(to_remove) and (not self.track_operators or self.is_unitary(to_remove)):
+                # find a non-zero state (-> no diagonalization required)
+                self._reorder(to_remove, reshape=True)
+                new_state = None
+                for i in range(2**nq):
+                    if not allclose0(self._state[i]):
+                        new_state = self._state[i]
+                        break
+                assert new_state is not None, f"WTF-Error: No non-zero state found in {self._state}"
+                new_state = normalize(new_state)
+                if q == 1:
+                    new_state = new_state.reshape([2])
+                return new_state
             return partial_trace(self._state, list(range(nq, self.n)), reorder=False)
 
     def get_unitary(self, qubits='all'):
