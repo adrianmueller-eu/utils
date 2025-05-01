@@ -182,9 +182,10 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
 
     if check < 2:
         return operators  # trace and orthogonality checks are expensive
+    operators_reshaped = [op.reshape(2**n_out, 2**n_in) for op in operators]
 
     # 3. Check trace-preserving / contractive
-    res = np.sum([K.conj().T @ K for K in operators], axis=0)
+    res = np.sum([K.conj().T @ K for K in operators_reshaped], axis=0)
     if trace_preserving:
         assert is_eye(res, tol), f"Operators are not trace-preserving:\n{res}"
     elif check >= 3:
@@ -193,9 +194,8 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
 
     # 4. Check orthogonality
     if orthogonal:
-        # for K1, K2 in itertools.combinations(operators, 2):
-        for i, Ki in enumerate(operators):
-            for j, Kj in enumerate(operators):
+        for i, Ki in enumerate(operators_reshaped):
+            for j, Kj in enumerate(operators_reshaped):
                 if i == j:
                     continue
                 res = np.trace(Ki.conj().T @ Kj)
