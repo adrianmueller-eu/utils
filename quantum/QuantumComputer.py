@@ -554,8 +554,8 @@ class QuantumComputer:
 
     def _get_new_qubits_ids(self, q):
         """ Returns the new qubit ids for the given number of qubits. """
-        max_id = max([q for q in self._qubits if isinstance(q, int)], default=-1)
-        return list(np.arange(q) + (max_id + 1))
+        start_id = max([q for q in self._qubits if isinstance(q, int)], default=-1) + 1
+        return [q + start_id for q in range(q)]
 
     def _check_qubit_arguments(self, qubits, allow_new):
         if isinstance(qubits, slice):
