@@ -388,6 +388,7 @@ def _test_QuantumComputer():
     qc.remove(-1)
     qc[-1] = '0'
     assert qc.is_pure()
+    assert qc._operators[0].shape == (2,4), qc._operators
 
     # Heisenberg uncertainty principle
     qc = QuantumComputer(1, 'random')
@@ -536,8 +537,11 @@ def _test_QuantumComputer():
         U = QuantumCircuit(2)  # RYGate(np.pi/12) fails for pi/(2**(n-2)) for n >= 3
         U.rx(0.1, 0)
         n = randint(1,8)
+        s_reg, e_reg = [0,1], list(range(2, n+2))
         U_PE1 = get_unitary(PhaseEstimation(n, U))
-        U_PE2 = get_unitary(QC(2+n, track_operators=True).pe(get_unitary(U), [0,1], range(2,n+2)[::-1]))
+        U_PE1 = transpose_qubit_order(U_PE1, (e_reg + s_reg[::-1])[::-1])  # weird qiskit conventions
+        qc2 = QC(2+n, track_operators=True).pe(get_unitary(U), s_reg, e_reg)
+        U_PE2 = qc2.get_unitary()
         assert np.allclose(U_PE1, U_PE2)
 
         U_QFT1 = get_unitary(QFT(n, do_swaps=False))

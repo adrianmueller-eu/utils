@@ -81,9 +81,9 @@ def transpose_qubit_order(state, new_order, reshape=False, batch_shape=()):
         new_order_all = new_order_all + [i + n for i in new_order_all]
         state = state.transpose(batch_idcs + new_order_all)
         if reshape and 0 < q < n:
-            state = state.reshape(batch_shape + [2**q, 2**(n-q), 2**q, 2**(n-q)])
+            state = state.reshape(batch_shape + [2**q, 2**(n-q)]*2)
         else:
-            state = state.reshape(batch_shape + [2**n, 2**n])
+            state = state.reshape(batch_shape + [2**n]*2)
     # TODO: allow non-square operators
     else:
         raise ValueError(f"Not a valid shape: {state.shape}")

@@ -132,8 +132,8 @@ def get_channel_dims(operators, as_qubits=False):
     K = np.asarray(operators[0])
     if K.ndim == 2:
         return K.shape
-    elif K.ndim in (3,4):
-        return prod(K.shape[:2]), prod(K.shape[2:])
+    elif K.ndim == 3:
+        return prod(K.shape[:2]), K.shape[2]
     raise ValueError(f"Not a valid shape for an operator: {K.shape}")
 
 def is_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10, print_errors=True):
@@ -160,13 +160,13 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
     if isinstance(operators, list) and not isinstance(operators[0], np.ndarray):
         np.asarray(operators)  # check same shape of all operators
     if isinstance(operators, np.ndarray):
-        # just based on ndim, we can't distinguish list of 2d vs a single 3d operators and list of 3d vs a single 4d operator
-        # -> assume it's a list
         if operators.ndim == 2:
             operators = [operators]
         else:
+            # just based on ndim, we can't distinguish list of 2d operators vs a single 3d operator
+            # -> assume it's a list
             operators = list(operators)
-    assert operators[0].ndim in (2,3,4), f"Operators must be a list of 2D, 3D, or 4D arrays, but got {operators[0].shape}"
+    assert operators[0].ndim in (2,3), f"Operators must be a list of 2D or 3D arrays, but got {operators[0].shape}"
 
     if check < 1:
         return operators
@@ -209,8 +209,8 @@ def is_square_channel(operators, check=3):
         operators = assert_kraus(operators, check=check)
     except AssertionError:
         return False
-    return (operators[0].ndim == 2 and operators[0].shape[0] == operators[0].shape[1]) or \
-           (operators[0].ndim in (3,4) and prod(operators[0].shape[:2]) == prod(operators[0].shape[2:]))
+    o = operators[0]
+    return (o.ndim == 2 and o.shape[0] == o.shape[1]) or (o.ndim == 3 and prod(o.shape[:2]) == o.shape[2])
 
 def is_unitary_channel(operators, check=3):
     """ Check if given operators form a unitary quantum channel. """
@@ -220,13 +220,20 @@ def apply_channel(operators, state, reshaped, check=3):
     # sanity checks
     if check:
         state = np.asarray(state)
-        n = count_qubits(state)
-        tmp_state = state.reshape(prod(state.shape[:2]), -1) if reshaped else state
+        assert state.ndim in (1, 2, 4), f"Invalid state shape: {state.shape}"
+        # convert to reshaped=False to check state
+        if not reshaped:
+            tmp_state = state
+        elif state.ndim == 2:
+            tmp_state = state.ravel()
+        else:
+            tmp_state = state.reshape(prod(state.shape[:2]), -1)
+        n = count_qubits(tmp_state)
         assert_state(tmp_state, n=n, check=check)
         operators = assert_kraus(operators, n=(None, n), check=check)
         assert operators[0].shape[1] == state.shape[0], f"Input dimension of the operators does not match the state dimension: {operators[0].shape} x {state.shape}"
 
-    state_is_dm = reshaped and state.ndim in (3,4) or not reshaped and state.ndim == 2
+    state_is_dm = reshaped and state.ndim == 4 or not reshaped and state.ndim == 2
     if state_is_dm:
         n_out = operators[0].shape[0]
         if reshaped:
