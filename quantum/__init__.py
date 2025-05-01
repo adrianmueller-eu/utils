@@ -329,6 +329,8 @@ def _test_random_dm():
     D = np.linalg.eigvalsh(rho)
     assert is_psd(rho, D)
     assert np.sum(D > 1e-12) == 42
+    rhos = random_dm(2, 3, size=(3,2))
+    assert rhos.shape == (3,2,4,4)
 
 def _test_Wigner():
     W = Wigner_from_state(ket('00'))

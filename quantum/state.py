@@ -195,7 +195,7 @@ def random_ket(n, size=(), kind='fast'):
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
-def random_dm(n=1, rank='full'):
+def random_dm(n=1, rank='full', size=()):
     """
     Generate a random density matrix ($rank*2^{n+1}-1$ degrees of freedom).
     `rank` can be an integer between 1 and 2^n, or one of 'pure' or 'full'.
@@ -207,14 +207,16 @@ def random_dm(n=1, rank='full'):
         rank = 2**n
     assert is_int(rank) and rank >= 1, f"rank should be an integer >= 1, but was: {rank}"
     assert rank <= 2**n, f"A {n}-qubit density matrix can be at most rank {2**n}, but requested was: {rank}"
+    if not is_iterable(size):
+        size = (size,)
 
     if rank == 1:
-        state = random_ket(n)
+        state = random_ket(n, size=size)
         return outer(state)
 
-    kets = random_ket(n, rank, kind='ortho')
-    probs = random_p(len(kets), kind='uniform')
-    return kets.conj().T @ (probs[:,None] * kets)
+    kets = random_ket(n, size + (rank,), kind='ortho')
+    probs = random_p(size + (rank,), kind='uniform')
+    return tf(probs, kets, reverse=True)
 
 def ket_from_int(d, n=None):
     if not n:
