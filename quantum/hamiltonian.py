@@ -7,7 +7,7 @@ try:
 except ImportError:
     pass
 
-from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0, is_unitary, binstr_from_float, eigh, eigvalsh
+from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0, is_unitary, binstr_from_float, eigh, eigvalsh, tf
 from ..utils import duh
 from .state import random_ket, unket
 
@@ -42,7 +42,7 @@ def ground_state_ITE(H, tau=5, eps=1e-6, check=2):  # eps=1e-6 gives almost perf
     if check >= 2:
         assert is_hermitian(H)
     D, V = eigh(H)  # this requires diagonalization of H
-    U = V @ (softmax(D, -tau)[:,None] * V.conj().T)
+    U = tf(softmax(D, -tau), V)
     n = int(np.log2(H.shape[0]))
     ground_state = sequence(evolve, start_value=random_ket(n), eps=eps)
     ground_state_energy = (ground_state.conj().T @ H @ ground_state).real

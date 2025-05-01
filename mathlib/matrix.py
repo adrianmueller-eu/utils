@@ -189,12 +189,26 @@ def allclose0(a, tol=1e-12):
 ### Matrix functions ###
 ########################
 
+def tf(D, T, T_ = None, is_unitary = True, reverse=False):
+    """
+    Batched version of T @ D @ T^{-1} where D is diagonal.
+    If `reverse=True`, calculate instead T^{-1} @ D @ T.
+    """
+    if T_ is None:
+        if is_unitary:
+            T_ = np.moveaxis(T, -2, -1).conj()
+        else:
+            T_ = np.linalg.inv(T)
+    if reverse:
+        T, T_ = T_, T
+    return T @ (D[..., None] * T_)
+
 def matfunc(A, f):
     D, T = eig(A)
     D = np.asarray(f(D))
     if not is_complex(T) and allclose0(D.imag):
         D = D.real
-    return T @ (D[:,None] * inv(T))
+    return tf(D, T, is_unitary=False)
 
 try:
     from scipy.linalg import expm as matexp
@@ -224,7 +238,7 @@ def matexp_series(A):
 def matfunch(A, f):
     D, U = eigh(A)
     D = np.asarray(f(D.astype(complex)))
-    return U @ (D[:,None] * U.conj().T)
+    return tf(D, U)
 
 def matexph(A):
     return matfunch(A, np.exp)
@@ -245,7 +259,7 @@ def matfunch_psd(A, f):
         return matfunch(A, f)
     V, S, Vh = svd(A)
     S = np.asarray(f(S))
-    return V @ (S[:,None] * Vh)
+    return tf(S, V, Vh)
 
 def matexph_psd(A):
     return matfunch_psd(A, np.exp)
@@ -495,10 +509,10 @@ def polar(A, kind='right', hermitian=False, force_svd=False):
     if not force_svd and A.shape[-2] == A.shape[-1] and np.nan_to_num(det(A)) > 1e-6:
         def _get(S):
             D, U_S = eigh(S)
-            D_sqrt = np.sqrt(D)[:,None]
+            D_sqrt = np.sqrt(D)
             assert np.all(D > 0), f"Matrix is not invertible: {D}"
-            J = U_S @ (D_sqrt * U_S.conj().T)
-            J_inv = U_S @ (1/D_sqrt * U_S.conj().T)
+            J     = tf(D_sqrt, U_S)
+            J_inv = tf(1/D_sqrt, U_S)
             return J, J_inv
 
         AH = A if hermitian else A.T.conj()
@@ -517,10 +531,10 @@ def polar(A, kind='right', hermitian=False, force_svd=False):
     U = W @ Vh
     # A = W S V^H = U(V S V^H) = (W S W^H)U
     if kind == 'right':
-        J = Vh.conj().T @ (S[:,None] * Vh)
+        J = tf(S, Vh, reverse=True)
         return U, J
     elif kind == 'left':
-        K = W @ (S[:,None] * W.conj().T)
+        K = tf(S, W)
         return K, U
     raise ValueError(f"Unknown kind '{kind}'.")
 
@@ -749,7 +763,7 @@ if not sage_loaded:
         @property
         def G(self):
             if self._G is None or not self.is_generator:
-                self._G = self.U @ (self.D[:,None] * self.U.conj().T)
+                self._G = tf(self.D, self.U)
             return self._G
 
         @property
@@ -759,7 +773,7 @@ if not sage_loaded:
             return len(self._G)
 
         def __call__(self, phi):
-            return self.U @ (np.exp(1j*self.c*phi*self.D)[:,None] * self.U.conj().T)
+            return tf(np.exp(1j*self.c*phi*self.D), self.U)
 
         def __matmul__(self, other):
             return LieGroupElement(self(1) @ other(1), self.c, is_generator=False)
@@ -982,7 +996,7 @@ def random_hermitian(n, size=(), std=1, normalized=True):
         params = (0, std/sqrt(2))  # 2 dof for each off-diagonal element
         n_tri  = n*(n-1)//2  # number of triangular elements
         a[...,np.triu_indices(n, 1)] = random_vec(size + (n_tri,), params=params, complex=True)
-        a[a == 0] = a.moveaxis(a, -1, -2).conj()[a == 0]
+        a[a == 0] = np.moveaxis(a, -1, -2).conj()[a == 0]
         return a
     # equivalent, but faster for small matrices
     a = random_vec(size + (n,n), params=(0, std), complex=True, kind='normal')
@@ -1010,8 +1024,8 @@ def random_unitary(n, size=(), kind='haar'):
     elif kind == 'polar':  # fastest for very small and slowest for very large matrices
         A = random_square(n, complex=True, kind='normal')
         D, U = eigh(A.T.conj() @ A)
-        D_sqrt = np.sqrt(D)[:,None]
-        J_inv = U @ (1/D_sqrt * U.conj().T)
+        D_sqrt = np.sqrt(D)
+        J_inv = tf(1/D_sqrt, U)
         return A @ J_inv
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
@@ -1028,7 +1042,7 @@ def random_psd(n, params=(0,1), complex=True):
 def random_normal(n, params=(0,1), complex=True):
     U = random_unitary(n)
     D = random_vec(U.shape[0], params=params, complex=complex, kind='normal')
-    return U @ (D[:,None] * U.conj().T)
+    return tf(D, U)
 
 def random_projection(n, rank=None, orthogonal=True, complex=True, kind='fast'):
     """
@@ -1057,12 +1071,12 @@ def random_projection(n, rank=None, orthogonal=True, complex=True, kind='fast'):
             else:
                 U = random_orthogonal(n)
             D = np.random.permutation([1]*rank + [0]*(n-rank))
-            return U @ (D[:,None] * U.conj().T)
+            return tf(D, U)
         else:
             # only P^2 = P
             A = random_square(n, complex=complex)
             D = np.random.permutation([1]*rank + [0]*(n-rank))
-            return A @ (D[:,None] * inv(A))
+            return tf(D, A, is_unitary=False)
     else:
         raise ValueError(f"Unknown kind '{kind}'.")
 

@@ -6,7 +6,7 @@ from functools import reduce
 from .utils import count_qubits, transpose_qubit_order, verify_subsystem, partial_trace
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer
+from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf
 from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
@@ -424,8 +424,7 @@ def dm(kets, p=None, n=None, renormalize=True, check=3):
             if check >= 1:
                 for k in kets:
                     assert_ket(k, n)
-            rho = kets @ (p[:,None] * kets.conj().T)
-            return rho
+            return tf(p, kets)
     elif isinstance(kets, str):
         if kets in ['random', 'random_dm']:
             return random_dm(n or 1, rank='full')
@@ -641,7 +640,7 @@ def gibbs(H, beta=1, check=2):
     assert beta >= 0, f"Inverse temperature must be positive, but was {beta}"
     E, U = eigh(H)
     E = softmax(E, -beta)
-    return U @ (E[:,None] * U.conj().T)
+    return tf(E, U)
 
 Wigner_A = None
 def _init_Wigner_A():

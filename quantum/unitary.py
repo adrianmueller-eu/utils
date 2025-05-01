@@ -6,7 +6,7 @@ from math import log2, sqrt
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .utils import count_qubits, transpose_qubit_order, reverse_qubit_order, partial_trace, verify_subsystem
 from .state import ket, op, plotQ
-from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0, tf
 from ..utils import is_int
 
 def Fourier_matrix(n, swap=False):
@@ -216,7 +216,7 @@ try:
                 qc = QuantumCircuit(self.n)
                 qc.append(self, self.all_qubits)
                 return get_unitary(qc)
-            return self.U @ (np.exp(self.k*k*1j*self.D)[:,None] * self.U.T.conj())
+            return tf(np.exp(self.k*k*1j*self.D), self.U)
 
         def to_matrix(self):
             return self.get_unitary()
@@ -225,7 +225,7 @@ try:
         def H(self):
             if self.use_pauli:
                 return self.pauli_ev.operator
-            return self.U @ (self.D[:,None] * self.U.T.conj())
+            return tf(self.D, self.U)
 
     def get_unitary(circ, decimals=None, as_np=True):
         if hasattr(circ, 'get_unitary'):
