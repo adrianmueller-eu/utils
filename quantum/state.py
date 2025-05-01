@@ -504,7 +504,7 @@ def assert_dm(rho, n=None, check=3):
         assert False, f"Invalid density matrix: {rho}"
     assert len(rho.shape) == 2 and rho.shape[0] == rho.shape[1], f"Invalid density matrix shape: {rho.shape}"
     n = n or count_qubits(rho)
-    assert rho.shape[0] == 2**n, f"Invalid density matrix shape: {rho.shape} should be a power of 2"
+    assert rho.shape[0] == 2**n, f"Invalid density matrix shape: {rho.shape} ≠ {(2**n, 2**n)}"
     assert abs(np.trace(rho) - 1) < 1e-10, f"Density matrix is not normalized: {np.trace(rho)}"
     assert is_psd(rho, check=check), "Density matrix is not positive semi-definite"
 
