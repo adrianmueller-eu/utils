@@ -8,7 +8,7 @@ except ImportError:
 
 from .utils import count_qubits, partial_trace, transpose_qubit_order
 from .state import op, ket, dm, ev, as_state, ensemble_from_state, assert_state
-from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd, is_eye
+from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd, is_eye, trace_product
 from ..prob import entropy
 from ..utils import is_from_assert, is_int, warn
 
@@ -38,12 +38,14 @@ def mutual_information_quantum(state, subsystem_qubits, check=2):
     S_B = entanglement_entropy(state, B, check=0)
     return S_A + S_B - S_AB
 
-def purity(state):
+def purity(state, check=1):
     """ Calculate the purity of a quantum state. """
-    if len(state.shape) == 1:
-        return np.abs(state @ state.conj())
-    elif len(state.shape) == 2:
-        return np.trace(state @ state).real
+    state = as_state(state, check=check)
+    if state.ndim == 1:
+        return 1  # ket
+        # return np.abs(state @ state.conj())
+    elif state.ndim == 2:
+        return trace_product(state, state).real
     else:
         raise ValueError(f"Can't calculate purity with shape: {state.shape}")
 
