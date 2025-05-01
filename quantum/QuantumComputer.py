@@ -1055,10 +1055,11 @@ class QuantumComputer:
 
     def __str__(self):
         try:
-            state = self.get_state()
             if self.is_matrix_mode():
+                state = self._state.reshape(2**self.n, -1)
                 state = '\n' + str(state)
             else:
+                state = self._state.reshape(2**self.n)
                 n_terms = np.count_nonzero(state)
                 if n_terms < 256:
                     state = f"'{unket(state)}'"
