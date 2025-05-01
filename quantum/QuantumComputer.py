@@ -469,7 +469,7 @@ class QuantumComputer:
             to_retain = [q for q in self._qubits if q not in to_remove]
             reduced_state = self.get_state(to_retain, collapse=collapse, allow_vector=True)  # moves `to_retain` to the end in self._qubits
             # extend operators by identity
-            self._reorder(to_retain, reshape=False)                 # to_remove to the end of operators
+            self._reorder(to_retain + to_remove, reshape=False)                 # to_remove to the end of operators
             self._alloc_qubits(to_alloc, track_in_operators=False)  # add to_alloc at the end
             # extend state with new state
             self._state = reduced_state  # guarantees reshape=False for state
