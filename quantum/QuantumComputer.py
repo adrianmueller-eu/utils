@@ -198,12 +198,14 @@ class QuantumComputer:
         with self.observable(obs, qubits) as qubits:
             q = len(qubits)
             if q == 0:
-                return np.array([1.] if allow_vector else [[1.]])
+                if allow_vector and (not self.track_operators or self.is_isometric()):
+                    return np.array([1.])
+                return np.array([[1.]])
             elif q == self.n:
                 self._reorder(qubits, reshape=False)
-                if not allow_vector and not self.is_matrix_mode():
-                    return outer(self._state)
-                return self._state.copy()
+                if self.is_matrix_mode() or allow_vector and (not self.track_operators or self.is_isometric()):
+                    return self._state.copy()
+                return outer(self._state)
 
             to_remove = [q for q in self._qubits if q not in qubits]
             nq = self.n - q
