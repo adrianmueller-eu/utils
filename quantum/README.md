@@ -32,7 +32,7 @@ print(f"Entropy of a Bell state under the XX observable: {S:.7f}")
 qc.get_unitary()  # same as parse_unitary('CX @ HI')
 ```
 ```
-Entropy of a Bell state under the XX observable: -0.0000000
+Entropy of a Bell state under the XX observable: 0.0000000
 
 array([[ 0.70710678+0.j,  0.        +0.j,  0.70710678+0.j,  0.        +0.j],
        [ 0.        +0.j,  0.70710678+0.j,  0.        +0.j,  0.70710678+0.j],

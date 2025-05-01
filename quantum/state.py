@@ -163,7 +163,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
     fig.tight_layout()
     plt.show()
 
-def random_ket(n, size=None, kind='fast'):
+def random_ket(n, size=(), kind='fast'):
     """ Sample Haar-random state vectors ($2^{n+1}-1$ degrees of freedom).
     - `kind='fast'` generates state vectors by sampling each element from a normal distribution, resulting in sampling from the Haar measure.
     - `kind='ortho'` generates a set of orthonormal states using QR decomposition. At most $2^n$ orthogonal states can be generated (in the last batch dimension).
@@ -171,9 +171,9 @@ def random_ket(n, size=None, kind='fast'):
     assert is_int(n) and n >= 1, f"Invalid number of qubits: n should be an integer >= 1, but was: {n}"
     if not is_iterable(size):
         size = (size,)
-    assert size == (None,) or all(s >= 1 for s in size), f"size should contain only integers >= 1, but was: {size}"
-    if kind == 'fast' or size == None:
-        if size == (None,):
+    assert all(s >= 1 for s in size), f"size should contain only integers >= 1, but was: {size}"
+    if kind == 'fast' or size == ():
+        if size == ():
             return normalize(random_vec(2**n, complex=True, kind='normal'))
         kets = random_vec((*size, 2**n), complex=True, kind='normal')
         return normalize(kets, axis=-1)
@@ -183,16 +183,14 @@ def random_ket(n, size=None, kind='fast'):
             for i in shape_it(size[:-1]):
                 res[i] = random_ket(n, size[-1], kind='ortho')
             return res
-        size_ = size[0] or 1
+        size_ = size[0] if len(size) > 0 else 1
         assert size_ <= 2**n, f"Can't generate more than 2**{n} = {2**n} orthogonal states, but requested was: {size}"
         # inspired by the method to sample Haar-random unitaries
-        kets = random_vec((2**n, min(size_, 2**n)), complex=True, kind='normal')
+        kets = random_vec((2**n, size_), complex=True, kind='normal')
         Q, R = np.linalg.qr(kets)
         Rd = np.diag(R)
         L = Rd / np.abs(Rd)
         kets = L[:,None] * Q.T
-        if size == (None,):
-            return kets[0]
         return kets
     else:
         raise ValueError(f"Unknown kind: {kind}")

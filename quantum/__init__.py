@@ -539,8 +539,8 @@ def _test_QuantumComputer():
         n = randint(1,8)
         s_reg, e_reg = [0,1], list(range(2, n+2))
         U_PE1 = get_unitary(PhaseEstimation(n, U))
-        U_PE1 = transpose_qubit_order(U_PE1, (e_reg + s_reg[::-1])[::-1])  # weird qiskit conventions
-        qc2 = QC(2+n, track_operators=True).pe(get_unitary(U), s_reg, e_reg)
+        U_PE1 = transpose_qubit_order(U_PE1, (e_reg + s_reg)[::-1])  # qiskit outputs qubits backwards
+        qc2 = QC(2+n, track_operators=True).pe(get_unitary(U), s_reg[::-1], e_reg)
         U_PE2 = qc2.get_unitary()
         assert np.allclose(U_PE1, U_PE2)
 

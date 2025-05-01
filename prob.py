@@ -75,7 +75,7 @@ def resample(x, y, size=int(1e6)):
     u = np.random.uniform(0, 1, size)
     return invcdf(u)
 
-def random_p(size=100, kind='uniform'):
+def random_p(size, kind='uniform'):
     if not isinstance(size, tuple):
         size = (size,)
     if kind == 'uniform':
