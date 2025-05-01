@@ -567,8 +567,8 @@ def is_separable_state(state, subsystem, n=None, tol=1e-12, check=3):
 
     # check if the first block is the same as B
     B00 = state[:,0,:,0]
-    s = B_ref/B00[idx]
-    if not np.allclose(s*B00, B, atol=tol):
+    s = B00[idx]/B_ref
+    if not np.allclose(B00, s*B, atol=tol):
         return False
 
     # faster than svd or iterating over all blocks if it is separable
