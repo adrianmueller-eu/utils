@@ -29,14 +29,14 @@ class QuantumComputer:
 
     """
     Simulate a quantum computer! Simulate state vectors or density matrices,
-    optionally tracking of the effective quantum channel.
+    while tracking the effective quantum channel.
 
     Additional features:
     - Allows to dynamically add and remove qubits from the system
     - Collapse and decoherent measurements
     - Shortcuts for common channels (like Pauli rotations, noise models, quantum fourier transform)
     - Channel compression via Choi matrix
-    - Calculates quantum information metrics (entropy, purity, mutual information)
+    - Calculate quantum information metrics (entropy, purity, mutual information)
     - Supports correlation analysis and Schmidt decomposition
 
     Example:
