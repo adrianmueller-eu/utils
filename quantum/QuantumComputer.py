@@ -496,8 +496,6 @@ class QuantumComputer:
             self._no_tracking("Collapse is incompatible with operator tracking.")
 
         with self.observable(obs, qubits) as qubits:
-            if len(qubits) == self.n:
-                return self.clear()
             if len(qubits) == 0:
                 return self
 
