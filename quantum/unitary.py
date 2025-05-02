@@ -302,6 +302,9 @@ def partial_operation(U, subsystem, env_state='0', check=1):
 def get_subunitary(U, subsystem, tol=1e-10, check=2, check_output=True):
     if check >= 2:
         assert is_unitary(U), f"U is not unitary: {U @ U.conj().T}"
+    subsystem = verify_subsystem(subsystem, count_qubits(U))
+    if not subsystem:
+        return np.eye(1, dtype=complex)
     # Tr_2(U1 \otimes U2) = U1 Tr(U2) -> find Tr(U2)
     # partial trace over the remaining qubits
     A = partial_trace(U, subsystem, reorder=False)
