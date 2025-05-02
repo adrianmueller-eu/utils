@@ -9,7 +9,7 @@ except ImportError:
 from .utils import count_qubits, partial_trace, transpose_qubit_order
 from .state import op, ket, dm, ev, as_state, ensemble_from_state, assert_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd, is_eye, trace_product, random_isometry
-from ..prob import entropy
+from ..prob import entropy, check_probability_distribution
 from ..utils import is_from_assert, is_int, warn
 
 def von_neumann_entropy(state, check=2):
@@ -372,6 +372,28 @@ def random_channel(n_out, n_in=None):
     Ks = combine_channels(rem, [V])
     Ks = [K[0] for K in Ks]
     return Ks
+
+def average_channel(channels, p=None, check=3):
+    """
+    Average the channels into a single channel. If p is None, assume uniform weights.
+    """
+    for ops in channels:
+        assert_kraus(ops, check=check)
+
+    C = len(channels)
+    if p is None:
+        p = np.ones(C) / C
+    else:
+        p = check_probability_distribution(p, check=check)
+        assert len(p) == C, "The length of p must match the number of channels"
+
+    # perform averaging
+    p = np.sqrt(p)
+    ops = []
+    for i, ops_i in enumerate(channels):
+        for o in ops_i:
+            ops.append(p[i] * o)
+    return ops
 
 def choi_from_channel(operators, n=(None, None), check=3):
     """
