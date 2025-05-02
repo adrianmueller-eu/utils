@@ -498,6 +498,15 @@ def frobenius_norm(A):
 
 hilbert_schmidt_norm = frobenius_norm
 
+def spectral_gap(T, is_normal=False):
+    """ Difference between highest and second-highest eigenvalue. """
+    if is_normal:
+        D = np.linalg.svd(T, compute_uv=False)
+    else:
+        D = np.abs(eigvals(T))
+        D = sorted(D, reverse=True)
+    return abs(D[0]) - abs(D[1])
+
 def polar(A, kind='right', hermitian=False, force_svd=False):
     """
     Polar decomposition of *any* matrix into a unitary and a PSD matrix: `A = UJ` ('right') or `A = KU` ('left'),
