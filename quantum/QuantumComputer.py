@@ -110,12 +110,7 @@ class QuantumComputer:
     def _too_large_to_track_operators(self, added_n):
         if isinstance(self._track_operators, bool):
             return not self._track_operators
-        if len(self._operators) == 0:
-            too_large = self.n > self.MATRIX_SLOW
-        else:
-            o = self._operators[0]
-            n_in = count_qubits(o.shape[1 if o.ndim == 2 else 2])
-            too_large = (n_in + self.n + added_n) > 2*self.MATRIX_SLOW
+        too_large = (self.n + added_n + len(self._input_qubits)) > 2*self.MATRIX_SLOW
         if too_large:
             self.track_operators = False
         return too_large
