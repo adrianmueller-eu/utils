@@ -186,14 +186,19 @@ class QuantumComputer:
         n_out = count_qubits(operators[0].shape[0])
         if not self._too_large_to_track_operators(n_out - self.n):
             if self._as_superoperator:
-                d_out, d_in = operators[0].shape
                 # if self._operators.ndim == 2:  # (out*in) x (out*in)
                 #     choi = choi_from_channel(operators, check=0)
                 #     self._operators = choi @ self._operators
                 choi = self._operators
                 assert choi.ndim in (4,6)  # q x n_in x q x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
                 Ks = [sp.coo_array(o) for o in operators]
-                new_choi = sp.coo_array(choi.shape, dtype=choi.dtype)
+                d_out, d_in = operators[0].shape[0], choi.shape[-1]
+                if choi.ndim == 4:
+                    shape = (d_out, d_in, d_out, d_in)
+                else:
+                    d_nq = choi.shape[1]
+                    shape = (d_out, d_nq, d_in, d_out, d_nq, d_in)
+                new_choi = sp.coo_array(shape, dtype=choi.dtype)
                 for K in Ks:
                     # np.einsum('ci,iajb,dj->cadb', K, choi, K.conj())
                     # (m x q) x (q x (n-q) x n_in x q x (n-q) x n_in) -> m x (n-q) x n_in x q x (n-q) x n_in
@@ -210,8 +215,7 @@ class QuantumComputer:
                     new_choi += tmp
 
                 if new_choi.ndim == 6:
-                    d_out = prod(choi.shape[:2])
-                    d_in = new_choi.shape[-1]
+                    d_out = prod(new_choi.shape[:2])
                     new_choi = new_choi.reshape(d_out, d_in, d_out, d_in)
                 self._operators = new_choi
             else:
@@ -579,11 +583,11 @@ class QuantumComputer:
                     self._reorder(qubits, reshape=True)
                     self._update_operators(ops)
                     # sync operator shaping with new_state (reshape=False, new_state is output space)
+                    d_out = new_state.shape[0]  # 2**len(to_retain)
                     if self._as_superoperator:
-                        d_out, d_in = 2**q, 2**len(self._input_qubits)
+                        d_in = self._operators.shape[-1]  # 2**len(self._input_qubits)
                         self._operators = self._operators.reshape(d_out, d_in, d_out, d_in)
                     else:
-                        d_out = new_state.shape[0]  # 2**len(to_retain)
                         self._operators = [o.reshape(d_out, -1) for o in self._operators]
 
             # update the state after updating the operators, so we can still reorder them simultaneously
@@ -653,14 +657,17 @@ class QuantumComputer:
             assert q not in self._qubits, f"Qubit {q} already allocated"
         q = len(new_qubits)
         if self.n > 0 and self.track_operators:
-            RAM_required = (2**(self.n + q))**2*16*2*max(1, len(self._operators))
+            if self._as_superoperator:
+                RAM_required = (2**(self.n + q + len(self._input_qubits)))**2*8*2
+            else:
+                RAM_required = (2**(self.n + q + len(self._input_qubits)))*8*2*max(1, len(self._operators))
             if RAM_required > psutil.virtual_memory().available:
                 warn(f"Insufficient RAM! {max(1, len(self._operators))} ({self.n + q}-qubit operators would require {duh(RAM_required)})", stacklevel=3)
         else:
             if self.is_matrix_mode():  # False if self.n == 0
-                RAM_required = (2**(self.n + q))**2*16*2
+                RAM_required = (2**(self.n + q))**2*8*2
             else:
-                RAM_required = (2**(self.n + q))*16*2
+                RAM_required = (2**(self.n + q))*8*2
             if RAM_required > psutil.virtual_memory().available:
                 warn(f"Insufficient RAM! ({self.n + q}-qubit state would require {duh(RAM_required)})", stacklevel=3)
 
@@ -672,20 +679,9 @@ class QuantumComputer:
             if track_in_operators:
                 ops = extension_channel(state, n=q, check=0)  # state already checked above
                 if self._as_superoperator:
-                    d_out, d_in = 2**self.n, 2**len(self._input_qubits)
-                    # TODO: check if this is correct
-                    res = self._operators.reshape(d_out, -1)  # sp.kron requires 2D array
-                    for o in ops:
-                        res += sp.kron(res, o)
-                    d_out_n = 2**(self.n + q)
-                    res = res.reshape(d_out_n, d_in, d_out, d_in)
-                    res = res.transpose([2,0,1,3])  # d_out, d_out_n, d_in, d_in
-                    res = res.reshape(d_out, -1)  # sp.kron requires 2D array
-                    for o in ops:
-                        res += sp.kron(res, o)
-                    res = res.reshape(d_out_n, d_out_n, d_in, d_in)
-                    res = res.transpose([1,2,0,3])  # d_out_n, d_in, d_out_n, d_in
-                    self._operators = res.reshape(d_out_n, d_in, d_out_n, d_in)
+                    d_out, d_in = self._operators.shape[:2]
+                    self._operators = self._operators.reshape(1, d_out, d_in, 1, d_out, d_in)
+                    self._update_operators(ops)
                 else:
                     self._operators = [np.kron(oi, oj) for oi in self._operators for oj in ops]  # extend output space, but not input space
             else:
@@ -899,7 +895,7 @@ class QuantumComputer:
             # warn("State is already a density matrix")
             return self
         # RAM check
-        RAM_required = 2**(2*self.n)*16*2
+        RAM_required = 2**(2*self.n)*8*2
         if RAM_required > psutil.virtual_memory().available:
             warn(f"Insufficient RAM! ({2*self.n}-qubit density matrix would require {duh(RAM_required)})")
 
