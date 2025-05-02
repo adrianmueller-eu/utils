@@ -83,9 +83,15 @@ def is_orthogonal(a, tol=1e-12):
     return is_square(a) and is_eye(a @ a.T, tol=tol)
 
 def is_unitary(a, tol=1e-12):
-    return _sq_matrix_allclose(a, lambda a: (
-        a @ a.conj().T, np.eye(a.shape[0])
-    ), tol)
+    return is_square(a) and is_isometry(a, tol=tol)
+
+def is_isometry(a, kind='right', tol=1e-12):
+    a = np.asarray(a)
+    if kind == 'right':
+        return is_eye(a.conj().T @ a, tol=tol)
+    elif kind == 'left':
+        return is_eye(a @ a.conj().T, tol=tol)
+    raise ValueError(f"Unknown kind '{kind}'. Use 'right' or 'left'.")
 
 def is_involutory(a, tol=1e-12):
     return is_square(a) and is_eye(a @ a, tol=tol)
