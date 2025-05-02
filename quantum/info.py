@@ -356,20 +356,21 @@ def removal_channel(n):
     """
     return np.eye(2**n)[:,None,:]  # [ket(i, n=q)[None,:] for i in range(2**q)]
 
-def random_channel(n, d=1):
+def random_channel(n_out, n_in=None):
     """
-    Create a random quantum channel with `n` or `n=(n_out,n_in)` qubits.
+    Sample a random quantum channel.
     """
-    if isinstance(n, tuple):
-        n_out, n_in = n
-    else:
-        n_out, n_in = n, n
-    N = max(n_out, n_in) + d
+    if n_in is None:
+        n_in = n_out
+    assert is_int(n_out) and n_out > 0, f"Invalid number of output qubits: {n_out}"
+    assert is_int(n_in) and n_in > 0, f"Invalid number of input qubits: {n_in}"
+
+    N = n_out + n_in
     V = random_isometry(2**N, 2**n_in)
     rem = removal_channel(N - n_out)
     V = V.reshape(2**(N - n_out), 2**n_out, 2**n_in)
     Ks = combine_channels(rem, [V])
-    Ks = [K.reshape(2**n_out, 2**n_in) for K in Ks]
+    Ks = [K[0] for K in Ks]
     return Ks
 
 def choi_from_channel(operators, n=(None, None), check=3):
