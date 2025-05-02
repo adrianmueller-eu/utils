@@ -235,15 +235,18 @@ class QuantumComputer:
 
     def get_state(self, qubits='all', collapse=False, allow_vector=True, obs=None):
         """ Moves `qubits` to the *end* of `self._qubits`. """
+        def _allow_vector():
+            return allow_vector and not self._as_superoperator and (not self.track_operators or self.is_isometric())
+
         with self.observable(obs, qubits) as qubits:
             q = len(qubits)
             if q == 0:
-                if allow_vector and (not self.track_operators or self.is_isometric()):
+                if _allow_vector():
                     return np.array([1.])
                 return np.array([[1.]])
             elif q == self.n:
                 self._reorder(qubits, reshape=False)
-                if self.is_matrix_mode() or allow_vector and (not self.track_operators or self.is_isometric()):
+                if self.is_matrix_mode() or _allow_vector():
                     return self._state.copy()
                 return outer(self._state)
 
@@ -266,8 +269,7 @@ class QuantumComputer:
             if q > self.MATRIX_BREAK:
                 warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
             self._reorder(to_remove, reshape=False)
-            if self.KEEP_VECTOR and allow_vector and self.n - q < self.MATRIX_SLOW and \
-                                                           (not self.track_operators or self.is_isometric()) and \
+            if self.KEEP_VECTOR and _allow_vector() and self.n - q < self.MATRIX_SLOW and \
                     self.is_separable_state(to_remove) and (not self.track_operators or self.is_unitary(to_remove)):
                 # find a non-zero state (-> no diagonalization required)
                 self._reorder(to_remove, reshape=True)
