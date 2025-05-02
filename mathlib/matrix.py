@@ -48,8 +48,7 @@ def outer(a, b=None):
 
 def _sq_matrix_allclose(a, f, tol=1e-12):
     a = np.asarray(a)
-    if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
-        raise ValueError(f"Expected square matrix, got {a.shape}")
+    assert is_square(a), "Expected square matrix, got {a.shape}"
     # a[np.isnan(a)] = 0
     a, b = f(a)
     # considerable speedup for large matrices if they are both contiguous
@@ -81,9 +80,7 @@ def is_antihermitian(a, tol=1e-12):
     ), tol)
 
 def is_orthogonal(a, tol=1e-12):
-    return _sq_matrix_allclose(a, lambda a: (
-        a @ a.T, np.eye(a.shape[0])
-    ), tol)
+    return is_square(a) and is_eye(a @ a.T, tol=tol)
 
 def is_unitary(a, tol=1e-12):
     return _sq_matrix_allclose(a, lambda a: (
@@ -91,14 +88,10 @@ def is_unitary(a, tol=1e-12):
     ), tol)
 
 def is_involutory(a, tol=1e-12):
-    return _sq_matrix_allclose(a, lambda a: (
-        a @ a, np.eye(a.shape[0])
-    ), tol)
+    return is_square(a) and is_eye(a @ a, tol=tol)
 
 def is_antiinvolutory(a, tol=1e-12):
-    return _sq_matrix_allclose(a, lambda a: (
-        a @ a, -np.eye(a.shape[0])
-    ), tol)
+    return is_square(a) and is_eye(-a @ a, tol=tol)
 
 def is_complex(a):
     if hasattr(a, 'dtype'):
