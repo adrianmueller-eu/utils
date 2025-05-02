@@ -473,6 +473,7 @@ def _test_QuantumComputer():
     qc.remove('s0')
     assert np.allclose(qc.get_state(), ket('0011'))
     qc.remove('all')
+    qc.add(0)
 
     # test schmidt decomposition
     qc = QuantumComputer(5, 'random')
@@ -522,9 +523,38 @@ def _test_QuantumComputer():
     ops = qc.get_operators()
     assert np.allclose(qc[:], QC(2)(ops)[:])
 
-    # test choi matrix
+    # test choi matrix / superoperator
     qc.compress_operators()
     assert len(qc.get_operators()) == 4
+
+    qc = QC(1, as_superoperator=True)
+    assert qc.is_matrix_mode()
+    choi_actual = qc.choi_matrix().toarray()
+    choi_expected = np.array([[1, 0, 0, 1],
+                              [0, 0, 0, 0],
+                              [0, 0, 0, 0],
+                              [1, 0, 0, 1]])
+    assert np.allclose(choi_actual, choi_expected), f"choi_actual = {choi_actual}\nchoi_expected = {choi_expected}"
+    qc(X)
+    choi_actual = qc.choi_matrix().toarray()
+    choi_expected = np.array([[0, 0, 0, 0],
+                              [0, 1, 1, 0],
+                              [0, 1, 1, 0],
+                              [0, 0, 0, 0]])
+    assert np.allclose(choi_actual, choi_expected), f"choi_actual = {choi_actual}\nchoi_expected = {choi_expected}"
+    ops = noise_models['depolarizing'](0.1)
+    qc(ops)
+    qc.remove(0)
+    qc.add(0)
+    qc = QC(2, as_superoperator=True)
+    U = random_unitary(2**2)
+    qc(U)
+    C1 = qc.choi_matrix().toarray()
+    qc = QC(2, as_superoperator=False)
+    qc(U)
+    C2 = qc.choi_matrix().toarray()
+    assert np.allclose(C1, C2), f"C1 = {C1}\nC2 = {C2}"
+    qc(X, 1)  # partial application
 
     # test n_out > n_in
     qc = QC(1)
