@@ -1,4 +1,4 @@
-import warnings
+import warnings, sys
 import numpy as np
 import itertools
 from math import log2, sin, cos, sqrt, factorial
@@ -154,6 +154,9 @@ def is_diag(a, diag=None, tol=1e-12):
     # return _sq_matrix_allclose(a, lambda a: (
     #     np.diag(np.diag(a)), a
     # ), rtol=rtol, atol=atol)
+    if 'scipy' in sys.modules and sp.issparse(a):
+        a = sp.dia_array(a)
+        return set(a.offsets) == {0}
     a = np.asarray(a)
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
         raise ValueError(f"Expected square matrix, got {a.shape}")
