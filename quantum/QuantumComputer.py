@@ -242,6 +242,7 @@ class QuantumComputer:
         def _allow_vector():
             return allow_vector and not self._as_superoperator and (not self.track_operators or self.is_isometric())
 
+        assert isinstance(collapse, bool), f"collapse must be boolean, but was {collapse}"
         with self.observable(obs, qubits) as qubits:
             q = len(qubits)
             if q == 0:
@@ -403,6 +404,7 @@ class QuantumComputer:
             return np.sum(probs, axis=1)
 
     def measure(self, qubits='all', collapse=True, obs=None, return_as='binstr'):
+        assert isinstance(collapse, bool), f"collapse must be boolean, but was {collapse}"
         with self.observable(obs, qubits, return_energies=True) as (qubits, energies):
             if collapse:
                 self._no_tracking("Collapse is incompatible with operator tracking.")
@@ -495,6 +497,7 @@ class QuantumComputer:
         return binstr_from_int(outcome, q)
 
     def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):
+        assert isinstance(collapse, bool) or collapse == 'auto', f"collapse must be boolean or 'auto', but was {collapse}"
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         if qubits == to_alloc:  # all new
             if track_in_operators == 'auto':
@@ -554,6 +557,7 @@ class QuantumComputer:
         return self
 
     def remove(self, qubits, collapse=False, obs=None):
+        assert isinstance(collapse, bool), f"collapse must be boolean, but was {collapse}"
         if collapse:
             self._no_tracking("Collapse is incompatible with operator tracking.")
 
