@@ -26,6 +26,7 @@ class QuantumComputer:
     FILTER_EPS = 1e-12  # filter out small eigenvalues and zero operators
     KEEP_VECTOR = True
     FILTER0 = True  # filter out zero operators
+    SPARSE_CUTOFF = 0.25
 
     """
     Simulate a quantum computer! Simulate state vectors or density matrices,
@@ -106,13 +107,17 @@ class QuantumComputer:
     def reset_operators(self):
         self._input_qubits = list(self._qubits)
         if self.track_operators:
+            d = 2**self.n
             if self._as_superoperator:
-                d = 2**self.n
-                self._operators = choi_from_channel(I_(self.n, dtype=complex)).reshape(d, d, d, d)
+                self._operators = choi_from_channel(np.eye(d, dtype=complex), sparse=d > 4)
+                self._operators = self._operators.reshape(d, d, d, d)
             else:
-                self._operators = [I_(self.n, dtype=complex)]
+                self._operators = [np.eye(d, dtype=complex)]
         else:
-            self._operators = []
+            if self._as_superoperator:
+                self._operators = None
+            else:
+                self._operators = []
             self._input_qubits = []
         return self
 
@@ -189,25 +194,34 @@ class QuantumComputer:
                 # if self._operators.ndim == 2:  # (out*in) x (out*in)
                 #     choi = choi_from_channel(operators, check=0)
                 #     self._operators = choi @ self._operators
+                use_sparse = self._use_sparse_superoperator()
                 choi = self._operators
                 assert choi.ndim in (4,6)  # q x n_in x q x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
-                Ks = [sp.coo_array(o) for o in operators]
                 d_out, d_in = operators[0].shape[0], choi.shape[-1]
                 if choi.ndim == 4:
                     shape = (d_out, d_in, d_out, d_in)
                 else:
                     d_nq = choi.shape[1]
                     shape = (d_out, d_nq, d_in, d_out, d_nq, d_in)
-                new_choi = sp.coo_array(shape, dtype=choi.dtype)
+                if use_sparse:
+                    Ks = [sp.coo_array(o) for o in operators]
+                    new_choi = sp.coo_array(shape, dtype=choi.dtype)
+                else:
+                    Ks = [np.asarray(o) for o in operators]
+                    new_choi = np.zeros(shape, dtype=choi.dtype)
                 for K in Ks:
                     # np.einsum('ci,iajb,dj->cadb', K, choi, K.conj())
-                    # (m x q) x (q x (n-q) x n_in x q x (n-q) x n_in) -> m x (n-q) x n_in x q x (n-q) x n_in
-                    # or  (m x q) x (q x n_in x q x n_in) -> m x n_in x q x n_in
-                    tmp = K.tensordot(choi, axes=1)
-                    # print(tmp.toarray().reshape([prod(tmp.shape[:2])]*2))
-                    # (m x (n-q) x n_in x q x (n-q) x n_in) x (q x m) -> m x (n-q) x n_in x m x (n-q) x n_in
-                    # or  (m x n_in x q x n_in) x (q x m) -> m x n_in x m x n_in
-                    tmp = tmp.tensordot(K.conj().T, axes=([choi.ndim//2], [0]))
+                    if use_sparse:
+                        # (m x q) x (q x (n-q) x n_in x q x (n-q) x n_in) -> m x (n-q) x n_in x q x (n-q) x n_in
+                        # or  (m x q) x (q x n_in x q x n_in) -> m x n_in x q x n_in
+                        tmp = K.tensordot(choi, axes=1)
+                        # print(tmp.toarray().reshape([prod(tmp.shape[:2])]*2))
+                        # (m x (n-q) x n_in x q x (n-q) x n_in) x (q x m) -> m x (n-q) x n_in x m x (n-q) x n_in
+                        # or  (m x n_in x q x n_in) x (q x m) -> m x n_in x m x n_in
+                        tmp = tmp.tensordot(K.conj().T, axes=([choi.ndim//2], [0]))
+                    else:
+                        tmp = np.tensordot(K, choi, axes=1)
+                        tmp = np.tensordot(tmp, K.conj().T, axes=([choi.ndim//2], [0]))
                     if choi.ndim == 4:
                         tmp = tmp.transpose([0, 1, 3, 2])
                     else:
@@ -578,6 +592,7 @@ class QuantumComputer:
                     if self._as_superoperator:
                         d = 2**self.n
                         self._operators = choi_from_channel([U]).reshape(d,d,d,d)
+                        self._use_sparse_superoperator()  # check to convert to dense
                     else:
                         self._operators = [U]
                     self._input_qubits = [q for q in self._input_qubits if q in to_retain]
@@ -693,8 +708,11 @@ class QuantumComputer:
                     d_q = 2**q
                     d_out, d_in = self._operators.shape[:2]
                     choi = self._operators.reshape(d_out*d_in, -1)
-                    id = choi_from_channel([sp.eye_array(d_q)], check=0)  # identity channel
-                    choi = sp.kron(choi, id)  # extend both input and output space
+                    id = choi_from_channel([np.eye(d_q)], check=0)  # identity channel
+                    if self._use_sparse_superoperator():
+                        choi = sp.kron(choi, id)  # extend both input and output space
+                    else:
+                        choi = np.kron(choi, id.todense())
                     # reshape to out x in x q x q
                     choi = choi.reshape([d_out, d_in, d_q, d_q]*2)
                     # move new q output qubits after output space (and before input space)
@@ -954,6 +972,22 @@ class QuantumComputer:
             return self._operators.reshape(choi_dim, choi_dim)
         self._reorder(self._original_order, reshape=False)
         return choi_from_channel(self._operators, n=(self.n, None), check=0)
+
+    def _use_sparse_superoperator(self):
+        if self._as_superoperator and self._operators is not None:
+            cut_off = self.SPARSE_CUTOFF*prod(self._operators.shape)  # smaller -> sparse, larger -> dense
+            leeway = 1.5
+            if sp.issparse(self._operators):
+                # print("Is sparse: ", self._operators.nnz, prod(self._operators.shape), f"{self._operators.nnz/prod(self._operators.shape):.2%}")
+                if self.n < 0 or self._operators.nnz > leeway*cut_off:
+                    self._operators = self._operators.todense()
+                    return False
+                return True
+            # print("Is dense: ", np.count_nonzero(self._operators), prod(self._operators.shape), f"{np.count_nonzero(self._operators)/prod(self._operators.shape):.2%}")
+            if self.n > 0 and np.count_nonzero(self._operators) < cut_off/leeway:
+                self._operators = sp.coo_array(self._operators)
+                return True
+            return False
 
     def compress_operators(self, filter_eps=FILTER_EPS, force=False):
         if not self.track_operators:

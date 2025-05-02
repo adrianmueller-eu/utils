@@ -529,14 +529,18 @@ def _test_QuantumComputer():
 
     qc = QC(1, as_superoperator=True)
     assert qc.is_matrix_mode()
-    choi_actual = qc.choi_matrix().toarray()
+    choi_actual = qc.choi_matrix()
+    if hasattr(choi_actual, 'toarray'):
+        choi_actual = choi_actual.toarray()
     choi_expected = np.array([[1, 0, 0, 1],
                               [0, 0, 0, 0],
                               [0, 0, 0, 0],
                               [1, 0, 0, 1]])
     assert np.allclose(choi_actual, choi_expected), f"choi_actual = {choi_actual}\nchoi_expected = {choi_expected}"
     qc(X)
-    choi_actual = qc.choi_matrix().toarray()
+    choi_actual = qc.choi_matrix()
+    if hasattr(choi_actual, 'toarray'):
+        choi_actual = choi_actual.toarray()
     choi_expected = np.array([[0, 0, 0, 0],
                               [0, 1, 1, 0],
                               [0, 1, 1, 0],

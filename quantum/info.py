@@ -398,7 +398,7 @@ def average_channel(channels, p=None, check=3):
             ops.append(p[i] * o)
     return ops
 
-def choi_from_channel(operators, n=(None, None), check=3):
+def choi_from_channel(operators, n=(None, None), sparse=True, check=3):
     """
     Create the Choi matrix from a set of Kraus operators.
     """
@@ -407,14 +407,16 @@ def choi_from_channel(operators, n=(None, None), check=3):
     if choi_dim*len(operators) > 1e6:
         warn(f"Constructing {choi_dim,choi_dim} Choi matrix for {len(operators)} operators may take a while")
 
-    if "scipy" in sys.modules:
-        array = sp.csr_array  # maybe try bsr_array
+    if sparse:
+        Choi = sp.csr_array((choi_dim, choi_dim), dtype=complex)
+        operators = [sp.csr_array(K.reshape(-1, 1)) for K in operators]
     else:
-        array = np.asarray
+        Choi = np.zeros((choi_dim, choi_dim), dtype=complex)
+        if sp.issparse(operators[0]):
+            operators = [K.toarray() for K in operators]
 
-    Choi = array((choi_dim, choi_dim), dtype=complex)
     for K in operators:
-        Kvec = array(K.reshape(-1, 1))
+        Kvec = K.reshape(-1, 1)
         Choi += Kvec @ Kvec.conj().T  # outer product
     return Choi
 
