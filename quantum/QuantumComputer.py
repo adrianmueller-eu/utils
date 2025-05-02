@@ -14,7 +14,7 @@ from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary, is_separable_unitary
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions
-from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer
+from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer, is_isometry
 from ..plot import imshow
 from ..utils import is_int, duh, warn, as_list_not_str
 from ..prob import entropy
@@ -55,9 +55,14 @@ class QuantumComputer:
         track_operators (bool): Whether to track the effective quantum channel. Default is 'auto'.
         check (int): Check level for input validation.
     """
-    def __init__(self, qubits=None, state=0, track_operators='auto', check=2):
+    def __init__(self, qubits=None, state=0, track_operators='auto', as_superoperator=False, check=2):
         self._track_operators = track_operators
         self.check_level = check
+
+        if as_superoperator:
+            import scipy
+            assert scipy.__version__ >= '1.15', "scipy >= 1.15 is required for superoperator mode"
+        self._as_superoperator = as_superoperator
 
         self.clear()
 
@@ -99,9 +104,13 @@ class QuantumComputer:
             self.reset_operators()
 
     def reset_operators(self):
+        self._input_qubits = list(self._qubits)
         if self.track_operators:
-            self._operators = [I_(self.n, dtype=complex)]
-            self._input_qubits = list(self._qubits)
+            if self._as_superoperator:
+                d = 2**self.n
+                self._operators = choi_from_channel(I_(self.n, dtype=complex)).reshape(d, d, d, d)
+            else:
+                self._operators = [I_(self.n, dtype=complex)]
         else:
             self._operators = []
             self._input_qubits = []
@@ -125,10 +134,12 @@ class QuantumComputer:
             # warn(message, stacklevel=3)
 
     def clear(self):
-        self._state = np.array([1.])
+        if self._as_superoperator:
+            self._state = np.array([[1.]])
+        else:
+            self._state = np.array([1.])
         self._qubits = ()
         self._original_order = []
-        self._operators = []
         self.reset_operators()
         return self
 
@@ -139,7 +150,11 @@ class QuantumComputer:
         qc._original_order = self._original_order.copy()
         qc._track_operators = self._track_operators
         qc.check_level = self.check_level
-        qc._operators = [o.copy() for o in self._operators]
+        qc._as_superoperator = self._as_superoperator
+        if self._as_superoperator:
+            qc._operators = self._operators.copy()
+        else:
+            qc._operators = [o.copy() for o in self._operators]
         return qc
 
     def __call__(self, operators, qubits='all'):
@@ -170,7 +185,37 @@ class QuantumComputer:
     def _update_operators(self, operators):
         n_out = count_qubits(operators[0].shape[0])
         if not self._too_large_to_track_operators(n_out - self.n):
-            self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
+            if self._as_superoperator:
+                d_out, d_in = operators[0].shape
+                # if self._operators.ndim == 2:  # (out*in) x (out*in)
+                #     choi = choi_from_channel(operators, check=0)
+                #     self._operators = choi @ self._operators
+                choi = self._operators
+                assert choi.ndim in (4,6)  # q x n_in x q x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
+                Ks = [sp.coo_array(o) for o in operators]
+                new_choi = sp.coo_array(choi.shape, dtype=choi.dtype)
+                for K in Ks:
+                    # np.einsum('ci,iajb,dj->cadb', K, choi, K.conj())
+                    # (m x q) x (q x (n-q) x n_in x q x (n-q) x n_in) -> m x (n-q) x n_in x q x (n-q) x n_in
+                    # or  (m x q) x (q x n_in x q x n_in) -> m x n_in x q x n_in
+                    tmp = K.tensordot(choi, axes=1)
+                    # print(tmp.toarray().reshape([prod(tmp.shape[:2])]*2))
+                    # (m x (n-q) x n_in x q x (n-q) x n_in) x (q x m) -> m x (n-q) x n_in x m x (n-q) x n_in
+                    # or  (m x n_in x q x n_in) x (q x m) -> m x n_in x m x n_in
+                    tmp = tmp.tensordot(K.conj().T, axes=([choi.ndim//2], [0]))
+                    if choi.ndim == 4:
+                        tmp = tmp.transpose([0, 1, 3, 2])
+                    else:
+                        tmp = tmp.transpose([0, 1, 2, 5, 3, 4])
+                    new_choi += tmp
+
+                if new_choi.ndim == 6:
+                    d_out = prod(choi.shape[:2])
+                    d_in = new_choi.shape[-1]
+                    new_choi = new_choi.reshape(d_out, d_in, d_out, d_in)
+                self._operators = new_choi
+            else:
+                self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
 
     def _apply_operators(self, operators, qubits):
         self._state = apply_channel(operators, self._state, len(qubits) != self.n, check=0)
@@ -238,33 +283,42 @@ class QuantumComputer:
                 return new_state
             return partial_trace(self._state, list(range(nq, self.n)), reorder=False)
 
-    def get_unitary(self, qubits='all'):
+    def get_unitary(self, qubits='all', obs=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
         qubits = self._check_qubit_arguments(qubits, False)
-        if len(qubits) == self.n:
-            if not is_unitary_channel(self._operators, check=0):
-                raise ValueError("Current channel is non-unitary")
-            self._reorder(qubits, reshape=False)
-            return self._operators[0].copy()
-
-        if not is_unitary_channel(self._operators, check=0):
-            raise NotImplementedError("Can't deduce local operation of non-unitary channel")
-        U = self._operators[0].reshape(2**self.n, -1)
-        qubits_idcs = [self._qubits.index(q) for q in qubits]
         try:
-            U1 = get_subunitary(U, qubits_idcs, check=0, check_output=True)
+            U = self.get_isometry(obs=obs)
+            isunitary = is_square(U)
+        except ValueError:
+            isunitary = False
+
+        if len(qubits) == self.n:
+            if not isunitary:
+                raise ValueError("Current channel is non-unitary")
+            return U
+
+        if not isunitary:
+            raise NotImplementedError("Can't deduce local operation of non-unitary channel")
+        try:
+            U1 = get_subunitary(U, range(len(qubits)), check=0, check_output=True)
         except AssertionError:
             return ValueError(f"Unitary is not separable on requested subsystem: {qubits}")
         return U1
 
-    def get_isometry(self):
+    def get_isometry(self, obs=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
-        if len(self._operators) != 1:
-            raise NotImplementedError("Can't deduce local operation of non-isometric channel")
-        self._reorder(self._original_order, reshape=False)
-        return self._operators[0].copy()
+        with self.observable(obs):
+            if self._as_superoperator:
+                V = channel_from_choi(self.choi_matrix(), n=(self.n, self.n), k=1)[0]
+                if is_isometry(V, kind='right'):
+                    return V
+            else:
+                if is_isometric_channel(self._operators, check=0):
+                    self._reorder(self._original_order, reshape=False)
+                    return self._operators[0]
+            raise ValueError("Current channel is non-isometric")
 
     def get_operators(self):
         if not self.track_operators:
@@ -275,18 +329,25 @@ class QuantumComputer:
     def is_unitary(self, qubits='all', obs=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
-        with self.observable(obs, qubits) as qubits:
-            if len(qubits) == self.n:
-                return is_unitary_channel(self._operators, check=0)
-            # if current channel is unitary, check if unitary can be decomposed into unitaries U = U1 \otimes U2
-            if not is_unitary_channel(self._operators, check=0):
-                return False  # Technically, it could still be locally unitary
-                # raise NotImplementedError("Can't deduce if local operation of non-unitary channel is locally unitary")
-            qubits_idcs = [self._qubits.index(q) for q in qubits]
-            U = self._operators[0].reshape(2**self.n, -1)
-            return is_separable_unitary(U, qubits_idcs, check=0)
+
+        try:
+            U = self.get_unitary(obs=obs)
+        except ValueError:
+            return False  # Technically, it could still be locally unitary
+
+        q = len(self._check_qubit_arguments(qubits, False))
+        if q == self.n:
+            return True
+        # if current channel is unitary, check if unitary can be decomposed into unitaries U = U1 \otimes U2
+        return is_separable_unitary(U, range(q), check=0)
 
     def is_isometric(self):
+        if self._as_superoperator:
+            try:
+                self.get_isometry()
+                return True
+            except ValueError:
+                return False
         return len(self._operators) == 1
 
     @contextmanager
@@ -494,6 +555,7 @@ class QuantumComputer:
             if len(qubits) == 0:
                 return self
 
+            q = len(qubits)
             to_retain = [q for q in self._qubits if q not in qubits]
             new_state = self.get_state(to_retain, collapse=collapse)
 
@@ -502,15 +564,25 @@ class QuantumComputer:
                 assert not collapse, "WTF-Error: Collapse is incompatible with operator tracking."
                 if new_state.ndim == 1:
                     # unitary was separable
-                    self._operators = [self.get_unitary(to_retain)]
+                    U = self.get_unitary(to_retain)
+                    if self._as_superoperator:
+                        d = 2**self.n
+                        self._operators = choi_from_channel([U]).reshape(d,d,d,d)
+                    else:
+                        self._operators = [U]
                     self._input_qubits = [q for q in self._input_qubits if q in to_retain]
                 else:
                     # construct Kraus operators of the partial trace
-                    ops = removal_channel(len(qubits))
+                    ops = removal_channel(q)
                     self._reorder(qubits, reshape=True)
                     self._update_operators(ops)
                     # sync operator shaping with new_state (reshape=False, new_state is output space)
-                    self._operators = [o.reshape(new_state.shape[0], -1) for o in self._operators]
+                    if self._as_superoperator:
+                        d_out, d_in = 2**q, 2**len(self._input_qubits)
+                        self._operators = self._operators.reshape(d_out, d_in, d_out, d_in)
+                    else:
+                        d_out = new_state.shape[0]  # 2**len(to_retain)
+                        self._operators = [o.reshape(d_out, -1) for o in self._operators]
 
             # update the state after updating the operators, so we can still reorder them simultaneously
             self._state = new_state
@@ -593,15 +665,47 @@ class QuantumComputer:
         self._reorder([], reshape=False)
         self._extend_state(state, q)
 
-        self._qubits += tuple(new_qubits)
-        self._original_order += new_qubits
-        if not self._too_large_to_track_operators(q):
+        n_added = q if track_in_operators else 2*q
+        if not self._too_large_to_track_operators(n_added):
             if track_in_operators:
                 ops = extension_channel(state, n=q, check=0)  # state already checked above
-                self._operators = [np.kron(oi, oj) for oi in self._operators for oj in ops]  # extend output space, but not input space
+                if self._as_superoperator:
+                    d_out, d_in = 2**self.n, 2**len(self._input_qubits)
+                    # TODO: check if this is correct
+                    res = self._operators.reshape(d_out, -1)  # sp.kron requires 2D array
+                    for o in ops:
+                        res += sp.kron(res, o)
+                    d_out_n = 2**(self.n + q)
+                    res = res.reshape(d_out_n, d_in, d_out, d_in)
+                    res = res.transpose([2,0,1,3])  # d_out, d_out_n, d_in, d_in
+                    res = res.reshape(d_out, -1)  # sp.kron requires 2D array
+                    for o in ops:
+                        res += sp.kron(res, o)
+                    res = res.reshape(d_out_n, d_out_n, d_in, d_in)
+                    res = res.transpose([1,2,0,3])  # d_out_n, d_in, d_out_n, d_in
+                    self._operators = res.reshape(d_out_n, d_in, d_out_n, d_in)
+                else:
+                    self._operators = [np.kron(oi, oj) for oi in self._operators for oj in ops]  # extend output space, but not input space
             else:
-                self._operators = [np.kron(o, I_(q)) for o in self._operators]  # extend both output *and* input space
+                if self._as_superoperator:
+                    d_q = 2**q
+                    d_out, d_in = self._operators.shape[:2]
+                    choi = self._operators.reshape(d_out*d_in, -1)
+                    id = choi_from_channel([sp.eye_array(d_q)], check=0)  # identity channel
+                    choi = sp.kron(choi, id)  # extend both input and output space
+                    # reshape to out x in x q x q
+                    choi = choi.reshape([d_out, d_in, d_q, d_q]*2)
+                    # move new q output qubits after output space (and before input space)
+                    choi = choi.transpose([0, 2, 1, 3] + [4, 6, 5, 7])
+                    choi = choi.reshape([d_out*d_q, d_in*d_q]*2)
+                    self._operators = choi
+                else:
+                    self._operators = [np.kron(o, I_(q)) for o in self._operators]  # extend both output *and* input space
                 self._input_qubits += new_qubits
+
+        # update bookkeeping
+        self._qubits += tuple(new_qubits)
+        self._original_order += new_qubits
 
     def _extend_state(self, new_state, q):
         # prepare new state
@@ -629,6 +733,11 @@ class QuantumComputer:
         if not correct_order:
             new_order_all = new_order + [q for q in self._qubits if q not in new_order]
             axes_new = [self._qubits.index(q) for q in new_order_all]
+            if self.track_operators:
+                n_in = len(self._input_qubits)
+                axes_new_in = [n + self._input_qubits.index(q) for q in new_order_all if q in self._input_qubits]
+                axes_new_in = axes_new_in + [i for i in range(n,n+n_in) if i not in axes_new_in]
+                axes_new_ = axes_new + axes_new_in  # order is qubits_out + qubits_in
         else:
             axes_new = None  # stub
 
@@ -651,21 +760,31 @@ class QuantumComputer:
                     a = a.reshape(d_q, d_nq, d_q, d_nq)
                 else:
                     a = a.reshape(d_n, d_n)
-            else:
+            elif kind == 'op':
                 if not correct_order:
                     # generally, the input space may
                     # - have qubits that are not present anymore
                     # - not have qubits that are added in the output space
                     # So, we need to track the qubits that are in both spaces input space, so we can order them to the front if requested
-                    n_in = count_qubits(a.shape[-1])
+                    assert n_in == count_qubits(a.shape[-1]), f"Invalid input space: {self._input_qubits} <=/=> {a.shape}"
                     a = a.reshape([2]*(n+n_in))
-                    axes_new_in = [n + self._input_qubits.index(q) for q in new_order_all if q in self._input_qubits]
-                    axes_new_in = axes_new_in + [i for i in range(n,n+n_in) if i not in axes_new_in]
-                    a = a.transpose(axes_new + axes_new_in)  # order is qubits_out + qubits_in
+                    a = a.transpose(axes_new_)
                 if reshape and q < n:
                     a = a.reshape(d_q, d_nq, -1)
                 else:
                     a = a.reshape(d_n, -1)
+            else:  # kind == 'choi'
+                if not correct_order:
+                    n_tot = n + n_in
+                    assert count_qubits(prod(a.shape)) == 2*n_tot, f"Invalid choi shape: {self._qubits, self._input_qubits} <=/=> {a.shape}"
+                    a = a.reshape([2]*2*n_tot)
+                    axes = axes_new_ + [i + n_tot for i in axes_new_]
+                    a = a.transpose(axes)
+                d_in = 2**len(self._input_qubits)
+                if reshape and q < n:
+                    a = a.reshape([d_q, d_nq, d_in]*2)
+                else:
+                    a = a.reshape([d_n, d_in]*2)
             return a
 
         if self.is_matrix_mode():
@@ -673,8 +792,10 @@ class QuantumComputer:
         else:
             self._state = _reorder(self._state, 'ket')
         if self.track_operators:
-            for i, o in enumerate(self._operators):
-                self._operators[i] = _reorder(o, 'op')
+            if self._as_superoperator:
+                self._operators = _reorder(self._operators, 'choi')
+            else:
+                self._operators = [_reorder(o, 'op') for o in self._operators]
 
         if not correct_order:
             # update index dictionaries with new locations
@@ -729,6 +850,9 @@ class QuantumComputer:
         if not self.is_matrix_mode():
             # warn("State is already a vector")
             return self
+        if self._as_superoperator:
+            # we need a full svd of the choi matrix (i.e. its rank) to infer n_ancillas?
+            raise ValueError("Purification (state vector mode) is not supported for superoperator representation")
 
         with self.observable(obs):
             probs, kets = self.ensemble()  # calls _reorder(reshape=False)
@@ -792,6 +916,9 @@ class QuantumComputer:
         if not self.is_matrix_mode():
             # warn("State is already a vector")
             return self
+        if self._as_superoperator:
+            raise ValueError("State vector mode is not supported for superoperator representation")
+
         if kind == 'purify':
             if return_outcome:
                 raise ValueError("return_outcome is not supported for kind='purify'")
@@ -820,12 +947,17 @@ class QuantumComputer:
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
 
+        if self._as_superoperator:
+            choi_dim = 2**(self.n + len(self._input_qubits))
+            return self._operators.reshape(choi_dim, choi_dim)
         self._reorder(self._original_order, reshape=False)
         return choi_from_channel(self._operators, n=(self.n, None), check=0)
 
     def compress_operators(self, filter_eps=FILTER_EPS, force=False):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
+        if self._as_superoperator:
+            raise ValueError("Cannot compress superoperator representation")
 
         n_out = self.n
         choi_dim = prod(self._operators[0].shape)

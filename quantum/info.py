@@ -131,7 +131,10 @@ def get_channel_dims(operators, as_qubits=False):
         dim_out, dim_in = get_channel_dims(operators, as_qubits=False)
         return count_qubits(dim_out), count_qubits(dim_in)
 
-    K = np.asarray(operators[0])
+    if hasattr(operators[0], 'shape'):
+        K = operators[0]
+    else:
+        K = np.asarray(operators[0])
     if K.ndim == 2:
         return K.shape
     elif K.ndim == 3:
@@ -354,7 +357,7 @@ def removal_channel(n):
     """
     Create a set of Kraus operators that remove `n` qubits. This is equivalent to the (partial) trace operation.
     """
-    return np.eye(2**n)[:,None,:]  # [ket(i, n=q)[None,:] for i in range(2**q)]
+    return list(np.eye(2**n)[:,None,:])  # [ket(i, n=q)[None,:] for i in range(2**q)]
 
 def random_channel(n_out, n_in=None):
     """
