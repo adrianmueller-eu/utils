@@ -827,8 +827,11 @@ class QuantumComputer:
                     id = choi_from_channel([np.eye(d_q)], check=0)  # identity channel
                     if self._use_sparse_superoperator():
                         choi = sp.kron(choi, id)  # extend both input and output space
+                    elif q > 2:  # identity channel is very sparse
+                        choi = sp.coo_array(choi)
+                        choi = sp.kron(choi, id)
                     else:
-                        choi = np.kron(choi, id.todense())
+                        choi = np.kron(choi, id.toarray())
                     # reshape to out x in x q x q
                     choi = choi.reshape([d_out, d_in, d_q, d_q]*2)
                     # move new q output qubits after output space (and before input space)
