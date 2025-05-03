@@ -231,6 +231,10 @@ class QuantumComputer:
                 if new_choi.ndim == 6:
                     d_out = prod(new_choi.shape[:2])
                     new_choi = new_choi.reshape(d_out, d_in, d_out, d_in)
+                if use_sparse:
+                    # actually execute the addition
+                    s = new_choi.shape
+                    new_choi = sp.csr_array(new_choi.reshape(-1)).reshape(s)
                 self._operators = new_choi
             else:
                 self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
