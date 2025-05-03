@@ -535,6 +535,8 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
         None
     """
 
+    if hasattr(a, 'toarray'):  # scipy sparse matrices
+        a = a.toarray()
     a = np.asarray(a)
     n_samples = np.prod(a.shape)
     is_vector = n_samples == np.max(a.shape)
