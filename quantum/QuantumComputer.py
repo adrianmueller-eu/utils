@@ -498,7 +498,7 @@ class QuantumComputer:
 
     def add(self, qubits, state=0, track_in_operators=True):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
-        self._alloc_qubits(to_alloc, state=state, track_in_operators=track_in_operators)
+        self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
         return self
 
     def remove(self, qubits, collapse=False, obs=None):
