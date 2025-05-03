@@ -108,11 +108,11 @@ class QuantumComputer:
         self._input_qubits = list(self._qubits)
         if self.track_operators:
             d = 2**self.n
+            Id = np.eye(d, dtype=complex)
             if self._as_superoperator:
-                self._operators = choi_from_channel(np.eye(d, dtype=complex), sparse=d > 4)
-                self._operators = self._operators.reshape(d, d, d, d)
+                self._operators = choi_from_channel(Id, sparse=d > 4, check=0).reshape(d, d, d, d)
             else:
-                self._operators = [np.eye(d, dtype=complex)]
+                self._operators = [Id]
         else:
             if self._as_superoperator:
                 self._operators = None
