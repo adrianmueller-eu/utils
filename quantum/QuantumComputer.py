@@ -485,8 +485,8 @@ class QuantumComputer:
             return binstr_from_int(outcome, q)
         return outcome
 
-    def reset(self, qubits='all', collapse='auto', track_in_operators='auto'):
-        return self.init(0, qubits, collapse, track_in_operators)
+    def reset(self, qubits='all', collapse='auto', track_in_operators='auto', compress='auto'):
+        return self.init(0, qubits, collapse, track_in_operators, compress=compress)
 
     def resetv(self, qubits=None):
         """
@@ -510,7 +510,7 @@ class QuantumComputer:
         self._state[0] = keep  # same order as self._qubits
         return binstr_from_int(outcome, q)
 
-    def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):
+    def init(self, state, qubits='all', collapse='auto', track_in_operators='auto', compress='auto'):
         assert isinstance(collapse, bool) or collapse == 'auto', f"collapse must be boolean or 'auto', but was {collapse}"
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         if qubits == to_alloc:  # all new
@@ -538,6 +538,10 @@ class QuantumComputer:
 
             # remove qubits from state and operators
             self.remove(to_remove, collapse=collapse, obs=None)
+            # find a minimal Kraus representation
+            if compress and not self._as_superoperator:
+                if compress == True or (compress == 'auto' and len(self._operators) > 2**(self.n + len(self._input_qubits))):
+                    self.compress_operators()
             # extend state and operators by all `qubits`
             self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
 
