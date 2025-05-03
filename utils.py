@@ -20,6 +20,72 @@ def rangel(*args, iterator=list, **kwargs):
     """range function that returns a collection (default: list)"""
     return iterator(range(*args), **kwargs)
 
+class Slicable(type):
+    def __getitem__(cls, idx):
+        return cls(idx)[:]
+
+class arange(metaclass=Slicable):
+    """
+    Range function that allows blockwise output.
+    Example:
+
+        arange(2, 12, 4)[:]
+        Out: [[2, 3, 4, 5], [6, 7, 8, 9]]
+    We can specify a step size *within* the blocks:
+
+        arange(2, 12, 4, 2)[:]
+        Out: [[2, 4], [6, 8]]
+    Can also be used directly as a slice object to generate a range:
+
+        arange[2:12:4]
+        Out: [2, 6, 10]
+
+    Parameters
+    ----------
+        start (int): Start of the range.
+        stop (int): Stop of the range.
+        block (int): Size of the blocks. If `None`, no blocks are created.
+        step (int): Step size within the blocks. Default is 1.
+        iterator (callable): Function to convert the range to a collection. Default is `list`.
+
+    Returns
+    -------
+        list: Either a list of numbers, or a list of lists, where each inner list is a block of the range.
+    """
+    def __init__(self, start, stop=None, block=None, step=1, iterator=list):
+        if iterator is not list:
+            if iterator is np or iterator is np.ndarray or iterator is np.array:
+                iterator = lambda x: np.array(list(x))
+        if isinstance(start, slice):
+            start, stop, step = start.start, start.stop, start.step
+        elif stop is None:
+            start, stop = 0, start
+        self.start = start or 0
+        self.stop = stop or 0
+        self.step = step or 1
+        self.block = block
+        self.iterator = iterator
+        if block is None:
+            self._iter = range(self.start, self.stop, self.step)
+        else:
+            self._iter = range(self.start, self.stop - self.block + 1, self.block)
+
+    def __getitem__(self, idx):
+        it = self._iter[idx]
+        if isinstance(it, range):
+            if self.block is None:
+                return self.iterator(it)
+            return self.iterator(self.iterator(range(i, i + self.block, self.step)) for i in it)
+        if self.block is None:
+            return self.iterator([it])
+        return self.iterator(range(it, it + self.block, self.step))
+
+    def __str__(self):
+        return f"arange({self.start}, {self.stop}, {self.block}, {self.step})"
+
+    def __repr__(self):
+        return self.__str__()
+
 def tqmap(func, *iterables, **kwargs):
     """map function that uses tq for progress bar"""
     from tqdm.auto import tqdm as tq
