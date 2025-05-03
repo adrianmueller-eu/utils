@@ -16,7 +16,7 @@ from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary,
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions
 from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer, is_isometry
 from ..plot import imshow
-from ..utils import is_int, duh, warn, as_list_not_str
+from ..utils import is_int, duh, warn, as_list_not_str, nbytes
 from ..prob import entropy
 
 class QuantumComputer:
@@ -1264,6 +1264,10 @@ class QuantumComputer:
     def __delitem__(self, qubits):
         qubits = self._index_to_qubits(qubits)
         self.remove(qubits)
+
+    @property
+    def nbytes(self):
+        return nbytes(self._state) + nbytes(self._operators)
 
     def __neg__(self):
         if not self.is_matrix_mode():
