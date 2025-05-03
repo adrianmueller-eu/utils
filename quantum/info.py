@@ -404,8 +404,6 @@ def choi_from_channel(operators, n=(None, None), sparse=True, check=3):
     """
     operators = assert_kraus(operators, n=n, check=check)
     choi_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
-    if choi_dim*len(operators) > 1e6:
-        warn(f"Constructing {choi_dim,choi_dim} Choi matrix for {len(operators)} operators may take a while")
 
     if sparse:
         Choi = sp.csr_array((choi_dim, choi_dim), dtype=complex)
@@ -446,7 +444,8 @@ def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
 
     # warning to the user
     k = k or choi_dim
-    if choi_dim*k > 1e6:
+    k = min(k, choi_dim)
+    if choi_dim*k > 1e7:
         warn(f"SVD for {choi.shape} Choi matrix may take a while (k = {k}).")
 
     # perform SVD

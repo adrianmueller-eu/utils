@@ -993,7 +993,7 @@ class QuantumComputer:
                 return True
             return False
 
-    def compress_operators(self, filter_eps=FILTER_EPS, force=False):
+    def compress_operators(self, filter_eps=FILTER_EPS):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
         if self._as_superoperator:
@@ -1004,8 +1004,8 @@ class QuantumComputer:
         n_in = count_qubits(choi_dim) - n_out
         k = len(self._operators)
 
-        if not force and choi_dim*k > 1e6:
-            raise ValueError(f"Calculating {k} singular values of a {choi_dim, choi_dim} Choi matrix for {n_out, n_in} qubits may take a while. Use `force=True` to compute it anyway.")
+        if choi_dim*k > 1e7:
+            warn(f"Calculating {k} singular values of a {choi_dim, choi_dim} Choi matrix for {n_out, n_in} qubits may take a while. Use `force=True` to compute it anyway.")
         choi = self.choi_matrix()
         self._operators = channel_from_choi(choi, n=(n_out, n_in), filter_eps=filter_eps, k=k)
         return self
