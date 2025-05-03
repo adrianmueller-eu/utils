@@ -442,16 +442,15 @@ def random_channel(n_out, n_in=None):
     """
     if n_in is None:
         n_in = n_out
-    assert is_int(n_out) and n_out > 0, f"Invalid number of output qubits: {n_out}"
-    assert is_int(n_in) and n_in > 0, f"Invalid number of input qubits: {n_in}"
+    assert is_int(n_out) and n_out >= 0, f"Invalid number of output qubits: {n_out}"
+    assert is_int(n_in) and n_in >= 0, f"Invalid number of input qubits: {n_in}"
 
     N = n_out + n_in
     V = random_isometry(2**N, 2**n_in)
     rem = removal_channel(N - n_out)
     V = V.reshape(2**(N - n_out), 2**n_out, 2**n_in)
     Ks = combine_channels(rem, [V])
-    Ks = [K[0] for K in Ks]
-    return Ks
+    return [K[0] for K in Ks]  # remove inital axis of shape (1,)
 
 def average_channel(channels, p=None, check=3):
     """
