@@ -114,7 +114,7 @@ def _test_parse_unitary():
     assert np.allclose(parse_unitary('CX @ XC @ CX'), SWAP)
     assert np.allclose(parse_unitary('SS @ HI @ CX @ XC @ IH'), iSWAP)
     assert np.allclose(parse_unitary('IIII @ IIII'), I_(4))
-    U_actual = transpose_qubit_order(parse_unitary('IXZ'), [0,2,1])
+    U_actual = reorder_qubits(parse_unitary('IXZ'), [0,2,1])
     assert np.allclose(U_actual, parse_unitary('IZX'))
 
     assert is_unitary(parse_unitary('XCX'))
@@ -575,7 +575,7 @@ def _test_QuantumComputer():
         n = randint(1,8)
         s_reg, e_reg = [0,1], list(range(2, n+2))
         U_PE1 = get_unitary(PhaseEstimation(n, U))
-        U_PE1 = transpose_qubit_order(U_PE1, (e_reg + s_reg)[::-1])  # qiskit outputs qubits backwards
+        U_PE1 = reorder_qubits(U_PE1, (e_reg + s_reg)[::-1])  # qiskit outputs qubits backwards
         qc2 = QC(2+n, track_operators=True).pe(get_unitary(U), s_reg[::-1], e_reg)
         U_PE2 = qc2.get_unitary()
         assert np.allclose(U_PE1, U_PE2)

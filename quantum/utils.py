@@ -47,7 +47,7 @@ def count_qubits(obj):
         return len(obj.qubits)
     raise ValueError(f'Unkown object: {obj}')
 
-def transpose_qubit_order(state, new_order, reshape=False, batch_shape=()):
+def reorder_qubits(state, new_order, reshape=False, batch_shape=()):
     state = np.asarray(state)
     n = count_qubits(state)
 
@@ -91,7 +91,7 @@ def transpose_qubit_order(state, new_order, reshape=False, batch_shape=()):
 
 def reverse_qubit_order(state, batch_shape=()):
     """ So the last will be first, and the first will be last. """
-    return transpose_qubit_order(state, -1, reshape=False, batch_shape=batch_shape)
+    return reorder_qubits(state, -1, reshape=False, batch_shape=batch_shape)
 
 def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
     """
@@ -146,6 +146,6 @@ def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
         state = state.reshape(batch_shape + [2**n, 2**n])
 
     if reorder:
-        state = transpose_qubit_order(state, np.argsort(retain_qubits), reshape=False, batch_shape=batch_shape)
+        state = reorder_qubits(state, np.argsort(retain_qubits), reshape=False, batch_shape=batch_shape)
 
     return state

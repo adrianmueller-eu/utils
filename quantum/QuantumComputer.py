@@ -8,7 +8,7 @@ except ImportError:
     pass
 
 from .constants import *
-from .utils import count_qubits, partial_trace
+from .utils import count_qubits, partial_trace, reorder_qubits
 from .state import ket, ket_from_int, dm, unket, plotQ, is_state, ensemble_from_state, is_separable_state
 from .hamiltonian import parse_hamiltonian
 from .info import *
@@ -325,7 +325,7 @@ class QuantumComputer:
             # we need `state` in the order to_remove + to_alloc, to be in sync with operators
             if not isinstance(state, str) and hasattr(state, '__len__'):
                 new_order = [qubits.index(q) for q in to_remove] + [qubits.index(q) for q in to_alloc]
-                state = transpose_qubit_order(state, new_order, reshape=False)
+                state = reorder_qubits(state, new_order, reshape=False)
             self._extend_state(state, len(qubits))
             # order is now:
             self._qubits = tuple(to_retain + to_remove + to_alloc)

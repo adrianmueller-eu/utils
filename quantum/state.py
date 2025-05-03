@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functools import reduce
 
-from .utils import count_qubits, transpose_qubit_order, verify_subsystem, partial_trace
+from .utils import count_qubits, reorder_qubits, verify_subsystem, partial_trace
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
 from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf, allclose0
@@ -49,8 +49,8 @@ def state_trace(state, retain_qubits, reorder=True):
     assert np.abs(np.sum(probs) - 1) < 1e-5, np.sum(probs) # sanity check
 
     if reorder:
-        state = transpose_qubit_order(state, retain_qubits)
-        probs = transpose_qubit_order(probs, retain_qubits)
+        state = reorder_qubits(state, retain_qubits)
+        probs = reorder_qubits(probs, retain_qubits)
 
     return state, probs
 
@@ -552,7 +552,7 @@ def is_separable_state(state, subsystem, n=None, tol=1e-12, check=3):
     # use smaller subsystem -> more branches -> faster failure
     if q > n - q:
         subsystem = [q for q in range(n) if q not in subsystem]
-    state_ = transpose_qubit_order(state, subsystem, reshape=True)
+    state_ = reorder_qubits(state, subsystem, reshape=True)
     state_ = state_.transpose(0, 2, 1, 3).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
 
     # find a nonzero block and a nonzero element in it

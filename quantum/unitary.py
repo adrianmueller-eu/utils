@@ -4,7 +4,7 @@ from functools import reduce
 from math import log2, sqrt
 
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
-from .utils import count_qubits, transpose_qubit_order, reverse_qubit_order, partial_trace, verify_subsystem
+from .utils import count_qubits, reorder_qubits, reverse_qubit_order, partial_trace, verify_subsystem
 from .state import ket, op, plotQ
 from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0, tf
 from ..utils import is_int
@@ -288,7 +288,7 @@ def partial_operation(U, subsystem, env_state='0', check=1):
     q = len(subsystem)
     env = [i for i in range(n) if i not in subsystem]
 
-    U = transpose_qubit_order(U, subsystem + env)
+    U = reorder_qubits(U, subsystem + env)
     U = U.reshape([2**q, 2**(n-q), 2**q, 2**(n-q)])
 
     env_state = ket(env_state, n-q, check=check)
@@ -318,7 +318,7 @@ def get_subunitary(U, subsystem, tol=1e-10, check=2, check_output=True):
     else:
         # fall back to svd
         q = len(subsystem)
-        U = transpose_qubit_order(U, subsystem, reshape=True)
+        U = reorder_qubits(U, subsystem, reshape=True)
         U = U.transpose([0,2,1,3]).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
         U_, S, Vh = np.linalg.svd(U, full_matrices=False)
         assert len(S[S > tol]) == 1, f"U is not separable: {U} ({S[S > tol]})"
@@ -340,7 +340,7 @@ def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
     if q > n - q:  # subsystem should be the smaller part of the bipartition
         subsystem = [q for q in range(n) if q not in subsystem]
         q = n - q
-    U_ = transpose_qubit_order(U, subsystem, reshape=True)
+    U_ = reorder_qubits(U, subsystem, reshape=True)
     U_ = U_.transpose(0, 2, 1, 3).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
 
     # find a nonzero block and a nonzero element in it
