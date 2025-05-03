@@ -191,51 +191,8 @@ class QuantumComputer:
         n_out = count_qubits(operators[0].shape[0])
         if not self._too_large_to_track_operators(n_out - self.n):
             if self._as_superoperator:
-                # if self._operators.ndim == 2:  # (out*in) x (out*in)
-                #     choi = choi_from_channel(operators, check=0)
-                #     self._operators = choi @ self._operators
-                use_sparse = self._use_sparse_superoperator()
-                choi = self._operators
-                assert choi.ndim in (4,6)  # q x n_in x q x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
-                d_out, d_in = operators[0].shape[0], choi.shape[-1]
-                if choi.ndim == 4:
-                    shape = (d_out, d_in, d_out, d_in)
-                else:
-                    d_nq = choi.shape[1]
-                    shape = (d_out, d_nq, d_in, d_out, d_nq, d_in)
-                if use_sparse:
-                    Ks = [sp.coo_array(o) for o in operators]
-                    new_choi = sp.coo_array(shape, dtype=choi.dtype)
-                else:
-                    Ks = [np.asarray(o) for o in operators]
-                    new_choi = np.zeros(shape, dtype=choi.dtype)
-                for K in Ks:
-                    # np.einsum('ci,iajb,dj->cadb', K, choi, K.conj())
-                    if use_sparse:
-                        # (m x q) x (q x (n-q) x n_in x q x (n-q) x n_in) -> m x (n-q) x n_in x q x (n-q) x n_in
-                        # or  (m x q) x (q x n_in x q x n_in) -> m x n_in x q x n_in
-                        tmp = K.tensordot(choi, axes=1)
-                        # print(tmp.toarray().reshape([prod(tmp.shape[:2])]*2))
-                        # (m x (n-q) x n_in x q x (n-q) x n_in) x (q x m) -> m x (n-q) x n_in x m x (n-q) x n_in
-                        # or  (m x n_in x q x n_in) x (q x m) -> m x n_in x m x n_in
-                        tmp = tmp.tensordot(K.conj().T, axes=([choi.ndim//2], [0]))
-                    else:
-                        tmp = np.tensordot(K, choi, axes=1)
-                        tmp = np.tensordot(tmp, K.conj().T, axes=([choi.ndim//2], [0]))
-                    if choi.ndim == 4:
-                        tmp = tmp.transpose([0, 1, 3, 2])
-                    else:
-                        tmp = tmp.transpose([0, 1, 2, 5, 3, 4])
-                    new_choi += tmp
-
-                if new_choi.ndim == 6:
-                    d_out = prod(new_choi.shape[:2])
-                    new_choi = new_choi.reshape(d_out, d_in, d_out, d_in)
-                if use_sparse:
-                    # actually execute the addition
-                    s = new_choi.shape
-                    new_choi = sp.csr_array(new_choi.reshape(-1)).reshape(s)
-                self._operators = new_choi
+                sparse = self._use_sparse_superoperator()
+                self._operators = update_choi(operators, self._operators, sparse=sparse, check=0)
             else:
                 self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
 

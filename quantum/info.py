@@ -282,6 +282,52 @@ def combine_channels(operators1, operators2, filter0=True, tol=1e-10, check=3):
                 new_operators.append(Kij)
     return new_operators
 
+def update_choi(operators, choi, sparse=True, check=3):
+    # if self._operators.ndim == 2:  # (out*in) x (out*in)
+    #     choi = choi_from_channel(operators, check=0)
+    #     return choi @ self._operators
+    assert choi.ndim in (4,6)  # n x n_in x n x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
+    d_out, d_in = operators[0].shape[0], choi.shape[-1]
+    if choi.ndim == 4:
+        shape = (d_out, d_in, d_out, d_in)
+    else:
+        d_nq = choi.shape[1]
+        shape = (d_out, d_nq, d_in, d_out, d_nq, d_in)
+    if sparse:
+        Ks = [sp.coo_array(o) for o in operators]
+        new_choi = sp.coo_array(shape, dtype=choi.dtype)
+    else:
+        Ks = [np.asarray(o) for o in operators]
+        new_choi = np.zeros(shape, dtype=choi.dtype)
+    axes = ([choi.ndim//2], [0])
+
+    for K in Ks:
+        if sparse:
+            # (m x q) x (q x (n-q) x n_in x q x (n-q) x n_in) -> m x (n-q) x n_in x q x (n-q) x n_in
+            # or  (m x q) x (q x n_in x q x n_in) -> m x n_in x q x n_in
+            tmp = K.tensordot(choi, axes=1)
+            # (m x (n-q) x n_in x q x (n-q) x n_in) x (q x m) -> m x (n-q) x n_in x m x (n-q) x n_in
+            # or  (m x n_in x q x n_in) x (q x m) -> m x n_in x m x n_in
+            tmp = tmp.tensordot(K.conj().T, axes=axes)
+        else:
+            tmp = np.tensordot(K, choi, axes=1)
+            tmp = np.tensordot(tmp, K.conj().T, axes=axes)
+
+        if choi.ndim == 4:
+            tmp = tmp.transpose([0, 1, 3, 2])
+        else:
+            tmp = tmp.transpose([0, 1, 2, 5, 3, 4])
+        new_choi += tmp
+
+    if new_choi.ndim == 6:
+        d_out = prod(new_choi.shape[:2])
+        new_choi = new_choi.reshape(d_out, d_in, d_out, d_in)
+    if sparse:
+        # actually execute the addition
+        s = new_choi.shape
+        new_choi = sp.csr_array(new_choi.reshape(-1)).reshape(s)
+    return new_choi
+
 def measurement_operator(outcome, n, subsystem=None, as_matrix=True):
     if subsystem is None:
         subsystem = range(n)
