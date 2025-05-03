@@ -750,12 +750,12 @@ class QuantumComputer:
             leeway = 1.5
             if sp.issparse(self._operators):
                 # print("Is sparse: ", self._operators.nnz, prod(self._operators.shape), f"{self._operators.nnz/prod(self._operators.shape):.2%}")
-                if self.n < 0 or self._operators.nnz > leeway*cut_off:
-                    self._operators = self._operators.todense()
+                if self.n <= 2 or self._operators.nnz > leeway*cut_off:
+                    self._operators = self._operators.toarray()
                     return False
                 return True
             # print("Is dense: ", np.count_nonzero(self._operators), prod(self._operators.shape), f"{np.count_nonzero(self._operators)/prod(self._operators.shape):.2%}")
-            if self.n > 0 and np.count_nonzero(self._operators) < cut_off/leeway:
+            if self.n >= 2 and np.count_nonzero(self._operators) < cut_off/leeway:
                 self._operators = sp.coo_array(self._operators)
                 return True
             return False
