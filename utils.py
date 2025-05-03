@@ -163,8 +163,10 @@ def nbytes(o):
         return 16
     elif isinstance(o, (bool)):
         return 4
-    elif isinstance(o, (int)):
+    elif isinstance(o, (int)):  # huge ints
         return max(8, log2(o))
+    elif o is None:
+        return 0
     else:
         raise TypeError(f"Can't get the size of an object of type {type(o)}")
 
