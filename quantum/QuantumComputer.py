@@ -584,18 +584,16 @@ class QuantumComputer:
         return self
 
     def get_unitary(self, qubits='all', obs=None):
-        if not self.track_operators:
-            raise ValueError("Operator tracking is disabled")
         qubits = self._check_qubit_arguments(qubits, False)
         try:
             U = self.get_isometry(obs=obs)  # calls reshape=False
             isunitary = is_square(U)
-        except ValueError:
+        except AssertionError:
             isunitary = False
 
         if len(qubits) == self.n:
             if not isunitary:
-                raise ValueError("Current channel is non-unitary")
+                raise AssertionError("Current channel is non-unitary")
             return U
 
         if not isunitary:
@@ -603,7 +601,7 @@ class QuantumComputer:
         try:
             U1 = get_subunitary(U, [self._qubits.index(q) for q in qubits], check=0, check_output=True)
         except AssertionError:
-            return ValueError(f"Unitary is not separable on requested subsystem: {qubits}")
+            return AssertionError(f"Unitary is not separable on requested subsystem: {qubits}")
         return U1
 
     def get_isometry(self, obs=None):
@@ -618,19 +616,19 @@ class QuantumComputer:
                 if is_isometric_channel(self._operators, check=0):
                     self._reorder(self._original_order, reshape=False)  # self.choi_matrix() calls this, too
                     return self._operators[0]
-            raise ValueError("Current channel is non-isometric")
+            raise AssertionError("Current channel is non-isometric")
 
     def is_unitary(self, qubits='all', obs=None):
-        if not self.track_operators:
-            raise ValueError("Operator tracking is disabled")
-
+        qubits = self._check_qubit_arguments(qubits, False)
         try:
-            U = self.get_unitary(obs=obs)
-        except ValueError:
-            return False  # Technically, it could still be locally unitary
-
+            U = self.get_unitary(obs=obs)  # calls reshape=False
+        except AssertionError:
+            U = None
         if len(qubits) == self.n:
-            return True
+            return U is not None
+
+        if U is None:
+            raise NotImplementedError("Can't deduce local operation of non-unitary channel")
         # if current channel is unitary, check if unitary can be decomposed into unitaries U = U1 \otimes U2
         return is_separable_unitary(U, [self._qubits.index(q) for q in qubits], check=0)
 
@@ -639,9 +637,9 @@ class QuantumComputer:
             try:
                 self.get_isometry()
                 return True
-            except ValueError:
+            except AssertionError:
                 return False
-        return len(self._operators) == 1
+        return is_isometric_channel(self._operators, check=0)
 
     def is_pure(self, qubits='all'):
         return np.isclose(self.purity(qubits), 1)
