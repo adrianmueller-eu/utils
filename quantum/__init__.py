@@ -628,6 +628,16 @@ def _test_channels():
     _test(dm(0, n=n), n)
     _test(random_dm(n), n)
 
+    # random_channel
+    n = randint(0, 5)
+    E = random_channel(n)
+    assert_kraus(E)
+    assert len(E) == 2**n, f"{len(E)} ≠ {2**n}"
+    n_in = randint(0, 5)
+    E = random_channel(n,n_in)
+    assert_kraus(E)
+    assert len(E) == 2**n_in, f"{len(E)} ≠ {2**n_in}"
+
     # partial operation
     U = Fourier_matrix(2**5)
     subsystem_state = random_ket(2)
