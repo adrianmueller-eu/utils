@@ -6,7 +6,7 @@ try:
 except ImportError:
     pass
 
-from .utils import count_qubits, partial_trace, reorder_qubits
+from .utils import count_qubits, partial_trace, reorder_qubits, verify_subsystem
 from .state import op, ket, dm, ev, as_state, ensemble_from_state, assert_state
 from ..mathlib import trace_norm, matsqrth_psd, allclose0, is_square, eigvalsh, svd, is_eye, trace_product, random_isometry
 from ..prob import entropy, check_probability_distribution
@@ -331,11 +331,11 @@ def update_choi(operators, choi, sparse=True, check=3):
 def measurement_operator(outcome, n, subsystem=None, as_matrix=True):
     if subsystem is None:
         subsystem = range(n)
-    subsystem = list(subsystem)
+    subsystem = verify_subsystem(subsystem, n)
     q = len(subsystem)
-    assert 0 < q <= n, f"Invalid subsystem: {subsystem}"
     assert is_int(outcome) and 0 <= outcome < 2**q, f"Invalid outcome: {outcome}"
     outcome = int(outcome)
+
     Pi = np.zeros((2**q, 2**(n-q)), dtype=complex)  # just the diagonal
     Pi[outcome] = 1
     Pi_order = subsystem + [i for i in range(n) if i not in subsystem]
