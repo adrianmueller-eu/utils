@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from math import prod
+from math import prod, log2
 try:
     import scipy.sparse as sp
 except ImportError:
@@ -115,6 +115,37 @@ def schmidt_operator_rank(op, subsystem, tol=1e-10):
         return 1
     op = op.transpose(0, 2, 1, 3).reshape(2**(2*len(subsystem)), -1)
     return np.linalg.matrix_rank(op, tol=tol)
+
+def purify(rho, min_rank=1, ancilla_basis_cb=None, filter_eps=1e-10, check=3):
+    probs, kets = ensemble_from_state(rho, filter_eps=filter_eps, check=check)
+    r = max(len(probs), min_rank)
+    n_ancillas = int(np.ceil(log2(r)))
+    if n_ancillas == 0:
+        return kets[0]
+    pkets = np.sqrt(probs)[:, None] * kets
+
+    if ancilla_basis_cb is None:
+        # ancilla_basis = np.eye(2**n_ancillas, dtype=complex)
+        state = np.zeros((2**n_ancillas, len(kets[0])), dtype=complex)
+        state[:len(kets)] = pkets
+        return state.T.ravel()
+    # general basis
+    ancilla_basis = ancilla_basis_cb(n_ancillas)
+    return np.tensordot(pkets, ancilla_basis[:len(probs)], axes=(0, 0)).reshape(-1)
+
+def stinespring_dilation(ops, min_rank=1, ancilla_basis_cb=None, check=3):
+    ops = assert_kraus(ops, check=check)
+    r = max(len(ops), min_rank)
+    n_ancilla = int(np.ceil(log2(r)))
+    if ancilla_basis_cb is None:
+        dout, din = ops[0].shape
+        V = np.zeros((dout*2**n_ancilla, din), dtype=complex)
+        for i, K in enumerate(ops):
+            V[i*dout:(i+1)*dout, :] = K
+        return V    # V is an isometry
+    # general basis
+    ancilla_basis = ancilla_basis_cb(n_ancilla)
+    return sum(np.kron(K, a) for K, a in zip(ops, ancilla_basis))
 
 def correlation_quantum(state, obs_A, obs_B, check=2):
     n_A = count_qubits(obs_A)

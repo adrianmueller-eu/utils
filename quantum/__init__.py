@@ -52,6 +52,7 @@ def test_quantum_all():
         _test_fidelity,
         _test_trace_distance,
         _test_schmidt_decomposition,
+        _test_purify,
         _test_correlation_quantum,
         _test_ground_state,
         _test_ising,
@@ -870,6 +871,19 @@ def _test_schmidt_decomposition():
     S_expect = entanglement_entropy(psi, subsystem)
     S_actual = -np.sum([l_i**2 * np.log2(l_i**2) for l_i in l])
     assert np.allclose(S_actual, S_expect), f"S_expect = {S_expect} ≠ S_actual = {S_actual}"
+
+def _test_purify():
+    rho = random_dm(2, rank=2)
+    psi = purify(rho)
+    assert psi.shape == (8,), f"psi.shape = {psi.shape} ≠ (8,)"
+    n = randint(2, 5)
+    rho = random_dm(n, rank=randint(1, 2**n))
+    psi = purify(rho)
+    assert_ket(psi)
+    assert np.allclose(partial_trace(psi, range(n)), rho)
+    psi2 = purify(rho, ancilla_basis_cb=I_)
+    assert_ket(psi2)
+    assert np.allclose(partial_trace(psi2, range(n)), rho)
 
 def _test_correlation_quantum():
     global XX, ZZ

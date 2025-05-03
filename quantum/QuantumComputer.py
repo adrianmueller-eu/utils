@@ -954,37 +954,25 @@ class QuantumComputer:
             # warn("State is already a vector")
             return self
         if self._as_superoperator:
-            # we need a full svd of the choi matrix (i.e. its rank) to infer n_ancillas?
             raise ValueError("Purification (state vector mode) is not supported for superoperator representation")
 
         with self.observable(obs):
-            probs, kets = self.ensemble()  # calls _reorder(reshape=False)
+            # purify state
+            self._reorder([], reshape=False)
+            state = purify(self._state, min_rank=len(self._operators), filter_eps=self.FILTER_EPS, check=0)
+            d_ancilla = state.shape[0] // self._state.shape[0]
+            self._state = state
 
-            # get dimensions
-            r = r_out = len(probs)
-            if self.track_operators:
-                r_K   = len(self._operators)
-                r = max(r_out, r_K)
-            n_ancillas = int(np.ceil(np.log2(r)))
+            if d_ancilla == 1:  # 0 ancilla qubits
+                return self
 
-            if n_ancillas == 0:
-                self._state = kets[0]
-                return self  # either no operator tracking or already single Kraus operator
-
-            # construct purification
-            # self._state = np.tensordot(pkets, ancilla_basis, axes=(0, 0)).reshape(-1)  # general basis
-            state = np.zeros((2**n_ancillas, len(kets[0])), dtype=complex)
-            state[:len(kets)] = np.sqrt(probs)[:, None] * kets
-            self._state = state.T.ravel()
-
+            n_ancillas = count_qubits(d_ancilla)
             if not self._too_large_to_track_operators(n_ancillas):
-                # Stinespring dilation
-                # V = sum(np.kron(K, a) for K, a in zip(self._operators, ancilla_basis))
-                dout, din = self._operators[0].shape
-                V = np.zeros((dout*2**n_ancillas, din), dtype=complex)
-                for i, K in enumerate(self._operators):
-                    V[i*dout:(i+1)*dout, :] = K
-                self._operators = [V]    # V is an isometry
+                # Update operators via Stinespring dilation
+                V = stinespring_dilation(self._operators, min_rank=d_ancilla, check=0)
+                # if self.check_level >= 2:
+                #     assert is_isometry(V, kind='right'), "Stinespring dilation did not return an isometry"
+                self._operators = [V]  # V is an isometry
 
             # add ancillas to bookkeeping
             ancillas = self._get_new_qubits_ids(n_ancillas)
