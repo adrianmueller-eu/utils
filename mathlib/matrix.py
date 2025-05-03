@@ -10,7 +10,7 @@ try:
 except ImportError:
     from numpy.linalg import eig, eigvals, svd, det, inv, pinv
 
-from ..utils import shape_it
+from ..utils import shape_it, size_samples
 
 def eigh(A, **kwargs):
     """Eigenvalue decomposition of a hermitian matrix."""
@@ -341,8 +341,9 @@ class Sn:
     def __init__(self, n):
         self.n = n
 
-    def sample(self):
-        return np.random.permutation(self.n)
+    def sample(self, size=()):
+        n = self.n
+        return size_samples(lambda: np.random.permutation(n), size)
 
     def __contains__(self, x):
         return len(x) == self.n and set(x) == set(range(self.n))
