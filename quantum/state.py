@@ -6,7 +6,7 @@ from functools import reduce
 from .utils import count_qubits, transpose_qubit_order, verify_subsystem, partial_trace
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf
+from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf, allclose0
 from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
@@ -552,26 +552,31 @@ def is_separable_state(state, subsystem, n=None, tol=1e-12, check=3):
     # use smaller subsystem -> more branches -> faster failure
     if q > n - q:
         subsystem = [q for q in range(n) if q not in subsystem]
-    state = transpose_qubit_order(state, subsystem, reshape=True)
-    # last block is reference
-    B = state[:,-1,:,-1]
-    # find a nonzero diagonal element in B (all nonnegative and real by definition)
-    idx = None
-    for i in range(len(B)):  # n-q x n-q block
-        if B[i,i] > 1e-7:
-            idx = (i,i)
-            break
-    assert idx is not None, f"Could not find a nonzero diagonal element in: {B}"
-    B_ref = B[idx]
+    state_ = transpose_qubit_order(state, subsystem, reshape=True)
+    state_ = state_.transpose(0, 2, 1, 3).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
 
-    # check if the first block is the same as B
-    B00 = state[:,0,:,0]
-    s = B00[idx]/B_ref
-    if not np.allclose(B00, s*B, atol=tol):
+    # find a nonzero block and a nonzero element in it
+    B = np.zeros(state_.shape[0], complex)
+    idx = None
+    for i in range(state_.shape[1]):
+        nonzero_idcs = np.where(np.abs(state_[:,i]) > tol)[0]
+        if len(nonzero_idcs) > 0:
+            B = state_[:,i]
+            idx = nonzero_idcs[0]
+            break
+    assert idx is not None, f"No non-zero elements ({i}) in {state}"
+    # find the second non-zero block
+    B2 = np.zeros(state_.shape[0], complex)
+    for j in range(i+1, state_.shape[1]):
+        if not allclose0(state_[:,j], tol=tol):
+            B2 = state_[:,j]
+            break
+    # check if B and B2 are proportional
+    s = B2[idx]/B[idx]
+    if not np.allclose(B2, s*B, atol=tol):
         return False
 
     # faster than svd or iterating over all blocks if it is separable
-    state = state.reshape(2**n, -1)
     rdm = partial_trace(state, subsystem)
     rdm2 = partial_trace(state, [q for q in range(n) if q not in subsystem])
     rdm_full = np.kron(rdm, rdm2)
