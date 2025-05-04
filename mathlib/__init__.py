@@ -541,9 +541,16 @@ def _test_roots():
         coeffs = random_vec(degree+1, (-10, 10), complex=True)
         assert np.allclose(np.polyval(coeffs, roots(coeffs)), 0), f"{coeffs}: {roots(coeffs)}"
 
-    p = Polynomial([-4, 3.5, 2.5, 0, 0])
-    for c in p.roots:
-        assert np.isclose(p(c), 0)
+    coeffs = [-4, 3.5, 2.5, 0, 0]
+    p = Polynomial(coeffs)
+    p.normalize()
+    coeffs = p.coeffs
+    assert np.isclose(coeffs[-1], 1)
+    p_roots = p.roots
+    for r in p_roots:
+        assert np.isclose(p(r), 0)
+    p = Polynomial.from_roots(p_roots)
+    assert np.allclose(p.coeffs, coeffs)
 
 def _test_so():
     n = randint(2**1, 2**3)
@@ -850,7 +857,7 @@ def _test_lcm():
     # Polynomials
     x = Polynomial([0, 1])
     assert lcm(x**3, x**2) == x**3
-    assert lcm(x**2 + 1, x*2 + 2) == x**3 + x**2 + x + 1
+    assert lcm(x**2 + 1, x*2 + 2) == x**3 + x**2 + x + 1  # TODO: This seems wrong, should be (x**2 + 1)*(x*2 + 2) = x**4 + 3x**2 + 2
 
 def _test_closest_prime_factors_to():
     assert np.array_equal(closest_prime_factors_to(42, 13), [2, 7])
