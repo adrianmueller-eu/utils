@@ -178,20 +178,17 @@ class Polynomial(Function):
         return p
 
     def __call__(self, x):
-        # return polyval(np.asarray(x), self.coeffs)
+        # return np.polyval(self.coeffs[::-1], x)
+        # return np.vander(x, N=len(self.coeffs), increasing=True) @ self.coeffs
+        assert not isinstance(x, Polynomial), "Did you forget a *?"
+        # see np.polyval
         x = np.asarray(x)
-        if x.ndim == 0:
-            exponents = np.arange(len(self.coeffs))
-            terms = x**exponents
-            return self.coeffs @ terms
-
-        ys = []
-        for x_i in x:
-            exponents = np.arange(len(self.coeffs))
-            terms = x_i**exponents
-            y_i = self.coeffs @ terms
-            ys.append(y_i)
-        return np.array(ys)
+        y = 0 if x.ndim == 0 else np.zeros_like(x)
+        # Horner's method (...(c_n*x + c_{n-1})*x + ...)*x + c_0
+        for pv in self.coeffs[::-1]:
+            y *= x  # inplace manipulation
+            y += pv
+        return y
 
     def strip_coeffs(self):
         coeffs = list(self.coeffs)
