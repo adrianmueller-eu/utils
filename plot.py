@@ -6,9 +6,12 @@ import numpy as np
 from math import log2, log10, ceil, prod, floor
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
-from .utils import is_iterable
+from .utils import is_iterable, as_list_not_str, is_int
 
-def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None), xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None, xlog=False, ylog=False, grid=True, vlines=None, hlines=None, show=True, save_file=None, **pltargs):
+def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True,
+         xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None,
+         vlines=None, hlines=None, area_quantiles=0.99, cloud_alpha=0.8, cloud_s=3,
+         show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
 
     # make it a bit intelligent
@@ -55,13 +58,24 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         xlabel = figsize
         figsize= (10,8)
 
+    # arg parsing
     if fmt is None:
         fmt = "-"
+    if labels is not None:
+        labels = as_list_not_str(labels)
+    if area_quantiles is None or area_quantiles == 0:
+        area_quantiles = None
+    elif isinstance(area_quantiles, (float, int)):
+        assert 0 < area_quantiles <= 1, f"Invalid percentage: {area_quantiles}"
+        lower = (1 - area_quantiles)/2
+        upper = 1 - lower
+        area_quantiles = (lower,upper)
 
     if type(x) != np.ndarray:
         x = np.array(list(x))
     if y is not None and type(y) != np.ndarray:
         y = np.array(list(y))
+
     # plot
     if len(plt.get_fignums()) == 0:
         plt.figure(figsize=figsize)
@@ -81,10 +95,13 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
             plt.yticks(yticks)
     if grid and (show or save_file is not None):
         plt.grid()
+
+    y_was_None = y is None
+    if y is None:
+        y = x
+        x = np.linspace(1,len(x),len(x))
+
     if fmt == ".":
-        if y is None:
-            y = x
-            x = np.linspace(1,len(x),len(x))
         if is_complex(y):
             if labels is not None:
                 warnings.warn("labels are not supported for complex data", stacklevel=2)
@@ -94,10 +111,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         else:
             if len(y.shape) == 1:
                 if labels is not None:
-                    if type(labels) == str or not is_iterable(labels):
-                        pltargs["label"] = labels
-                    else:  # is_iterable(labels):
-                        pltargs["label"] = labels[0]
+                    pltargs["label"] = labels[0]
                 plt.scatter(x, y, marker=fmt, **pltargs)
             else:
                 if labels is not None:
@@ -108,7 +122,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
                 else:
                     for yi in y:
                         plt.scatter(x, yi, marker=fmt, **pltargs)
-    elif y is not None:
+    else:
         if is_complex(y):
             if labels is not None:
                 warnings.warn("labels are not supported for complex data", stacklevel=2)
@@ -116,40 +130,41 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
             plt.plot(x, y.imag, fmt, label="imag", **pltargs)
             plt.legend()
         else:
-            if len(y.shape) == 1:
+            if y.ndim == 1:
                 if labels is not None:
-                    if type(labels) == str or not is_iterable(labels):
-                        pltargs["label"] = str(labels)
-                    else:  # is_iterable(labels):
-                        pltargs["label"] = str(labels[0])
+                    pltargs["label"] = str(labels[0])
                 plt.plot(x, y, fmt, **pltargs)
             else:
-                if labels is not None:
-                    assert len(labels) == len(y), f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
-                    assert "label" not in pltargs, "label argument is not supported when labels is given"
-                    for yi, label in zip(y, labels):
-                        plt.plot(x, yi, fmt, label=label, **pltargs)
+                assert y.ndim in [1, 2, 3], f"y must be 1D, 2D, or 3D, but was {y.shape}"
+                if labels is None:
+                    if y.ndim == 3 or (y_was_None and y.ndim == 2 and y.shape[0] < 42):  # if y is 2D and no x nor labels given, we have to guess
+                        labels = [None]*y.shape[0]
+                        if y_was_None:
+                            x = np.arange(y.shape[1])
+                    else:
+                        labels = [None]
+                        y = y[None, :]
                 else:
-                    for yi in y:
-                        plt.plot(x, yi, fmt, **pltargs)
-    else:
-        if is_complex(x):
-            plt.plot(x.real, fmt, label="real", **pltargs)
-            plt.plot(x.imag, fmt, label="imag", **pltargs)
-            plt.legend()
-        else:
-            if len(x.shape) == 1:
-                plt.plot(x, fmt, **pltargs)
-            else:
-                for xi in x:
-                    plt.plot(xi, fmt, **pltargs)
+                    assert len(labels) == y.shape[0], f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
+                    assert "label" not in pltargs, "label argument is not supported when labels is given"
+
+                assert y.shape[0] <= 42, f"Please don't plot more than 42 sets of data points simultaneously."
+                for i, (yi, label) in enumerate(zip(y, labels)):
+                    if yi.ndim == 2:
+                        if area_quantiles is not None:
+                            lower = np.quantile(yi, area_quantiles[0], axis=1)
+                            upper = np.quantile(yi, area_quantiles[1], axis=1)
+                            plt.fill_between(x, lower, upper, alpha=0.3, color=plt.cm.tab10(i))
+                        plt.scatter([x]*yi.shape[1], yi, alpha=cloud_alpha, s=cloud_s, color=plt.cm.tab10(i))
+                        yi = np.mean(yi, axis=1)
+                    plt.plot(x, yi, fmt, label=label, **pltargs)
 
     plt.xlim(xlim)
     plt.ylim(ylim)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    if "label" in pltargs or labels is not None:
+    if "label" in pltargs or labels is not None and not all(l is None for l in labels):
         plt.legend()
     plt.gca().spines["top"].set_visible(False)
     plt.gca().spines["right"].set_visible(False)
