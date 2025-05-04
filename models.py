@@ -155,6 +155,11 @@ class Polynomial(Function):
         self.strip_coeffs()
         self._roots = None
 
+    def copy(self):
+        p = Polynomial(self.coeffs, self.TOLERANCE)
+        p._roots = self._roots
+        return p
+
     @property
     def degree(self):
         if self == 0:
