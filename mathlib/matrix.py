@@ -157,17 +157,20 @@ def is_diag(a, diag=None, tol=1e-12):
         a = sp.dia_array(a)
         return set(a.offsets) == {0}
     a = np.asarray(a)
-    if a.ndim != 2 or a.shape[0] != a.shape[1]:
+    n, m = a.shape
+    if a.ndim != 2 or n != m:
         raise ValueError(f"Expected square matrix, got {a.shape}")
-    if a.shape[0] > 1 and abs(a[0,-1]) > tol:  # shortcut
+    if n == 1:
+        return diag is None or abs(a[0,0] - diag) <= tol
+    if abs(a[0,-1]) > tol:  # shortcut
         return False
 
     # a[np.isnan(a)] = 0
-    a = a.reshape(-1)[:-1].reshape(a.shape[0]-1, a.shape[1]+1)
-    if diag is not None:
-        d = a[:,0]   # diagonal
-        if not allclose0(d - diag, tol=tol):
-            return False
+    if diag is not None and abs(a[-1,-1] - diag) > tol:
+        return False
+    a = a.reshape(-1)[:-1].reshape(n-1, n+1)  # [:-1] removes a[-1,-1]
+    if diag is not None and not allclose0(a[:,0] - diag, tol=tol):
+        return False
     a = a[:,1:]  # remove diagonal
     return allclose0(a, tol=tol)
 

@@ -432,11 +432,14 @@ def _test_random_projection():
     assert np.linalg.matrix_rank(P) == rank
 
 def _test_is_diag():
-    a = np.eye(randint(2,20))
+    a = np.eye(randint(1,20))
     assert is_diag(a)
 
     a = random_square(randint(2,20))
     assert not is_diag(a)
+
+    assert not is_eye([[1,0],[0,-1]])
+    assert is_eye(np.eye(1))
 
 def _test_matexp():
     a = random_square(randint(2,20), complex=True)
