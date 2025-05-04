@@ -204,6 +204,12 @@ class Polynomial(Function):
                 break
         self.coeffs = tuple(coeffs)
 
+    def normalize(self):
+        self.coeffs = tuple(np.array(self.coeffs) / self.coeffs[-1])
+
+    def is_monic(self):
+        return abs(self.coeffs[-1] - 1) <= self.TOLERANCE
+
     def __str__(self, precision=3):
         if self.PRINT_FACTORIZED:
             return self.print_factorized(precision=precision)
