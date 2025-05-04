@@ -150,9 +150,10 @@ class Polynomial(Function):
 
     def __init__(self, coeffs, tolerance=1e-7):
         assert len(coeffs) > 0, "Polynomial must have at least one coefficient."
-        self.coeffs = tuple(coeffs)
-        self._roots = None
         self.TOLERANCE = tolerance
+        self.coeffs = tuple(coeffs)
+        self.strip_coeffs()
+        self._roots = None
 
     @property
     def degree(self):
@@ -192,6 +193,15 @@ class Polynomial(Function):
             ys.append(y_i)
         return np.array(ys)
 
+    def strip_coeffs(self):
+        coeffs = list(self.coeffs)
+        while abs(coeffs[-1]) <= self.TOLERANCE:
+            coeffs.pop()
+            if len(coeffs) == 0:
+                coeffs = [0]
+                break
+        self.coeffs = tuple(coeffs)
+
     def __str__(self, precision=3):
         if self.PRINT_FACTORIZED:
             return self.print_factorized(precision=precision)
@@ -211,37 +221,25 @@ class Polynomial(Function):
 
     def __add__(self, other):
         if isinstance(other, Polynomial):
-            p = Polynomial(polyadd(self.coeffs, other.coeffs), self.TOLERANCE)
-            # while lt is 0, remove it
-            if p == 0:
-                return Polynomial([0], self.TOLERANCE)
-            while abs(p.coeffs[-1]) <= self.TOLERANCE:
-                p.coeffs = p.coeffs[:-1]
-            return p
+            return Polynomial(polyadd(self.coeffs, other.coeffs), self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
-            new_coeffs[0] += other
+            new_coeffs[0] += other  # constant term
             return Polynomial(new_coeffs, self.TOLERANCE)
         return NotImplemented
 
     def __sub__(self, other):
         if isinstance(other, Polynomial):
-            p = Polynomial(polysub(self.coeffs, other.coeffs), self.TOLERANCE)
-            # while lt is 0, remove it
-            if p == 0:
-                return Polynomial([0], self.TOLERANCE)
-            while abs(p.coeffs[-1]) <= self.TOLERANCE:
-                p.coeffs = p.coeffs[:-1]
-            return p
+            return Polynomial(polysub(self.coeffs, other.coeffs), self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
-            new_coeffs[0] -= other
+            new_coeffs[0] -= other  # constant term
             return Polynomial(new_coeffs, self.TOLERANCE)
         return NotImplemented
 
     def __mul__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(np.convolve(self.coeffs, other.coeffs), self.TOLERANCE)
+            return Polynomial(Polynomial._polymul(self.coeffs, other.coeffs), self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = [c*other for c in self.coeffs]
             return Polynomial(new_coeffs, self.TOLERANCE)
@@ -249,6 +247,11 @@ class Polynomial(Function):
 
     def __rmul__(self, other):
         return self.__mul__(other)
+
+    @staticmethod
+    def _polymul(coeffs1, coeffs2):
+        """Multiply two polynomials given their coefficients."""
+        return np.convolve(coeffs1, coeffs2)
 
     def __truediv__(self, other):
         if isinstance(other, Polynomial):
@@ -297,22 +300,21 @@ class Polynomial(Function):
     def __pow__(self, n):
         if n == 0:
             return Polynomial([1], self.TOLERANCE)
+        coeffs = list(self.coeffs)
         while n % 2 == 0:
             n //= 2
-            self = self * self
-        if n == 1:
-            return self
-        return self * (self**(n-1))
+            coeffs = Polynomial._polymul(coeffs, coeffs)
+        coeffs_ = coeffs
+        while n > 1:
+            coeffs = Polynomial._polymul(coeffs, coeffs_)
+            n -= 1
+        return Polynomial(coeffs, self.TOLERANCE)
 
     @property
     def roots(self):
         if self._roots is None:
-            # remove highest terms that are 0
-            coeffs_red = list(self.coeffs)
-            while abs(coeffs_red[-1]) <= self.TOLERANCE:
-                coeffs_red.pop()
-                if len(coeffs_red) == 0:
-                    raise ValueError("The zero polynomial has roots everywhere!")
+            if self == 0:
+                raise ValueError("The zero polynomial has roots everywhere!")
 
             # reduce the polynomial if by the minimum multiplicity of the roots
             p = self
@@ -349,13 +351,13 @@ class Polynomial(Function):
                     return roots
                 # print(f"Found {len(roots)} ≠ {self.degree} roots: {roots}")
 
-            potential_roots = list(polyroots(coeffs_red))
+            potential_roots = polyroots(self.coeffs)
             roots = []
             for r_orig in potential_roots:
                 # improve up to numerical precision using newton's method
                 best_r = r = r_orig
                 r_val = self(r)
-                # use newton's method to find the root
+                # use newton's method to find a value even closer to the actual root
                 i, max_iter = 0, 100
                 d = self.derivative()
                 while abs(r_val) > self.TOLERANCE and i < max_iter: #+ sys.float_info.epsilon:
@@ -403,15 +405,7 @@ class Polynomial(Function):
         return "*".join(factors)
 
     def lt(self):
-        # return Polynomial([0]*self.degree + [self.coeffs[-1]])
-        # find the highest non-zero coefficient
-        coeffs = list(self.coeffs)
-        while abs(coeffs[-1]) <= self.TOLERANCE:
-            coeffs.pop()
-            if len(coeffs) == 0:
-                return Polynomial([0], self.TOLERANCE)
-        coeffs = [0]*(len(coeffs) - 1) + [coeffs[-1]]
-        return Polynomial(coeffs, self.TOLERANCE)
+        return Polynomial([0]*self.degree + [self.coeffs[-1]])
 
     def is_monomial(self):
         return np.isclose(np.sum(np.abs(self.coeffs)), np.abs(self.coeffs[-1]))
