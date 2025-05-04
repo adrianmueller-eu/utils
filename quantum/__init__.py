@@ -451,6 +451,17 @@ def _test_QuantumComputer():
     assert not qc.is_matrix_mode()
     assert np.isclose(np.sum(qc.schmidt_coefficients([0])**2), 1)
 
+    assert qc.is_unitary()
+    U = random_unitary(2**2)
+    qc(U, [0,2])
+    assert qc.is_unitary([0,1,2])
+    assert not qc.is_unitary([0,1])
+    assert qc.is_unitary([0,2])
+    # E = random_channel(1)
+    # qc(E, 1)
+    # assert not qc.is_unitary(1)  # not implemented yet
+    # assert qc.is_unitary([0,2])
+
     # more complex test
     qc = QuantumComputer(15)
     U = parse_unitary('XYZCZYX')
