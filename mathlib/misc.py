@@ -1,18 +1,18 @@
 import numpy as np
-from math import factorial
+from math import factorial, log2, log, sqrt
 
 from .basic import series
 
-golden_ratio = (1 + np.sqrt(5))/2
+golden_ratio = (1 + sqrt(5))/2
 def Fibonacci(n):
     Psi = 1 - golden_ratio
-    return int(np.round((golden_ratio**n - Psi**n)/(golden_ratio - Psi))) # /np.sqrt(5)
+    return int(np.round((golden_ratio**n - Psi**n)/(golden_ratio - Psi)))  # /sqrt(5)
 
 def calc_pi1(prec=100):
     """ Calculate pi using the Gauss-Legendre algorithm. """
     from decimal import Decimal, getcontext
     getcontext().prec = prec # int(np.e*2**N-2)
-    N = int(np.log2(prec + 2))
+    N = int(log2(prec + 2))
     a = Decimal(1)
     b = Decimal(1)/Decimal(2).sqrt()
     t = Decimal(1)/Decimal(4)
@@ -89,7 +89,7 @@ def log_(x, base=np.e):
     if x == 0:
         return -np.inf
     k = 0
-    ln2 = np.log(2)
+    ln2 = log(2)
     if x > 0.5:
         while np.abs(x - 1) >= 0.5:
             x /= 2
@@ -123,8 +123,7 @@ def log_2(x, base=np.e):
         for k in range(52+1):  # 52-bit precision in 64-bit float
             k2k = 1 + 2**(-k)
             log_table_keys.append(k2k)
-            log2k = np.log(k2k)
-            log_table.append(log2k)
+            log_table.append(log(k2k))
 
     # bring x in range 1 <= x < 2
     k = 0

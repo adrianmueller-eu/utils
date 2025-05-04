@@ -1,5 +1,6 @@
 import sys, psutil, warnings
 import numpy as np
+from math import prod, log2
 import itertools
 from functools import reduce
 try:
@@ -43,7 +44,7 @@ def ground_state_ITE(H, tau=5, eps=1e-6, check=2):  # eps=1e-6 gives almost perf
         assert is_hermitian(H)
     D, V = eigh(H)  # this requires diagonalization of H
     U = tf(softmax(D, -tau), V)
-    n = int(np.log2(H.shape[0]))
+    n = int(log2(H.shape[0]))
     ground_state = sequence(evolve, start_value=random_ket(n), eps=eps)
     ground_state_energy = (ground_state.conj().T @ H @ ground_state).real
     return ground_state_energy, ground_state
@@ -240,7 +241,7 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
     chunks = [c for c in chunks if c != ""]
     # If parts are present, use them to determine the number of qubits
     if parts:
-        n = int(np.log2(parts[0].shape[0]))
+        n = int(log2(parts[0].shape[0]))
     else: # Use chunks to determine the number of qubits
         n = 0
         for c in chunks:

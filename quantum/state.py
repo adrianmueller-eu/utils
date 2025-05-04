@@ -1,5 +1,6 @@
 import psutil, warnings
 import numpy as np
+from math import ceil, log2
 import matplotlib.pyplot as plt
 from functools import reduce
 
@@ -220,7 +221,7 @@ def random_dm(n=1, rank='full', size=()):
 
 def ket_from_int(d, n=None):
     if not n:
-        n = int(np.ceil(np.log2(d+1))) or 1
+        n = ceil(log2(d+1)) or 1
     elif d >= 2**n:
         raise ValueError(f"A {n}-qubit state doesn't have basis state {d} (max is {2**n-1})")
     # return np.array(bincoll_from_int(2**d, 2**n)[::-1], dtype=float)
@@ -394,7 +395,7 @@ def op(specification1, specification2=None, n=None, check=1):
         s2 = s1 = ket(specification1, n=n, renormalize=True, check=check)
     else:
         if is_int(specification1) and is_int(specification2):
-            n = n or int(np.ceil(np.log2(max(specification1, specification2)+1))) or 1
+            n = n or ceil(log2(max(specification1, specification2)+1)) or 1
         s1 = ket(specification1, n=n, renormalize=True, check=check)
         s2 = ket(specification2, n=n or count_qubits(s1), renormalize=True, check=check)
 

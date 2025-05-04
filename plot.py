@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.animation import FuncAnimation
 import numpy as np
-from math import log2
+from math import log2, log10, ceil, prod, floor
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
 from .utils import is_iterable
@@ -203,7 +203,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
 # # basics, no log
 # def hist(data, bins=None, xlabel="", title="", density=False):
 #     def bins_sqrt(data):
-#         return int(np.ceil(sqrt(len(data))))
+#         return ceil(sqrt(len(data))
 #
 #     plt.figure(figsize=(10,5))
 #
@@ -398,7 +398,8 @@ def scatter1d(data, figsize=None, xticks=None, alpha=.5, s=500, marker="|", xlim
             figsize[1] += 0.2
         fig = plt.figure(figsize=figsize)
     ax = fig.gca()
-    size = np.prod(np.asarray(data).shape)
+    data = np.asarray(data)
+    size = prod(data.shape)
     plt.scatter(data, np.zeros(size), alpha=alpha, marker=marker, s=s, **pltargs)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -538,7 +539,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     if hasattr(a, 'toarray'):  # scipy sparse matrices
         a = a.toarray()
     a = np.asarray(a)
-    n_samples = np.prod(a.shape)
+    n_samples = prod(a.shape)
     is_vector = n_samples == np.max(a.shape)
 
     # magic reshape
@@ -619,7 +620,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
         if isinstance(ticks, tuple) and len(ticks) == 2:
             if isinstance(ticks[0], (int, float)):
                 ticklabels = np.linspace(ticks[0], ticks[1], min(max_ticks, shape))
-                ticklabels = np.round(ticklabels, -int(np.log10(ticks[-1]-ticks[0])-3))
+                ticklabels = np.round(ticklabels, -int(log10(ticks[-1]-ticks[0])-3))
                 ticks = np.linspace(0, shape-1, len(ticklabels))
             else:
                 ticklabels = ticks[1]
@@ -627,7 +628,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
         else:
             if len(ticks) > max_ticks:
                 ticklabels = np.linspace(ticks[0], ticks[-1], max_ticks)
-                ticklabels = np.round(ticklabels, -int(np.round(np.log10(ticks[-1]-ticks[0])-3)))
+                ticklabels = np.round(ticklabels, -int(np.round(log10(ticks[-1]-ticks[0])-3)))
             else:
                 ticklabels = ticks
             ticks = np.linspace(0, shape-1, len(ticklabels))
@@ -787,7 +788,7 @@ def complex_colorbar(figsize=(2,2), colorizer=colorize_complex):
 def bar(heights, log=False, show=True, save_file=None):
     """Uses magic to create pretty bar plots."""
     N = len(heights)
-    plt.figure(figsize=(int(np.ceil(N/2)),6))
+    plt.figure(figsize=(ceil(N/2),6))
     plt.bar(range(N), height=heights)
     plt.xticks(range(N))
     if log:
@@ -881,7 +882,7 @@ def pdcolor(df, threshold=None, minv=None, maxv=None, colors=('#ff0000', '#fffff
         def getRGB(v):
             scaled = (v - minv)/(maxv - minv) * (len(colors)-1)
             scaled = max(0,min(scaled, len(colors)-1-1e-10)) #[0;len(colors)-1[
-            subarea = int(np.floor(scaled))
+            subarea = floor(scaled)
             low_c, high_c = colors[subarea], colors[subarea+1] # get frame
             low_c, high_c = np.asarray(rgb(low_c)), np.asarray(rgb(high_c)) # convert to (r,b,g,a)
             r,g,b,a = (scaled-subarea)*(high_c-low_c) + low_c

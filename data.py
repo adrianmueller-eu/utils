@@ -1,12 +1,13 @@
 from warnings import warn
 import numpy as np
+from math import sqrt, ceil, log10
 import matplotlib.pyplot as plt
 
 def moving_avg(x, w=3):
     return np.convolve(x, np.ones(w), 'valid') / w
 
 def bins_sqrt(data):
-    return int(np.ceil(np.sqrt(len(data))))
+    return ceil(sqrt(len(data)))
 
 def logbins(data, start=None, stop=None, num=None, scale=2):
     if start is None:
@@ -21,7 +22,7 @@ def logbins(data, start=None, stop=None, num=None, scale=2):
         stop = max(data)*scale
     if num is None:
         num = bins_sqrt(data)
-    return 10**(np.linspace(np.log10(start),np.log10(stop),num))
+    return 10**(np.linspace(log10(start),log10(stop),num))
 
 # make a list out of a pd.corr() matrix
 def corrList(corr, index_names=("feature 1", "feature 2")):

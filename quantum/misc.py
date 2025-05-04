@@ -1,5 +1,5 @@
 import numpy as np
-from math import sqrt
+from math import sqrt, ceil, log2
 from functools import reduce
 
 from .constants import X, Z

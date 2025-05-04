@@ -4,7 +4,7 @@ from .matrix import kron
 
 def binFrac_i(j, i):
     return int(j % (1/2**(i-1)) != j % (1/2**i))
-    #return int(np.ceil((j % (1/2**(i-1))) - (j % (1/2**i))))
+    # return ceil((j % (1/2**(i-1))) - (j % (1/2**i)))
 
 def binFrac(j, prec=20):
     return "." + "".join([str(binFrac_i(j,i)) for i in range(1,prec+1)])

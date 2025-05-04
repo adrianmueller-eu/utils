@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from math import ceil, log10
 import matplotlib.pyplot as plt
 from numpy.polynomial.polynomial import polyfit, polyval, polyroots, polyadd, polysub, polyder, polyint, polymul
 from abc import ABC, abstractmethod
@@ -328,7 +329,7 @@ class Polynomial(Function):
                     p_ = self
                     for r in p.roots:  # work only if polyroots finds good roots for p
                         if abs(second_last(r)) <= p.TOLERANCE and all(abs(r - r_i) > p.TOLERANCE for r_i in roots):
-                            r = np.round(r, -int(np.ceil(np.log10(p.TOLERANCE))))
+                            r = np.round(r, -ceil(log10(p.TOLERANCE)))
                             # print(f"Root {r} has multiplicity {m}.")
                             if m == self.degree - 1:
                                 m += 1

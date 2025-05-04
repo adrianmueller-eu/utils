@@ -3,7 +3,7 @@ import numpy as np
 from warnings import warn
 from collections.abc import Iterable
 from copy import deepcopy
-from math import log2
+from math import log2, prod
 
 def reversed_keys(d):
     return {k[::-1]:v for k,v in d.items()}
@@ -200,7 +200,7 @@ def shape_it(shape, progress=False):
     gen = product(*[list(range(s)) for s in shape])
     if progress:
         from tqdm.auto import tqdm as tq
-        gen = tq(gen, total=np.prod(shape))
+        gen = tq(gen, total=prod(shape))
     return gen
 
 def size_samples(f, size):

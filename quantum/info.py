@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from math import prod, log2
+from math import prod, log2, ceil
 try:
     import scipy.sparse as sp
 except ImportError:
@@ -119,7 +119,7 @@ def schmidt_operator_rank(op, subsystem, tol=1e-10):
 def purify(rho, min_rank=1, ancilla_basis_cb=None, filter_eps=1e-10, check=3):
     probs, kets = ensemble_from_state(rho, filter_eps=filter_eps, check=check)
     r = max(len(probs), min_rank)
-    n_ancillas = int(np.ceil(log2(r)))
+    n_ancillas = ceil(log2(r))
     if n_ancillas == 0:
         return kets[0]
     pkets = np.sqrt(probs)[:, None] * kets
@@ -136,7 +136,7 @@ def purify(rho, min_rank=1, ancilla_basis_cb=None, filter_eps=1e-10, check=3):
 def stinespring_dilation(ops, min_rank=1, ancilla_basis_cb=None, check=3):
     ops = assert_kraus(ops, check=check)
     r = max(len(ops), min_rank)
-    n_ancilla = int(np.ceil(log2(r)))
+    n_ancilla = ceil(log2(r))
     if ancilla_basis_cb is None:
         dout, din = ops[0].shape
         V = np.zeros((dout*2**n_ancilla, din), dtype=complex)
@@ -509,7 +509,7 @@ def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
         assert choi.shape == (choi_dim, choi_dim), f"Choi matrix has invalid shape: {choi.shape} ≠ {(choi_dim, choi_dim)}"
     else:
         assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
-        n_total = int(np.log2(choi.shape[0]))
+        n_total = int(log2(choi.shape[0]))
         if n_out is None:
             n_out = n_total - n_in
             assert n_out >= 0, f"Invalid n_out: {n_out} for {choi.shape} and {n}"
