@@ -8,7 +8,7 @@ from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
 from .utils import is_iterable, as_list_not_str, is_int
 
-def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True,
+def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True, ypoly=1,
          xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None,
          vlines=None, hlines=None, area_quantiles=0.99, cloud_alpha=0.8, cloud_s=3,
          show=True, save_file=None, **pltargs):
@@ -101,6 +101,11 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         y = x
         x = np.linspace(1,len(x),len(x))
 
+    if ypoly != 1:
+        y_neg = y < 0
+        y[y_neg] = -(-y[y_neg])**(1/ypoly)
+        y[~y_neg] = y[~y_neg]**(1/ypoly)
+
     if fmt == ".":
         if is_complex(y):
             if labels is not None:
@@ -161,6 +166,13 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
 
     plt.xlim(xlim)
     plt.ylim(ylim)
+    # scale y ticks by ypoly
+    if ypoly != 1:
+        yticks = plt.gca().get_yticks()
+        plt.gca().set_yticks(yticks)  # satisfy matplotlib
+        yticks = yticks**ypoly
+        plt.gca().set_yticklabels([f"{y:.2e}" for y in yticks])
+
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
