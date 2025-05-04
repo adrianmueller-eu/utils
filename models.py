@@ -77,12 +77,12 @@ def _generate_poly_label(coeffs, precision, tol=0):
                 elif c != 0:
                     return f"{c}x"
             elif abs(c) >= tol:
-                return _to_str_coeff_1(c, precision, tol) + "x"
+                return _to_str_coeff_1(c, precision, tol) + "*x"
         elif type(c) == int:
             if c == 1:
                 return f"x**{i}"
             elif c != 0:
-                return f"{c}x**{i}"
+                return f"{c}*x**{i}"
         elif abs(c) >= tol:
             return _to_str_coeff_1(c, precision, tol) + f"x**{i}"
         else:
@@ -246,6 +246,9 @@ class Polynomial(Function):
             new_coeffs = [c*other for c in self.coeffs]
             return Polynomial(new_coeffs, self.TOLERANCE)
         return NotImplemented
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
 
     def __truediv__(self, other):
         if isinstance(other, Polynomial):
