@@ -173,22 +173,26 @@ def divisors(n):
     pf = prime_factors(n)
     return set([prod(c) for c in powerset(pf)])
 
-def closest_prime_factors_to(n, m):
-    """Find the set of prime factors of n with product closest to m."""
+def closest_divisor_to(n, m):
+    """ Find the divisor of n with product closest to m. """
     min_diff = float("inf")
-    min_combo = None
+    min_d = None
     for d in divisors(n):
         diff = abs(m - d)
         if diff < min_diff:
             min_diff = diff
-            min_combo = d
-    return prime_factors(min_combo)
+            min_d = d
+    return min_d
+
+def closest_prime_factors_to(n, m):
+    """Find the set of prime factors of n with product closest to m."""
+    return prime_factors(closest_divisor_to(n, m))
 
 def int_sqrt(n):
     """ For integer $n$, find the integer $a$ closest to $\\sqrt{n}$, such that $n/a$ is also an integer. """
     if n == 1 or n == 0:
         return n
-    return int(np.prod(closest_prime_factors_to(n, sqrt(n))))
+    return closest_divisor_to(n, sqrt(n))
 
 def next_good_int_sqrt(n, p=0.1):
     """ For integer $n$, look for the next larger integer $m$, such that `int_sqrt(m)**2` is between `p*m` and `1/p*m`. """
