@@ -432,17 +432,48 @@ def characteristic_polynomial(A):
     p = Polynomial.from_roots(D)
     return p
 
-def matmoment(A, n):
+def matmoment(A, k, kind='spectral', trace=True, normalized=False, raw=False):
+    """
+    Matrix moment of order `k` of a batch of iid. matrices.
+
+    Parameters
+    ----------
+        A (np.ndarray): The batch of matrices.
+        k (int): The order of the moment.
+        kind (str): The kind of moment to compute. Can be 'spectral', 'absolute', 'power'.
+            - `kind = 'spectral'` computes $\\mathbb E[Tr(A^k)]$
+            - `kind = 'absolute'` computes $\\mathbb E[|Tr(A^k)|]$
+            - `kind = 'power'` computes $\\mathbb E[|Tr(A)|^k]$
+        trace (bool): If False, returns above without the trace operation (default: True).
+        normalized (bool): If True, normalize by the dimension after the tracing (or where it would be if `trace = False`), e.g. $\\mathbb E[|Tr(A^k)/d|]$ or $\\mathbb E[|Tr(A)/d|^k]$.
+        raw (bool): If True, return the individual results of the moment instead of their mean.
+    """
+    assert kind in ['spectral', 'absolute', 'power'], f"Unknown kind '{kind}'."
+    if kind == 'power':
+        vals = matmoment(A, 1, trace=trace, kind='absolute', normalized=normalized, raw=True)**k
+        return np.mean(vals, axis=0) if not raw else vals
     A = np.asarray(A)
     assert is_square(A), f"Expected square matrix, got {A.shape}"
     assert A.ndim == 3, f"Expected 3D array, got {A.shape}"
-    if n == 1:
-        return np.mean([np.trace(x) for x in A])
-    elif n == 2:
-        return np.mean([trace_product(x.T.conj(), x) for x in A])
-    elif n == 0:
-        return np.eye(A.shape[0])
-    return np.mean([np.trace(reduce(np.matmul, [x] * n)) for x in A])
+    if k == 1:
+        vals = [np.trace(x) for x in A] if trace else A
+    elif trace and k == 2:
+        vals = [trace_product(x.T.conj(), x) for x in A]
+    elif k == 0:
+        if trace:
+            vals = np.zeros(A.shape[0]) + A.shape[1]
+        else:
+            vals = [np.eye(A.shape[1])] * A.shape[0]
+    else:
+        tracef = np.trace if trace else lambda x: x
+        vals = [tracef(reduce(np.matmul, [x]*k)) for x in A]
+    if kind == 'absolute':
+        vals = np.abs(vals)
+    if not raw:
+        vals = np.mean(vals, axis=0)
+    if normalized:
+        vals = np.asarray(vals) / A.shape[1]
+    return vals
 
 def commutator(A, B):
     return A @ B - B @ A

@@ -354,6 +354,8 @@ def _test_random_unitary():
     assert np.isclose(one_design, 0, atol=0.1), f"One-design test failed! {one_design} != 0"
     two_design = abs(matmoment(Us, 2))
     assert np.isclose(two_design, 0, atol=0.1), f"Two-design test failed! {two_design} != 0"
+    two_design = matmoment(Us, 2, kind='power')
+    assert np.isclose(two_design, 1, atol=0.1), f"Two-design test failed! {two_design} != 1"
 
 def _test_is_psd():
     # A @ A^\dagger => PSD
