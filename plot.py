@@ -414,37 +414,72 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
 
     return n, bins
 
-def scatter1d(data, figsize=None, xticks=None, alpha=.5, s=500, marker="|", xlim=None, xlabel="", title="", show=True, save_file=None, **pltargs):
+def scatter1d(data, figsize=None, xlabel="", title="", hist='auto', xlim=None, xticks=None, alpha=.5, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
     """Create only one axis on which to plot the data."""
 
-    if figsize:
-        fig = plt.figure(figsize=figsize)
-    else:
+    # prepare data
+    if is_iterable(data) and not is_iterable(data[0]):  # arrays may have different lengths -> no numpy array!
+        data = [data]
+    assert len(data) <= 12, f"Please don't plot more than 12 sets of data points simultaneously."
+    data = [np.asarray(d) for d in data]
+    for d in data:
+        assert d.ndim == 1, f"Data must be 1D, but was {d.shape}"
+    if hist == 'auto':
+        n_total = sum([len(d) for d in data])
+        hist = n_total > 1000
+
+    # create figure
+    if figsize is None:
         figsize = [10,1]
+        if hist:
+            figsize[1] *= 2
         if xlabel:
             figsize[1] += 0.2
         if title:
             figsize[1] += 0.2
-        fig = plt.figure(figsize=figsize)
-    ax = fig.gca()
-    data = np.asarray(data)
-    size = prod(data.shape)
-    plt.scatter(data, np.zeros(size), alpha=alpha, marker=marker, s=s, **pltargs)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_visible(False)
-    ax.set_yticks([])
+        if hist:
+            fig, (ax, ax2) = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': [1, 1]})
+        else:
+            fig = plt.figure(figsize=figsize)
+            ax = plt.gca()
+
+    # plotting
+    for xi in data:
+        ax.scatter(xi, np.zeros(len(xi)), alpha=alpha, marker=marker, s=s, **scatter_kwargs)
+
+    # other arguments
     if xticks:
         if len(xticks) == 2 and len(xticks[0]) == len(xticks[1]):
             ax.set_xticks(xticks[0], xticks[1])
         else:
             ax.set_xticks(xticks)
-    if title:
-        ax.set_title(title)
     if xlim is not None:
         ax.set_xlim(xlim)
+    if title:
+        ax.set_title(title)
     ax.set_xlabel(xlabel)
+
+    if hist:
+        # histogram on the top
+        a_bins = max([bins_sqrt(ai) for ai in data])
+        a_con = np.concatenate(data)
+        n, a_bins = histogram(a_con.ravel(), bins=a_bins)
+        for ai in data:
+            ax2.hist(ai, bins=a_bins, alpha=0.6 if len(data) > 1 else 1)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        ax2.spines['left'].set_visible(False)
+        ax2.spines['bottom'].set_visible(False)
+        ax2.set_xticks([])
+
+    # visuals
+    ax.set_yticks([])
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
     fig.tight_layout()
+
+    # finalize
     if save_file:
         plt.savefig(save_file, bbox_inches='tight')
     if show:
