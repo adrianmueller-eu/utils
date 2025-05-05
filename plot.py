@@ -414,7 +414,7 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
 
     return n, bins
 
-def scatter1d(data, figsize=None, xlabel="", title="", hist='auto', xlim=None, xticks=None, alpha=.5, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
+def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xticks=None, alpha=.5, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
     """Create only one axis on which to plot the data."""
 
     # prepare data
@@ -429,19 +429,18 @@ def scatter1d(data, figsize=None, xlabel="", title="", hist='auto', xlim=None, x
         hist = n_total > 1000
 
     # create figure
-    if figsize is None:
-        figsize = [10,1]
-        if hist:
-            figsize[1] *= 2
-        if xlabel:
-            figsize[1] += 0.2
-        if title:
-            figsize[1] += 0.2
-        if hist:
-            fig, (ax, ax2) = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': [1, 1]})
-        else:
-            fig = plt.figure(figsize=figsize)
-            ax = plt.gca()
+    figsize = [figwidth,1]
+    if hist:
+        figsize[1] *= 2
+    if xlabel:
+        figsize[1] += 0.2
+    if title:
+        figsize[1] += 0.2
+    if hist:
+        fig, (ax, ax2) = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': [1, 1]})
+    else:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.gca()
 
     # plotting
     for xi in data:
