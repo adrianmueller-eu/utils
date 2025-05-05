@@ -181,7 +181,12 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         ax = plt.gca()
         yticks = ax.get_yticks()
         yticks_scaled = poly_scale(yticks, ypoly)
-        yticks_labels = [f"{y:.5g}" for y in yticks_scaled]
+        # if all powers of 10, write them as 10^x
+        log10_yticks = np.log10(yticks_scaled)
+        if np.all(log10_yticks % 1 == 0):
+            yticks_labels = [f"$10^{{{int(y)}}}$" for y in log10_yticks]
+        else:
+            yticks_labels = [f"{y:.5g}" for y in yticks_scaled]
         ax.set_yticks(yticks, yticks_labels)
 
     plt.xlabel(xlabel)
