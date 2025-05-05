@@ -414,7 +414,7 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
 
     return n, bins
 
-def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xticks=None, alpha=.5, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
+def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xticks=None, alpha=None, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
     """Create only one axis on which to plot the data."""
 
     # prepare data
@@ -443,6 +443,9 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
         ax = plt.gca()
 
     # plotting
+    if alpha is None:
+        alpha = 500/len(data)/len(data[0])
+        alpha = min(1, max(0.002, alpha))
     for xi in data:
         ax.scatter(xi, np.zeros(len(xi)), alpha=alpha, marker=marker, s=s, **scatter_kwargs)
 
@@ -485,7 +488,7 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
         plt.show()
 
 def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto', hist_ratio=0.2,
-            xlim=None, ylim=None, xticks=None, yticks=None, labels=None, alpha=1, s=3, marker='.',
+            xlim=None, ylim=None, xticks=None, yticks=None, labels=None, alpha=None, s=3, marker='.',
             save_fig=None, show=True, **scatter_kwargs):
     # prepare data
     if is_iterable(a) and not is_iterable(a[0]):  # arrays may have different lengths -> no numpy array!
@@ -531,6 +534,9 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
         ax3 = plt.gca()
 
     # plotting
+    if alpha is None:
+        alpha = 10000/sum(len(ai) for ai in a)
+        alpha = min(1, max(0.002, alpha))
     if labels is None:
         labels = [None]*len(a)
     for ai, bi, label in zip(a, b, labels):
