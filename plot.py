@@ -8,6 +8,20 @@ from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
 from .utils import is_iterable, as_list_not_str, warn
 
+def poly_scale(y, deg=1):
+    if deg == 1:
+        return y
+    if is_complex(y):
+        return y**deg
+    y = y.real
+
+    y_neg = y < 0
+    y_neg_res = -(-y[y_neg])**deg  # infer float dtype if necessary
+    y_ = np.zeros_like(y, dtype=y_neg_res.dtype)
+    y_[y_neg] = y_neg_res
+    y_[~y_neg] = y[~y_neg]**deg
+    return y_
+
 def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True, ypoly=1,
          xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None,
          vlines=None, hlines=None, area_quantiles=0.99, cloud_alpha=0.8, cloud_s=3,
@@ -101,10 +115,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         y = x
         x = np.linspace(1,len(x),len(x))
 
-    if ypoly != 1:
-        y_neg = y < 0
-        y[y_neg] = -(-y[y_neg])**(1/ypoly)
-        y[~y_neg] = y[~y_neg]**(1/ypoly)
+    y = poly_scale(y, 1/ypoly)
 
     if fmt == ".":
         if is_complex(y):
@@ -170,9 +181,9 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     if ypoly != 1:
         ax = plt.gca()
         yticks = ax.get_yticks()
-        ax.set_yticks(yticks)  # satisfy matplotlib
-        yticks = yticks**ypoly
-        ax.set_yticklabels([f"{y:.2e}" for y in yticks])
+        yticks_scaled = poly_scale(yticks, ypoly)
+        yticks_labels = [f"{y:.5g}" for y in yticks_scaled]
+        ax.set_yticks(yticks, yticks_labels)
 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
