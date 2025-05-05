@@ -232,7 +232,7 @@ class Polynomial(Function):
 
     def __add__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(polyadd(self.coeffs, other.coeffs), self.TOLERANCE)
+            return Polynomial(np.polyadd(self.coeffs[::-1], other.coeffs[::-1])[::-1], self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
             new_coeffs[0] += other  # constant term
@@ -241,7 +241,7 @@ class Polynomial(Function):
 
     def __sub__(self, other):
         if isinstance(other, Polynomial):
-            return Polynomial(polysub(self.coeffs, other.coeffs), self.TOLERANCE)
+            return Polynomial(np.polysub(self.coeffs[::-1], other.coeffs[::-1])[::-1], self.TOLERANCE)
         elif isinstance(other, (int, float, complex)):
             new_coeffs = list(self.coeffs)
             new_coeffs[0] -= other  # constant term
