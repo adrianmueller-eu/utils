@@ -75,7 +75,7 @@ def _generate_poly_label(coeffs, precision, tol=0):
                 if c == 1:
                     return "x"
                 elif c != 0:
-                    return f"{c}x"
+                    return f"{c}*x"
             elif abs(c) >= tol:
                 return _to_str_coeff_1(c, precision, tol) + "*x"
         elif type(c) == int:
