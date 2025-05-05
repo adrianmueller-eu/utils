@@ -283,14 +283,14 @@ def clean_hist_data(data, log=False):
     if n_filtered > 0:
         n_original = len(data)
         data = data[~nan_filter]  # filter out nan and inf
-        warn(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+        warn(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original:.3%}) filtered out")
     if log:
         filter0 = data <= 0
         n_filtered = np.sum(filter0)
         if n_filtered > 0:
             n_original = len(data)
             data = data[~filter0]
-            warn(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+            warn(f"log active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original:.3%}) filtered out")
     return data
 
 def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
@@ -315,7 +315,7 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
     else:
         ax0 = plt.gca()
 
-    data = clean_hist_data(data)
+    data = clean_hist_data(data, log=xlog)
     n, bins = histogram(data.ravel(), bins=bins, xlog=xlog, density=density)
     if len(data.shape) > 1 and 1 < data.shape[0] < 10: # not more than 10 distributions
         if labels is None:
