@@ -484,66 +484,116 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
     if show:
         plt.show()
 
-def scatter(a, b=None, figsize=(6,6), hist_ratio=0.2, x_label="", y_label="", title="", labels=None, save_fig=None, **scatter_kwargs):
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=figsize,
-                                    gridspec_kw={'width_ratios': [1, hist_ratio], 'height_ratios': [hist_ratio, 1]})
-
-    fig.subplots_adjust(wspace=0, hspace=0)  # remove space between subplots
-    fig.suptitle(title)
-    fig.subplots_adjust(top=0.95)  # reduce space to suptitle
-    ax2.axis('off')  # hide right upper subplot completely
-
-    # scatter plot
-    if is_iterable(a) and not is_iterable(a[0]):
+def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto', hist_ratio=0.2,
+            xlim=None, ylim=None, xticks=None, yticks=None, labels=None, alpha=1, s=3, marker='.',
+            save_fig=None, show=True, **scatter_kwargs):
+    # prepare data
+    if is_iterable(a) and not is_iterable(a[0]):  # arrays may have different lengths -> no numpy array!
         a = [a]
     if b is None:
         if is_complex(a[0]):
             b = [np.imag(a) for a in a]
             a = [np.real(a) for a in a]
-            x_label = x_label or "Re"
-            y_label = y_label or "Im"
+            xlabel = xlabel or "Re"
+            ylabel = ylabel or "Im"
         else:
-            raise ValueError("Scatter plot requires two real 1d arrays")
+            assert not ylabel, "ylabel is not supported for 1D data"
+            assert ylim is None, "ylim is not supported for 1D data"
+            assert yticks is None, "yticks is not supported for 1D data"
+            assert labels is None, "labels is not supported for 1D data"
+            # use scatter1d default values
+            if "figwidth" in scatter_kwargs:
+                figwidth = scatter_kwargs["figwidth"]
+                del scatter_kwargs["figwidth"]
+            else:
+                figwidth = figsize[0]
+            if s == 3:
+                s = 500
+            if marker == '.':
+                marker = '|'
+            return scatter1d(a, figwidth=figwidth, xlabel=xlabel, title=title, hist=hist, xlim=xlim, xticks=xticks,
+                             alpha=alpha, s=s, marker=marker, save_file=save_fig, show=show, **scatter_kwargs)
+    assert len(a) <= 12, f"Please don't plot more than 12 sets of data points simultaneously."
+    if hist == 'auto':
+        hist = True  # always show by default
+
+    # create figure
+    if hist:
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=figsize,
+                                        gridspec_kw={'width_ratios': [1, hist_ratio], 'height_ratios': [hist_ratio, 1]})
+
+        fig.subplots_adjust(wspace=0, hspace=0)  # remove space between subplots
+        fig.suptitle(title)
+        fig.subplots_adjust(top=0.95)  # reduce space to suptitle
+        ax2.axis('off')  # hide right upper subplot completely
+    else:
+        plt.figure(figsize=figsize)
+        ax3 = plt.gca()
+
+    # plotting
     if labels is None:
         labels = [None]*len(a)
     for ai, bi, label in zip(a, b, labels):
-        ax3.scatter(ai, bi, label=label, **scatter_kwargs)
-    if labels[0] is not None:
+        ax3.scatter(ai, bi, label=label, alpha=alpha, marker=marker, s=s, **scatter_kwargs)
+
+    # other arguments
+    if "label" in scatter_kwargs or not all(l is None for l in labels):
         ax3.legend()
-    ax3.set_xlabel(x_label)
-    ax3.set_ylabel(y_label)
+    ax3.set_xlabel(xlabel)
+    ax3.set_ylabel(ylabel)
+    if xticks:
+        if len(xticks) == 2 and len(xticks[0]) == len(xticks[1]):
+            ax3.set_xticks(xticks[0], xticks[1])
+        else:
+            ax3.set_xticks(xticks)
+    if yticks:
+        if len(yticks) == 2 and len(yticks[0]) == len(yticks[1]):
+            ax3.set_yticks(yticks[0], yticks[1])
+        else:
+            ax3.set_yticks(yticks)
+    if xlim is not None:
+        ax3.set_xlim(xlim)
+    if ylim is not None:
+        ax3.set_ylim(ylim)
+
+    if hist:
+        # histogram on the top
+        a_bins = max([bins_sqrt(ai) for ai in a])
+        a_con = np.concatenate(a)
+        n, a_bins = histogram(a_con.ravel(), bins=a_bins)
+        for ai in a:
+            ax1.hist(ai, bins=a_bins, alpha=0.6 if len(a) > 1 else 1)
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        ax1.spines['left'].set_visible(False)
+        ax1.spines['bottom'].set_visible(False)
+        ax1.set_xticks([])
+
+        # histogram on the right
+        b_bins = max([bins_sqrt(bi) for bi in b])
+        b_con = np.concatenate(b)
+        n, b_bins = histogram(b_con.ravel(), bins=b_bins)
+        for bi in b:
+            ax4.hist(bi, bins=b_bins, orientation='horizontal', alpha=0.6 if len(a) > 1 else 1, align='mid')
+        ax4.spines['top'].set_visible(False)
+        ax4.spines['right'].set_visible(False)
+        ax4.spines['bottom'].set_visible(False)
+        ax4.spines['left'].set_color('lightgrey')
+        ax4.spines['left'].set_linewidth(0.5)
+        ax4.set_yticks([])
+        ax4.tick_params(axis='x', rotation=45)
+
+    # visuals
     ax3.spines['right'].set_visible(False)
     ax3.spines['top'].set_color('lightgrey')
     ax3.spines['top'].set_linewidth(0.5)
+    # fig.tight_layout()
 
-    # histogram on the top
-    a_bins = max([bins_sqrt(ai) for ai in a])
-    a_con = np.concatenate(a)
-    n, a_bins = histogram(a_con.ravel(), bins=a_bins)
-    for ai in a:
-        ax1.hist(ai, bins=a_bins, alpha=0.6 if len(a) > 1 else 1)
-    ax1.spines['top'].set_visible(False)
-    ax1.spines['right'].set_visible(False)
-    ax1.spines['left'].set_visible(False)
-    ax1.spines['bottom'].set_visible(False)
-    ax1.set_xticks([])
-
-    # histogram on the right
-    b_bins = max([bins_sqrt(bi) for bi in b])
-    b_con = np.concatenate(b)
-    n, b_bins = histogram(b_con.ravel(), bins=b_bins)
-    for bi in b:
-        ax4.hist(bi, bins=b_bins, orientation='horizontal', alpha=0.6 if len(a) > 1 else 1, align='mid')
-    ax4.spines['top'].set_visible(False)
-    ax4.spines['right'].set_visible(False)
-    ax4.spines['bottom'].set_visible(False)
-    ax4.spines['left'].set_color('lightgrey')
-    ax4.spines['left'].set_linewidth(0.5)
-    ax4.set_yticks([])
-    ax4.tick_params(axis='x', rotation=45)
+    # finalize
     if save_fig is not None:
         fig.savefig(save_fig, bbox_inches='tight')
-    plt.show()
+    if show:
+        plt.show()
 
 def colorize_complex(z):
     """Colorize complex numbers by their angle and magnitude."""
