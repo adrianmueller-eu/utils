@@ -499,6 +499,20 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
             a = [np.real(a) for a in a]
             xlabel = xlabel or "Re"
             ylabel = ylabel or "Im"
+        elif hasattr(a[0], '__len__') and len(a[0]) == 2:
+            if hasattr(a, 'shape'):
+                a, b = a[None,:,0], a[None,:,1]
+            else:
+                a, b = zip(*a)
+                a, b = [a], [b]
+        elif hasattr(a[0], '__len__') and hasattr(a[0][0], '__len__'):
+            assert len(a[0][0]) == 2, f"Can only plot 2D data, but got {len(a[0][0])}"
+            a_, b_ = [], []
+            for ai in a:
+                a, b = zip(*ai)
+                a_.append(a)
+                b_.append(b)
+            a, b = a_, b_
         else:
             assert not ylabel, "ylabel is not supported for 1D data"
             assert ylim is None, "ylim is not supported for 1D data"
