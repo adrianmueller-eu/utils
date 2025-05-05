@@ -188,11 +188,14 @@ class Polynomial(Function):
         assert not isinstance(x, Polynomial), "Did you forget a *?"
         # see np.polyval
         x = np.asarray(x)
-        y = 0 if x.ndim == 0 else np.zeros_like(x)
+        dtype = x.dtype if all(isinstance(c, (int, np.integer)) for c in self.coeffs) else float
+        y = 0 if x.ndim == 0 else np.zeros_like(x, dtype=dtype)
         # Horner's method (...(c_n*x + c_{n-1})*x + ...)*x + c_0
-        for pv in self.coeffs[::-1]:
-            y *= x  # inplace manipulation
-            y += pv
+        for pv in self.coeffs[1:][::-1]:  # skip 0*x for constant term
+            if pv != 0:
+                y += pv  # inplace manipulation
+            y *= x
+        y += self.coeffs[0]
         return y
 
     def strip_coeffs(self):
