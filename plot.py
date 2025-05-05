@@ -258,6 +258,24 @@ def histogram(data, bins=None, xlog=False, density=False):
         bins = bins_sqrt(data)
     return np.histogram(data, bins=bins, density=density)
 
+def clean_hist_data(data, log=False):
+    # filter nan, -inf, and inf from data
+    data = np.asarray(data)
+    nan_filter = np.isnan(data) | np.isinf(data)
+    n_filtered = np.sum(nan_filter)
+    if n_filtered > 0:
+        n_original = len(data)
+        data = data[~nan_filter]  # filter out nan and inf
+        print(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+    if log:
+        filter0 = data <= 0
+        n_filtered = np.sum(filter0)
+        if n_filtered > 0:
+            n_original = len(data)
+            data = data[~filter0]
+            print(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+    return data
+
 def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
     """Uses magic to create pretty histograms."""
 
@@ -280,25 +298,7 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
     else:
         ax0 = plt.gca()
 
-    def clean_data(data):
-        # filter nan, -inf, and inf from data
-        data = np.asarray(data)
-        nan_filter = np.isnan(data) | np.isinf(data)
-        n_filtered = np.sum(nan_filter)
-        if n_filtered > 0:
-            n_original = len(data)
-            data = data[~nan_filter]  # filter out nan and inf
-            print(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
-        if xlog:
-            filter0 = data <= 0
-            n_filtered = np.sum(filter0)
-            if n_filtered > 0:
-                n_original = len(data)
-                data = data[~filter0]
-                print(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
-        return data
-
-    data = clean_data(data)
+    data = clean_hist_data(data)
     n, bins = histogram(data.ravel(), bins=bins, xlog=xlog, density=density)
     if len(data.shape) > 1 and 1 < data.shape[0] < 10: # not more than 10 distributions
         if labels is None:
@@ -414,6 +414,15 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
 
     return n, bins
 
+def _simple_hist(ax, data, **hist_kwargs):
+    a_bins = max([bins_sqrt(ai) for ai in data])
+    a_con = np.concatenate(data)
+    n, a_bins = histogram(a_con.ravel(), bins=a_bins)
+    for ai in data:
+        ax.hist(ai, bins=a_bins, alpha=0.6 if len(data) > 1 else 1, **hist_kwargs)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
 def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xticks=None, alpha=None, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
     """Create only one axis on which to plot the data."""
 
@@ -426,7 +435,7 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
         assert d.ndim == 1, f"Data must be 1D, but was {d.shape}"
     if hist == 'auto':
         n_total = sum([len(d) for d in data])
-        hist = n_total > 1000
+        hist = n_total >= 1000
 
     # create figure
     figsize = [figwidth,1]
@@ -462,14 +471,8 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
     ax.set_xlabel(xlabel)
 
     if hist:
-        # histogram on the top
-        a_bins = max([bins_sqrt(ai) for ai in data])
-        a_con = np.concatenate(data)
-        n, a_bins = histogram(a_con.ravel(), bins=a_bins)
-        for ai in data:
-            ax2.hist(ai, bins=a_bins, alpha=0.6 if len(data) > 1 else 1)
-        ax2.spines['top'].set_visible(False)
-        ax2.spines['right'].set_visible(False)
+        # histogram on the bottom
+        _simple_hist(ax2, clean_hist_data(data))
         ax2.spines['left'].set_visible(False)
         ax2.spines['bottom'].set_visible(False)
         ax2.set_xticks([])
@@ -578,28 +581,16 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
 
     if hist:
         # histogram on the top
-        a_bins = max([bins_sqrt(ai) for ai in a])
-        a_con = np.concatenate(a)
-        n, a_bins = histogram(a_con.ravel(), bins=a_bins)
-        for ai in a:
-            ax1.hist(ai, bins=a_bins, alpha=0.6 if len(a) > 1 else 1)
-        ax1.spines['top'].set_visible(False)
-        ax1.spines['right'].set_visible(False)
+        _simple_hist(ax1, clean_hist_data(a))
         ax1.spines['left'].set_visible(False)
         ax1.spines['bottom'].set_visible(False)
         ax1.set_xticks([])
 
         # histogram on the right
-        b_bins = max([bins_sqrt(bi) for bi in b])
-        b_con = np.concatenate(b)
-        n, b_bins = histogram(b_con.ravel(), bins=b_bins)
-        for bi in b:
-            ax4.hist(bi, bins=b_bins, orientation='horizontal', alpha=0.6 if len(a) > 1 else 1, align='mid')
-        ax4.spines['top'].set_visible(False)
-        ax4.spines['right'].set_visible(False)
-        ax4.spines['bottom'].set_visible(False)
+        _simple_hist(ax4, clean_hist_data(b), orientation='horizontal', align='mid')
         ax4.spines['left'].set_color('lightgrey')
         ax4.spines['left'].set_linewidth(0.5)
+        ax4.spines['bottom'].set_visible(False)
         ax4.set_yticks([])
         ax4.tick_params(axis='x', rotation=45)
 
