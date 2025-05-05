@@ -6,7 +6,7 @@ import numpy as np
 from math import log2, log10, ceil, prod, floor
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
-from .utils import is_iterable, as_list_not_str, is_int
+from .utils import is_iterable, as_list_not_str
 
 def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True, ypoly=1,
          xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None,
@@ -142,7 +142,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
             else:
                 assert y.ndim in [1, 2, 3], f"y must be 1D, 2D, or 3D, but was {y.shape}"
                 if labels is None:
-                    if y.ndim == 3 or (y_was_None and y.ndim == 2 and y.shape[0] < 42):  # if y is 2D and no x nor labels given, we have to guess
+                    if y.ndim == 3 or (y_was_None and y.ndim == 2 and y.shape[0] <= 42):  # if y is 2D and no x nor labels given, we have to guess
                         labels = [None]*y.shape[0]
                         if y_was_None:
                             x = np.arange(y.shape[1])
@@ -168,10 +168,11 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     plt.ylim(ylim)
     # scale y ticks by ypoly
     if ypoly != 1:
-        yticks = plt.gca().get_yticks()
-        plt.gca().set_yticks(yticks)  # satisfy matplotlib
+        ax = plt.gca()
+        yticks = ax.get_yticks()
+        ax.set_yticks(yticks)  # satisfy matplotlib
         yticks = yticks**ypoly
-        plt.gca().set_yticklabels([f"{y:.2e}" for y in yticks])
+        ax.set_yticklabels([f"{y:.2e}" for y in yticks])
 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -304,7 +305,8 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
             labels = [None] * data.shape[0]
         for d, label in zip(data, labels):
             ax0.hist(d.ravel(), bins=bins, density=density, alpha=1.5/data.shape[0], label=label)
-        ax0.legend()
+        if not all(l is None for l in labels):
+            ax0.legend()
     else:
         ax0.hist(bins[:-1], bins, weights=n, density=density, label=labels)
     if xlog:
