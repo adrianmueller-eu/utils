@@ -6,7 +6,7 @@ import numpy as np
 from math import log2, log10, ceil, prod, floor
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
-from .utils import is_iterable, as_list_not_str
+from .utils import is_iterable, as_list_not_str, warn
 
 def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True, ypoly=1,
          xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None,
@@ -109,7 +109,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     if fmt == ".":
         if is_complex(y):
             if labels is not None:
-                warnings.warn("labels are not supported for complex data", stacklevel=2)
+                warn("labels are not supported for complex data")
             plt.scatter(x, y.real, label="real", **pltargs)
             plt.scatter(x, y.imag, label="imag", **pltargs)
             plt.legend()
@@ -130,7 +130,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     else:
         if is_complex(y):
             if labels is not None:
-                warnings.warn("labels are not supported for complex data", stacklevel=2)
+                warn("labels are not supported for complex data")
             plt.plot(x, y.real, fmt, label="real", **pltargs)
             plt.plot(x, y.imag, fmt, label="imag", **pltargs)
             plt.legend()
@@ -266,14 +266,14 @@ def clean_hist_data(data, log=False):
     if n_filtered > 0:
         n_original = len(data)
         data = data[~nan_filter]  # filter out nan and inf
-        print(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+        warn(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
     if log:
         filter0 = data <= 0
         n_filtered = np.sum(filter0)
         if n_filtered > 0:
             n_original = len(data)
             data = data[~filter0]
-            print(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
+            warn(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original*100:.3f}%) filtered out")
     return data
 
 def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
@@ -675,11 +675,11 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
                 fill_val = a.min()
             else:
                 fill_val = np.nan
-            warnings.warn(f"No good divisor found for magic reshaping {a.shape}. Filling with {m-n_samples}*{[fill_val]} to {m//best_divisor}x{best_divisor}.", stacklevel=2)
+            warn(f"No good divisor found for magic reshaping {a.shape}. Filling with {m-n_samples}*{[fill_val]} to {m//best_divisor}x{best_divisor}.")
             a = np.pad(a, (0, m-n_samples), 'constant', constant_values=fill_val)
         # best_divisor = int_sqrt(n_samples)
         # if best_divisor**2 < n_samples*0.1:
-        #     warnings.warn(f"No good divisor found for reshaping {a.shape} to a square. Using the best one: {best_divisor}x{n_samples//best_divisor}", stacklevel=2)
+        #     warn(f"No good divisor found for reshaping {a.shape} to a square. Using the best one: {best_divisor}x{n_samples//best_divisor}")
         a = a.reshape(best_divisor, -1)
         is_vector = False
     if len(a.shape) == 1:
@@ -693,24 +693,23 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     iscomplex = is_complex(a)
     if iscomplex:
         if colorbar == True:
-            warnings.warn("colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.", stacklevel=2)
+            warn("colorbar not supported for complex arrays. Use `complex_colorbar()` to see the color reference.")
         if cmap != 'hot':
-            warnings.warn("Argument cmap is not used for complex arrays.", stacklevel=2)
+            warn("Argument cmap is not used for complex arrays.")
 
+    norm = None
     if vmin is not None or vmax is not None:
         if iscomplex:
-            warnings.warn("vmin and vmax are not supported for complex arrays.", stacklevel=2)
-            norm = None
+            warn("vmin and vmax are not supported for complex arrays.")
         else:
+            # check if one of the given values excludes all data
             if vmin is None:
                 vmin = np.min(a)
             if vmax is None:
                 vmax = np.max(a)
             if vmin > vmax:
-                warnings.warn("vmin > vmax", stacklevel=2)
+                warn(f"vmin > vmax: {vmin} > {vmax}")
             norm = colors.Normalize(vmin, vmax)
-    else:
-        norm = None
 
     if is_vector:
         if iscomplex:
@@ -736,7 +735,7 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     elif len(a.shape) == 3 and a.shape[2] == 3:
         plt.imshow(a, **pltargs)
         if colorbar == True:
-            warnings.warn("colorbar not supported for RGB images.", stacklevel=2)
+            warn("colorbar not supported for RGB images.")
     else:
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
 
