@@ -13,7 +13,6 @@ def poly_scale(y, deg=1):
         return y
     if is_complex(y):
         return y**deg
-    y = y.real
 
     y_neg = y < 0
     y_neg_res = -(-y[y_neg])**deg  # infer float dtype if necessary

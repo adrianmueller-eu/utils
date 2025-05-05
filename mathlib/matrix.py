@@ -99,12 +99,12 @@ def is_involutory(a, tol=1e-12):
 def is_antiinvolutory(a, tol=1e-12):
     return is_square(a) and is_eye(-a @ a, tol=tol)
 
-def is_complex(a):
-    if hasattr(a, 'dtype'):
-        if a.dtype == complex:
-            return True
-        return np.issubdtype(a.dtype, complex)
-    return np.iscomplex(a).any()
+def is_complex(a, full=False):
+    if not hasattr(a, 'dtype'):
+        a = np.asanyarray(a)
+    if np.issubdtype(a.dtype, np.complexfloating):
+        return not full or np.any(a.imag != 0)
+    return False
 
 def is_psd(a, eigs=None, check=3, tol=1e-12):
     if check >= 2 and not is_hermitian(a, tol):
