@@ -187,7 +187,9 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
             yticks_labels = [f"$10^{{{int(y)}}}$" for y in log10_yticks]
         else:
             yticks_labels = [f"{y:.5g}" for y in yticks_scaled]
+        ylim = ax.get_ylim()
         ax.set_yticks(yticks, yticks_labels)
+        ax.set_ylim(ylim)
 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
