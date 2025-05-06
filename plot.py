@@ -1,7 +1,8 @@
-import warnings
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.animation import FuncAnimation
+from matplotlib.ticker import NullFormatter
+
 import numpy as np
 from math import log2, log10, ceil, prod, floor
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
@@ -11,6 +12,10 @@ from .utils import is_iterable, as_list_not_str, warn
 def poly_scale(y, deg=1):
     if deg == 1:
         return y
+    if isinstance(y, (float, int)):
+        if y < 0:
+            return -(-y)**deg
+        return y**deg
     if is_complex(y):
         return y**deg
 
@@ -176,20 +181,20 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
 
     plt.xlim(xlim)
     plt.ylim(ylim)
-    # scale y ticks by ypoly
+
     if ypoly != 1:
         ax = plt.gca()
         yticks = ax.get_yticks()
         yticks_scaled = poly_scale(yticks, ypoly)
+
         # if all powers of 10, write them as 10^x
-        log10_yticks = np.log10(yticks_scaled)
-        if np.all(log10_yticks % 1 == 0):
-            yticks_labels = [f"$10^{{{int(y)}}}$" for y in log10_yticks]
+        if (all(yticks_scaled > 0) or all(yticks_scaled < 0)) and np.allclose(np.log10(np.abs(yticks_scaled)) % 1, 0):
+            sign = '-' if (yticks_scaled[0] < 0) else ''
+            formatter = lambda y, pos=None: f"${sign}10^{{{ypoly*int(log10(y))}}}$"
         else:
-            yticks_labels = [f"{y:.5g}" for y in yticks_scaled]
-        ylim = ax.get_ylim()
-        ax.set_yticks(yticks, yticks_labels)
-        ax.set_ylim(ylim)
+            formatter = lambda y, pos=None: f"${poly_scale(y, ypoly):.6g}$"
+        ax.yaxis.set_major_formatter(formatter)
+        ax.yaxis.set_minor_formatter(NullFormatter())
 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
