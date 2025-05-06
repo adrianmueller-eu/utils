@@ -55,7 +55,7 @@ def Rot(phi, theta, lam):
         [np.exp(-pml)*st, np.exp(ppl)*ct]
     ])
 
-for i in [2,3]:
+for i in [2]:
     for s, g in zip(itertools.product(['I','X','Y','Z'], repeat=i), itertools.product([I,X,Y,Z], repeat=i)):
         globals()["".join(s)] = reduce(np.kron, g)  # II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ
 del i, s, g
