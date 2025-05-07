@@ -1038,14 +1038,18 @@ def random_hermitian(n, size=(), std=1, normalized=True):
         size = (size,)
     if normalized:
         std /= sqrt(n)
-    if n > 30:
+    if n > 15:
         a = np.zeros(size + (n,n), dtype=complex)
-        for i in shape_it(size):
-            a[i] = np.diag(random_vec(n, params=(0, std), complex=False).astype(complex))
-        params = (0, std/sqrt(2))  # 2 dof for each off-diagonal element
+        diags = random_vec(size + (n,), params=(0, std), complex=False).astype(complex)
         n_tri  = n*(n-1)//2  # number of triangular elements
-        a[...,np.triu_indices(n, 1)] = random_vec(size + (n_tri,), params=params, complex=True)
-        a[a == 0] = np.moveaxis(a, -1, -2).conj()[a == 0]
+        trius = random_vec(size + (n_tri,), params=(0, std/sqrt(2)), complex=True)
+        is_triu = ~np.tri(n, dtype=bool)
+        is_tril = np.tri(n, k=-1, dtype=bool)
+        for i in shape_it(size):
+            H = np.diag(diags[i])
+            H[is_triu] = trius[i]
+            H[is_tril] = H.T.conj()[is_tril]
+            a[i] = H
         return a
     # equivalent, but faster for small matrices
     a = random_vec(size + (n,n), params=(0, std), complex=True, kind='normal')
