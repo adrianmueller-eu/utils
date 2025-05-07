@@ -1,6 +1,6 @@
 import re
 import numpy as np
-from math import sqrt, ceil, prod, log
+from math import sqrt, ceil, prod, log, factorial, comb
 
 sage_loaded = False
 try:
@@ -33,6 +33,20 @@ def gcd(*a):
     while b:
         a, b = b, a % b
     return a
+
+if not sage_loaded:
+    def lcm(*a):
+        """ Least common multiple. """
+        a, b = _two_arguments(lcm, a)
+        if b is None:
+            return a
+        if hasattr(a, 'lcm'):
+            return a.lcm(b)
+        return a * b // gcd(a, b)
+
+##############
+### Primes ###
+##############
 
 def is_coprime(*a):
     """ Test if the given integers are coprime. """
@@ -131,15 +145,6 @@ if not sage_loaded:
         """Asymptotic lower bound for Euler's totient function: $n/(e^gamma * log(log(n)))$ """
         return n / (np.euler_gamma * log(log(n)))
 
-    def lcm(*a):
-        """ Least common multiple. """
-        a, b = _two_arguments(lcm, a)
-        if b is None:
-            return a
-        if hasattr(a, 'lcm'):
-            return a.lcm(b)
-        return a * b // gcd(a, b)
-
     def next_prime(a):
         """ Find the next prime number after `a`. """
         if a < 2:
@@ -167,6 +172,20 @@ if not sage_loaded:
             if is_prime(a):
                 res.append(a)
         return res
+
+def is_carmichael(n):
+    """ Test if `n` is a Carmichael number. """
+    if is_prime(n): # are neither even nor prime
+        return False
+    for a in range(2,n):
+        if gcd(n,a) == 1 and pow(a,n-1,n) != 1:
+            return False
+    return True
+
+def carmichael_numbers(to):
+    for n in range(3*5*7, to, 2): # have at minimum three prime factors and not even
+        if is_carmichael(n):
+            yield n
 
 def divisors(n):
     """ Find all divisors of `n`. """
@@ -205,6 +224,10 @@ def next_good_int_sqrt(n, p=0.1):
         m += 2
     return m
 
+########################
+## integers modulo n ###
+########################
+
 def dlog(x,g,n):
     """ Discrete logarithm, using the baby-step giant-step algorithm.
 
@@ -228,20 +251,6 @@ def dlog(x,g,n):
             return i * w-baby.index(giant) % n
 
     raise ValueError(f"Couldn't find discrete logarithm of {x} to the base {g} modulo {n}.")
-
-def is_carmichael(n):
-    """ Test if `n` is a Carmichael number. """
-    if is_prime(n): # are neither even nor prime
-        return False
-    for a in range(2,n):
-        if gcd(n,a) == 1 and pow(a,n-1,n) != 1:
-            return False
-    return True
-
-def carmichael_numbers(to):
-    for n in range(3*5*7, to, 2): # have at minimum three prime factors and not even
-        if is_carmichael(n):
-            yield n
 
 class Group:
     def __init__(self, elements, identity=None):
