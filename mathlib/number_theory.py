@@ -44,6 +44,13 @@ if not sage_loaded:
             return a.lcm(b)
         return a * b // gcd(a, b)
 
+def fac(n, k=0):
+    """ n!/k! = n*(n-1)*...*(n-k+1) """
+    if k < 2:
+        return factorial(n)
+    return comb(n, k)*factorial(n-k)
+    # return prod(range(k+1, n+1))
+
 ##############
 ### Primes ###
 ##############
