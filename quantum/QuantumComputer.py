@@ -1171,13 +1171,18 @@ class QuantumComputer:
             operators = noise_models[noise_model](p)
             return self(operators, qubits)
 
-    def __str__(self):
+    def __str__(self, sort_qubits=True):
         try:
-            if self.is_matrix_mode():
+            if sort_qubits:
+                state = self.get_state()
+            else:
                 state = self._state.reshape(2**self.n, -1)
+                if state.shape[1] == 1:
+                    state = state.ravel()
+
+            if self.is_matrix_mode():
                 state = '\n' + str(state)
             else:
-                state = self._state.reshape(2**self.n)
                 n_terms = np.count_nonzero(state)
                 if n_terms < 256:
                     state = f"'{unket(state)}'"
@@ -1188,9 +1193,9 @@ class QuantumComputer:
         return f"qubits {self._qubits} in state {state}"
 
     def __repr__(self):
-        return self.__str__() + f" at {hex(id(self))}"
+        return self.__str__(sort_qubits=False) + f" at {hex(id(self))}"
 
-    def _repr_pretty_(self, p, cycle):
+    def _repr_pretty_(self, p, cycle):  # this is used by IPython
         if cycle:
             p.text(f"{self.__class__.__name__}(...)")
         else:
