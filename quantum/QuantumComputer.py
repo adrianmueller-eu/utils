@@ -624,7 +624,7 @@ class QuantumComputer:
             raise ValueError("Operator tracking is disabled")
         with self.observable(obs):
             if self._as_superoperator:
-                V = channel_from_choi(self.choi_matrix(), n=(self.n, self.n), k=1)[0]
+                V = channel_from_choi(self.choi_matrix(), dims=(2**self.n, 2**len(self._input_qubits)), k=1)[0]
                 if is_isometry(V, kind='right'):
                     return V
             else:
@@ -680,7 +680,7 @@ class QuantumComputer:
             raise ValueError("Operator tracking is disabled")
         self._reorder(self._original_order, reshape=False)
         if self._as_superoperator:
-            return channel_from_choi(self._operators, n=(self.n, len(self._input_qubits)), filter_eps=self.FILTER_EPS)
+            return channel_from_choi(self._operators, dims=(2**self.n, 2**len(self._input_qubits)), filter_eps=self.FILTER_EPS)
         return self._operators.copy()
 
     def choi_matrix(self):

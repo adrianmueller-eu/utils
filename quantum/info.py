@@ -505,28 +505,26 @@ def choi_from_channel(operators, sparse=True, check=3):
         Choi += Kvec @ Kvec.conj().T  # outer product
     return Choi
 
-def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
+def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
     """
     Create the Kraus operators from a Choi matrix. Either `n_out` or `n_in` must be provided.
     """
     if not hasattr(choi, 'shape'):
         choi = np.asarray(choi)
     assert is_square(choi), f"Choi matrix is not square: {choi.shape}"
+    assert choi.ndim == 2, f"Choi matrix must be 2D: {choi.shape}"
 
     # infer Choi dimensions
-    n_out, n_in = n if not isinstance(n, int) else (n, n)
-    assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
+    d_out, d_in = dims if not isinstance(dims, int) else (dims, dims)
+    assert d_out is not None or d_in is not None, f"Either n_out or n_in must be provided"
     choi_dim = choi.shape[0]
-    if n_out is None:
-        d_in = 2**n_in
+    if d_out is None:
         d_out = choi_dim // d_in
         assert choi_dim == d_out*d_in, f"Invalid n_in: {n_in} for {choi.shape}"
-    elif n_in is None:
-        d_out = 2**n_out
+    elif d_in is None:
         d_in = choi_dim // d_out
         assert choi_dim == d_out*d_in, f"Invalid n_out: {n_out} for {choi.shape}"
     else:
-        d_out, d_in = 2**n_out, 2**n_in
         choi_dim = d_out*d_in
         assert choi.shape == (choi_dim, choi_dim), f"Choi matrix has invalid shape: {choi.shape} ≠ {(choi_dim, choi_dim)}"
 
@@ -564,12 +562,12 @@ def compress_channel(operators, n=(None, None), filter_eps=1e-12, check=3):
 
     # reshape operators to 2D
     orig_shape = operators[0].shape  # store the original shape
-    d_in, d_out = get_channel_dims(operators)
+    d_out, d_in = get_channel_dims(operators)
     ops = [op.reshape(d_out, d_in) for op in operators]
 
     # obtain choi matrix and perform SVD
     choi = choi_from_channel(ops, check=0)
-    ops_compressed = channel_from_choi(choi, n=n, filter_eps=filter_eps, k=len(ops))
+    ops_compressed = channel_from_choi(choi, (d_out, d_in), filter_eps=filter_eps, k=len(ops))
 
     # reshape back to original shape
     ops_compressed = [op.reshape(orig_shape) for op in ops_compressed]
