@@ -209,6 +209,8 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
 
     # 2. Check size matches n parameter
     n_out, n_in = get_channel_dims(operators, as_qubits=True)
+    if is_int(n):
+        n = (n, n)
     if n[0] is not None:
         assert n[0] == n_out, f"Operators have invalid shape for {n[0]} output qubits: {2**n[0]} x {operators[0].shape}"
     if n[1] is not None:
@@ -503,7 +505,7 @@ def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
     assert is_square(choi), f"Choi matrix is not square: {choi.shape}"
 
     # infer Choi dimensions
-    n_out, n_in = n
+    n_out, n_in = n if not isinstance(n, int) else (n, n)
     if n_out is not None and n_in is not None:
         choi_dim = 2**(n_out + n_in)
         assert choi.shape == (choi_dim, choi_dim), f"Choi matrix has invalid shape: {choi.shape} ≠ {(choi_dim, choi_dim)}"
@@ -549,7 +551,7 @@ def compress_channel(operators, n=(None, None), filter_eps=1e-12, check=3):
     Find a minimal set of Kraus operators that represent the same quantum channel.
     """
     operators = assert_kraus(operators, check=check)
-    n_out, n_in = n
+    n_out, n_in = n if not isinstance(n, int) else (n, n)
     assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
 
     orig_shape = operators[0].shape  # store the original shape
