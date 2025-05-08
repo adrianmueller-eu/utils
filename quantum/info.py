@@ -515,19 +515,20 @@ def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
 
     # infer Choi dimensions
     n_out, n_in = n if not isinstance(n, int) else (n, n)
-    if n_out is not None and n_in is not None:
-        choi_dim = 2**(n_out + n_in)
-        assert choi.shape == (choi_dim, choi_dim), f"Choi matrix has invalid shape: {choi.shape} ≠ {(choi_dim, choi_dim)}"
+    assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
+    choi_dim = choi.shape[0]
+    if n_out is None:
+        d_in = 2**n_in
+        d_out = choi_dim // d_in
+        assert choi_dim == d_out*d_in, f"Invalid n_in: {n_in} for {choi.shape}"
+    elif n_in is None:
+        d_out = 2**n_out
+        d_in = choi_dim // d_out
+        assert choi_dim == d_out*d_in, f"Invalid n_out: {n_out} for {choi.shape}"
     else:
-        assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
-        n_total = int(log2(choi.shape[0]))
-        if n_out is None:
-            n_out = n_total - n_in
-            assert n_out >= 0, f"Invalid n_out: {n_out} for {choi.shape} and {n}"
-        elif n_in is None:
-            n_in = n_total - n_out
-            assert n_in >= 0, f"Invalid n_in: {n_in} for {choi.shape} and {n}"
-        choi_dim = 2**(n_out + n_in)
+        d_out, d_in = 2**n_out, 2**n_in
+        choi_dim = d_out*d_in
+        assert choi.shape == (choi_dim, choi_dim), f"Choi matrix has invalid shape: {choi.shape} ≠ {(choi_dim, choi_dim)}"
 
     # warning to the user
     k = k or choi_dim
@@ -551,7 +552,7 @@ def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
 
     # generate minimal set of Kraus operators
     S = np.sqrt(S)
-    operators = [S[i] * U[:, i].reshape(2**n_out, 2**n_in) for i in range(len(S))]
+    operators = [S[i] * U[:, i].reshape(d_out, d_in) for i in range(len(S))]
     # assert_kraus(operators, n_qubits=(n_out, n_in), check=3)
     return operators
 
