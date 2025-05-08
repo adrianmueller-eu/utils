@@ -20,14 +20,10 @@ from ..utils import is_int, duh, warn, as_list_not_str, nbytes
 from ..prob import entropy
 
 class QuantumComputer:
-    MATRIX_SLOW = 8
     MATRIX_BREAK = 12
     ENTROPY_EPS = 1e-12
     FILTER_EPS = 1e-12  # filter out small eigenvalues and zero operators
-    KEEP_VECTOR = True
-    FILTER0 = True  # filter out zero operators
     SPARSE_CUTOFF = 0.25
-    AUTO_COMPRESS = True
 
     """
     Simulate a quantum computer! Simulate state vectors or density matrices,
@@ -52,19 +48,39 @@ class QuantumComputer:
         operators = qc.get_operators()  # Look at the effective channel
 
     Parameters:
-        qubits (list): List of qubits to be allocated.
+        qubits (list|int): List of qubit identifiers for qubits to be allocated.
         state (array): Initial state of the system (default: |0>).
-        track_operators (bool): Whether to track the effective quantum channel. Default is 'auto'.
-        check (int): Check level for input validation.
+        track_operators (bool): Whether to track the effective quantum channel. `'auto'` tracks as long as the system is not too large (see `MATRIX_SLOW`).
+        as_superoperator (bool): Whether to use superoperator (Choi matrix) representation (True) or Kraus operators (False).
+        check (int): Check level for input validation (see `../../check levels.md`)
+        keep_vector (bool): If True, try to keep state vector representation in various operations (e.g. obtaining or plotting the state of a subsystem, qubit removal, decoherent measurement).
+                            Requires O(N^3) tests if the state is (and, if tracked, operators are) separable.
+        auto_compress (bool): If True and Kraus operators are tracked, compress them after each operation if they exceed the Choi dimension.
+        entropy_eps (float): Epsilon for entropy calculations.
+        filter_eps (float): Epsilon for filtering small eigenvalues and zero operators.
+        filter0 (bool): Whether to filter out zero operators.
+        sparse_cutoff (float): Cutoff for sparse vs dense representation of the superoperator.
+        max_n (int): If `track_operators = 'auto'`, number of input + output qubits above which operators are not being tracked anymore.
     """
-    def __init__(self, qubits=None, state=0, track_operators='auto', as_superoperator=False, check=2):
+    def __init__(self, qubits=None, state=0, track_operators='auto', as_superoperator=False, check=2,
+        keep_vector=True, auto_compress=True, entropy_eps=1e-12, filter_eps=1e-12, filter0=True, sparse_cutoff=0.25, max_n=16
+    ):
         self._track_operators = track_operators
-        self.check_level = check
-
         if as_superoperator:
             import scipy
             assert scipy.__version__ >= '1.15', "scipy >= 1.15 is required for superoperator mode"
         self._as_superoperator = as_superoperator
+        self.check_level = check
+
+        # constants
+        self.KEEP_VECTOR = keep_vector
+        self.AUTO_COMPRESS = auto_compress
+        self.ENTROPY_EPS = entropy_eps
+        self.FILTER_EPS = filter_eps
+        self.FILTER0 = filter0
+        self.SPARSE_CUTOFF = sparse_cutoff
+        self.MAX_N = max_n
+        self.MATRIX_BREAK = 12
 
         self.clear()
 
@@ -125,7 +141,7 @@ class QuantumComputer:
     def _too_large_to_track_operators(self, added_n):
         if isinstance(self._track_operators, bool):
             return not self._track_operators
-        too_large = (self.n + added_n + len(self._input_qubits)) > 2*self.MATRIX_SLOW
+        too_large = (self.n + added_n + len(self._input_qubits)) > self.MAX_N
         if too_large:
             self.track_operators = False
         return too_large
@@ -228,7 +244,7 @@ class QuantumComputer:
     def get_state(self, qubits='all', collapse=False, allow_vector=True, obs=None):
         """ Moves `qubits` to the *end* of `self._qubits`. """
         def _allow_vector():
-            return allow_vector and not self._as_superoperator and (not self.track_operators or self.is_isometric())
+            return self.KEEP_VECTOR and allow_vector and not self._as_superoperator and (not self.track_operators or self.is_isometric())
 
         assert isinstance(collapse, bool), f"collapse must be boolean, but was {collapse}"
         with self.observable(obs, qubits) as qubits:
@@ -262,7 +278,7 @@ class QuantumComputer:
             if q > self.MATRIX_BREAK:
                 warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
             self._reorder(to_remove, reshape=False)
-            if self.KEEP_VECTOR and _allow_vector() and self.n - q < self.MATRIX_SLOW and \
+            if not self.is_matrix_mode() and _allow_vector() and \
                     self.is_separable_state(to_remove) and (not self.track_operators or self.is_unitary(to_remove)):
                 # find a non-zero state (-> no diagonalization required)
                 self._reorder(to_remove, reshape=True)
@@ -336,8 +352,8 @@ class QuantumComputer:
                 self._reorder(to_retain + qubits)  # move to_alloc where it is in `qubits`
         return self
 
-    def reset(self, qubits='all', collapse='auto', track_in_operators='auto', compress='auto'):
-        return self.init(0, qubits, collapse, track_in_operators, compress=compress)
+    def reset(self, qubits='all', collapse='auto', track_in_operators='auto'):
+        return self.init(0, qubits, collapse, track_in_operators)
 
     def resetv(self, qubits=None):
         """
