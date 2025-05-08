@@ -847,8 +847,6 @@ class QuantumComputer:
                 axes_new_in = [n + self._input_qubits.index(q) for q in new_order_all if q in self._input_qubits]
                 axes_new_in = axes_new_in + [i for i in range(n,n+n_in) if i not in axes_new_in]
                 axes_new_ = axes_new + axes_new_in  # order is qubits_out + qubits_in
-        else:
-            axes_new = None  # stub
 
         def _reorder(a, kind):
             if kind == 'ket':
