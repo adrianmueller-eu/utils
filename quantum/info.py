@@ -463,8 +463,11 @@ def average_channel(channels, p=None, check=3):
     """
     Average the channels into a single channel. If p is None, assume uniform weights.
     """
-    for ops in channels:
-        assert_kraus(ops, check=check)
+    if check:
+        channels = [assert_kraus(ops, allow_reshaped=True, check=check) for ops in channels]
+        # check they all have the same shape
+        for i, ops in enumerate(channels):
+            assert ops[0].shape == channels[0][0].shape, f"Operators {i} have inconsistent shape: {ops[0].shape} != {channels[0][0].shape}"
 
     C = len(channels)
     if p is None:
