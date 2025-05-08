@@ -710,18 +710,8 @@ class QuantumComputer:
         if self._as_superoperator:
             raise ValueError("Cannot compress superoperator representation")
 
-        ops = self._operators
         n_in = len(self._input_qubits)
-        choi_dim = prod(ops[0].shape)
-        n_out = count_qubits(choi_dim) - n_in
-        k = len(ops)
-
-        if choi_dim*k > 1e7:
-            warn(f"Calculating {k} singular values of a {choi_dim, choi_dim} Choi matrix for {n_out, n_in} qubits may take a while. Use `force=True` to compute it anyway.")
-
-        ops = [op.reshape(2**n_out, 2**n_in) for op in ops]
-        choi = choi_from_channel(ops, n=(n_out, n_in), check=0)
-        self._operators = channel_from_choi(choi, n=(n_out, n_in), filter_eps=filter_eps, k=k)
+        self._operators = compress_channel(self._operators, n=(None, n_in), filter_eps=filter_eps, check=0)
         return self
 
     def _use_sparse_superoperator(self):

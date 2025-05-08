@@ -544,10 +544,34 @@ def channel_from_choi(choi, n=(None, None), filter_eps=1e-12, k=None):
     # assert_kraus(operators, n_qubits=(n_out, n_in), check=3)
     return operators
 
-def compress_channel(operators, filter_eps=1e-12, check=3):
+def compress_channel(operators, n=(None, None), filter_eps=1e-12, check=3):
     """
     Find a minimal set of Kraus operators that represent the same quantum channel.
     """
-    choi = choi_from_channel(operators, check=check)
-    n_out, n_in = count_qubits(operators[0].shape[0]), count_qubits(operators[0].shape[1])
-    return channel_from_choi(choi, n=(n_out, n_in), filter_eps=filter_eps, k=len(operators))
+    operators = assert_kraus(operators, check=check)
+    n_out, n_in = n
+    assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
+
+    orig_shape = operators[0].shape  # store the original shape
+
+    # infer input/output dimensions
+    choi_dim = prod(orig_shape)
+    if n_out is None and n_in is not None:
+        d_in = 2**n_in
+        d_out = choi_dim // d_in
+        n_out = count_qubits(d_out)
+    elif n_in is None and n_out is not None:
+        d_out = 2**n_out
+        d_in = choi_dim // d_out
+        n_in = count_qubits(d_in)
+
+    # reshape operators to 2D
+    ops = [op.reshape(d_out, d_in) for op in operators]
+
+    # obtain choi matrix and perform SVD
+    choi = choi_from_channel(ops, n=(n_out, n_in), check=0)
+    ops_compressed = channel_from_choi(choi, n=(n_out, n_in), filter_eps=filter_eps, k=len(ops))
+
+    # reshape back to original shape
+    ops_compressed = [op.reshape(orig_shape) for op in ops_compressed]
+    return ops_compressed
