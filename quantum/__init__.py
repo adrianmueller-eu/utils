@@ -529,7 +529,7 @@ def _test_QuantumComputer():
     qc.cx(0,1)
     qc.measure(0, collapse=False)
     ops = qc.get_operators()
-    assert len(ops) == 8
+    assert len(ops) == 8, len(ops)
     assert np.allclose(qc[:], QC(2)(ops)[:])
     qc.reset(0, collapse=False)
     ops = qc.get_operators()

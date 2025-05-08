@@ -197,11 +197,12 @@ class QuantumComputer:
             self.to_dm()
 
         self._reorder(qubits, reshape=True)  # required by both update and apply
-        # multiply each operator with the new operators
-        self._update_operators(operators)
 
         # apply operators to state
         self._apply_operators(operators, qubits)
+
+        # multiply each operator with the new operators
+        self._update_operators(operators)
         return self
 
     def _update_operators(self, operators):
@@ -212,8 +213,7 @@ class QuantumComputer:
                 self._operators = update_choi(operators, self._operators, sparse=sparse, check=0)
             else:
                 self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
-                if self.AUTO_COMPRESS:
-                    self.compress_operators(filter_eps=self.FILTER_EPS)
+                self._auto_compress()
 
     def _apply_operators(self, operators, qubits):
         self._state = apply_channel(operators, self._state, len(qubits) != self.n, check=0)
@@ -322,9 +322,6 @@ class QuantumComputer:
 
             # remove qubits from state and operators
             self.remove(to_remove, collapse=collapse, obs=None)
-            # find a minimal Kraus representation
-            if self.AUTO_COMPRESS and not self._as_superoperator:
-                self.compress_operators()
             # extend state and operators by all `qubits`
             self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
 
@@ -494,9 +491,9 @@ class QuantumComputer:
                 assert not collapse, "WTF-Error: Collapse is incompatible with operator tracking."
                 if new_state.ndim == 1:
                     # unitary was separable
-                    U = self.get_unitary(to_retain)
+                    U = self.get_unitary(to_retain)  # this needs self._state / self._qubits not updated yet
                     if self._as_superoperator:
-                        d = 2**self.n
+                        d = new_state.shape[0]  # 2**len(to_retain)
                         self._operators = choi_from_channel([U]).reshape(d,d,d,d)
                         self._use_sparse_superoperator()  # check to convert to dense
                     else:
@@ -699,20 +696,31 @@ class QuantumComputer:
         self._reorder(self._original_order, reshape=False)
         return choi_from_channel(self._operators, n=(self.n, None), check=0)
 
+    def _auto_compress(self):
+        if self.AUTO_COMPRESS and self.track_operators and not self._as_superoperator:
+            k = len(self._operators)
+            if k > 4:
+                choi_dim = 2**(self.n + len(self._input_qubits))
+                if k > choi_dim:  # guaranteed not to be minimal
+                    self.compress_operators()
+
     def compress_operators(self, filter_eps=FILTER_EPS):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
         if self._as_superoperator:
             raise ValueError("Cannot compress superoperator representation")
 
-        n_out = self.n
-        choi_dim = prod(self._operators[0].shape)
-        n_in = count_qubits(choi_dim) - n_out
-        k = len(self._operators)
+        ops = self._operators
+        n_in = len(self._input_qubits)
+        choi_dim = prod(ops[0].shape)
+        n_out = count_qubits(choi_dim) - n_in
+        k = len(ops)
 
         if choi_dim*k > 1e7:
             warn(f"Calculating {k} singular values of a {choi_dim, choi_dim} Choi matrix for {n_out, n_in} qubits may take a while. Use `force=True` to compute it anyway.")
-        choi = self.choi_matrix()
+
+        ops = [op.reshape(2**n_out, 2**n_in) for op in ops]
+        choi = choi_from_channel(ops, n=(n_out, n_in), check=0)
         self._operators = channel_from_choi(choi, n=(n_out, n_in), filter_eps=filter_eps, k=k)
         return self
 
