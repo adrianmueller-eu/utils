@@ -324,6 +324,7 @@ def update_choi(operators, choi, sparse=True, check=3):
     # if self._operators.ndim == 2:  # (out*in) x (out*in)
     #     choi = choi_from_channel(operators, check=0)
     #     return choi @ self._operators
+    operators = assert_kraus(operators, allow_reshaped=False, check=check)
     assert choi.ndim in (4,6)  # n x n_in x n x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
     d_out, d_in = operators[0].shape[0], choi.shape[-1]
     if choi.ndim == 4:
