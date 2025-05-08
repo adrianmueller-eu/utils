@@ -554,7 +554,7 @@ def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
     # assert_kraus(operators, n_qubits=(n_out, n_in), check=3)
     return operators
 
-def compress_channel(operators, n=(None, None), filter_eps=1e-12, check=3):
+def compress_channel(operators, filter_eps=1e-12, check=3):
     """
     Find a minimal set of Kraus operators that represent the same quantum channel.
     """

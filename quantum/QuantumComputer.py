@@ -710,8 +710,7 @@ class QuantumComputer:
         if self._as_superoperator:
             raise ValueError("Cannot compress superoperator representation")
 
-        n_in = len(self._input_qubits)
-        self._operators = compress_channel(self._operators, n=(None, n_in), filter_eps=filter_eps, check=0)
+        self._operators = compress_channel(self._operators, filter_eps=filter_eps, check=0)
         return self
 
     def _use_sparse_superoperator(self):
