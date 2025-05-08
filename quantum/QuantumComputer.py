@@ -448,7 +448,9 @@ class QuantumComputer:
         with self.observable(obs, qubits) as qubits:
             return self._probs(qubits)
 
-    def probs_pp(self, qubits='all', obs=None, filter_eps=FILTER_EPS, precision=7):
+    def probs_pp(self, qubits='all', obs=None, filter_eps=None, precision=7):
+        if filter_eps is None:
+            filter_eps = self.FILTER_EPS
         probs = self.probs(qubits, obs)
         print("Prob       State")
         print("-"*25)
@@ -566,16 +568,19 @@ class QuantumComputer:
             self._state = self._state.reshape(q, nq, q, nq)
         return self
 
-    def to_ket(self, kind='sample', return_outcome=False, filter_eps=FILTER_EPS):
+    def to_ket(self, kind='sample', return_outcome=False, filter_eps=None):
         """
         Convert density matrix to state vector representation.
         """
+
         if not self.is_matrix_mode():
             # warn("State is already a vector")
             return self
         if self._as_superoperator:
             raise ValueError("State vector mode is not supported for superoperator representation")
 
+        if filter_eps is None:
+            filter_eps = self.FILTER_EPS
         if kind == 'purify':
             if return_outcome:
                 raise ValueError("return_outcome is not supported for kind='purify'")
@@ -941,15 +946,17 @@ class QuantumComputer:
             return 1
         return self.schmidt_number(qubits, obs)  # faster than matrix_rank
 
-    def ensemble(self, obs=None, filter_eps=FILTER_EPS):
+    def ensemble(self, obs=None, filter_eps=None):
         """
         Returns a minimal ensemble of orthnormal kets.
         """
+        if filter_eps is None:
+            filter_eps = self.FILTER_EPS
         self._reorder(self._original_order, reshape=False)
         with self.observable(obs):
             return ensemble_from_state(self._state, filter_eps=filter_eps, check=0)
 
-    def ensemble_pp(self, obs=None, filter_eps=FILTER_EPS):
+    def ensemble_pp(self, obs=None, filter_eps=None):
         probs, kets = self.ensemble(obs, filter_eps)
         print(f"Prob      State")
         print("-"*25)
