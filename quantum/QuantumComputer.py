@@ -27,6 +27,7 @@ class QuantumComputer:
     KEEP_VECTOR = True
     FILTER0 = True  # filter out zero operators
     SPARSE_CUTOFF = 0.25
+    AUTO_COMPRESS = True
 
     """
     Simulate a quantum computer! Simulate state vectors or density matrices,
@@ -195,6 +196,8 @@ class QuantumComputer:
                 self._operators = update_choi(operators, self._operators, sparse=sparse, check=0)
             else:
                 self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
+                if self.AUTO_COMPRESS:
+                    self.compress_operators(filter_eps=self.FILTER_EPS)
 
     def _apply_operators(self, operators, qubits):
         self._state = apply_channel(operators, self._state, len(qubits) != self.n, check=0)
@@ -275,7 +278,7 @@ class QuantumComputer:
                 return new_state
             return partial_trace(self._state, list(range(nq, self.n)), reorder=False)
 
-    def init(self, state, qubits='all', collapse='auto', track_in_operators='auto', compress='auto'):
+    def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):
         assert isinstance(collapse, bool) or collapse == 'auto', f"collapse must be boolean or 'auto', but was {collapse}"
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         if qubits == to_alloc:  # all new
@@ -304,9 +307,8 @@ class QuantumComputer:
             # remove qubits from state and operators
             self.remove(to_remove, collapse=collapse, obs=None)
             # find a minimal Kraus representation
-            if compress and not self._as_superoperator:
-                if compress == True or (compress == 'auto' and len(self._operators) > 2**(self.n + len(self._input_qubits))):
-                    self.compress_operators()
+            if self.AUTO_COMPRESS and not self._as_superoperator:
+                self.compress_operators()
             # extend state and operators by all `qubits`
             self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
 
@@ -317,11 +319,11 @@ class QuantumComputer:
             to_retain = [q for q in self._qubits if q not in to_remove]
             reduced_state = self.get_state(to_retain, collapse=collapse, allow_vector=True)  # moves `to_retain` to the end in self._qubits
             # extend operators by identity
-            self._reorder(to_retain + to_remove, reshape=False)                 # to_remove to the end of operators
+            self._reorder(to_retain + to_remove, reshape=False)  # to_remove to the end of operators
             self._alloc_qubits(to_alloc, track_in_operators=False)  # add to_alloc at the end
             # extend state with new state
             self._state = reduced_state  # guarantees reshape=False for state
-            self._qubits = tuple(to_retain)     # ._extend_state (.is_matrix_mode) requires self._qubits to be consistent with self._state.shape
+            self._qubits = tuple(to_retain)  # ._extend_state (.is_matrix_mode) requires self._qubits to be consistent with self._state.shape
             # we need `state` in the order to_remove + to_alloc, to be in sync with operators
             if not isinstance(state, str) and hasattr(state, '__len__'):
                 new_order = [qubits.index(q) for q in to_remove] + [qubits.index(q) for q in to_alloc]
