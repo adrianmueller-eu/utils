@@ -484,11 +484,11 @@ def average_channel(channels, p=None, check=3):
             ops.append(p[i] * o)
     return ops
 
-def choi_from_channel(operators, n=(None, None), sparse=True, check=3):
+def choi_from_channel(operators, sparse=True, check=3):
     """
     Create the Choi matrix from a set of Kraus operators.
     """
-    operators = assert_kraus(operators, n=n, allow_reshaped=False, check=check)
+    operators = assert_kraus(operators, allow_reshaped=False, check=check)
     choi_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
 
     if sparse:
@@ -559,28 +559,15 @@ def compress_channel(operators, n=(None, None), filter_eps=1e-12, check=3):
     Find a minimal set of Kraus operators that represent the same quantum channel.
     """
     operators = assert_kraus(operators, allow_reshaped=True, check=check)
-    n_out, n_in = n if not isinstance(n, int) else (n, n)
-    assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
-
-    orig_shape = operators[0].shape  # store the original shape
-
-    # infer input/output dimensions
-    choi_dim = prod(orig_shape)
-    if n_out is None and n_in is not None:
-        d_in = 2**n_in
-        d_out = choi_dim // d_in
-        n_out = count_qubits(d_out)
-    elif n_in is None and n_out is not None:
-        d_out = 2**n_out
-        d_in = choi_dim // d_out
-        n_in = count_qubits(d_in)
 
     # reshape operators to 2D
+    orig_shape = operators[0].shape  # store the original shape
+    d_in, d_out = get_channel_dims(operators)
     ops = [op.reshape(d_out, d_in) for op in operators]
 
     # obtain choi matrix and perform SVD
-    choi = choi_from_channel(ops, n=(n_out, n_in), check=0)
-    ops_compressed = channel_from_choi(choi, n=(n_out, n_in), filter_eps=filter_eps, k=len(ops))
+    choi = choi_from_channel(ops, check=0)
+    ops_compressed = channel_from_choi(choi, n=n, filter_eps=filter_eps, k=len(ops))
 
     # reshape back to original shape
     ops_compressed = [op.reshape(orig_shape) for op in ops_compressed]

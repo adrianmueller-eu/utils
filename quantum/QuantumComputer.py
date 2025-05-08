@@ -694,7 +694,7 @@ class QuantumComputer:
             choi_dim = 2**(self.n + len(self._input_qubits))
             return self._operators.reshape(choi_dim, choi_dim)
         self._reorder(self._original_order, reshape=False)
-        return choi_from_channel(self._operators, n=(self.n, None), check=0)
+        return choi_from_channel(self._operators, check=0)
 
     def _auto_compress(self):
         if self.AUTO_COMPRESS and self.track_operators and not self._as_superoperator:
