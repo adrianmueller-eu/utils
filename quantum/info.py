@@ -162,10 +162,9 @@ def get_channel_dims(operators, as_qubits=False):
         dim_out, dim_in = get_channel_dims(operators, as_qubits=False)
         return count_qubits(dim_out), count_qubits(dim_in)
 
-    if hasattr(operators[0], 'shape'):
-        K = operators[0]
-    else:
-        K = np.asarray(operators[0])
+    K = operators[0]
+    if not hasattr(K, 'shape'):
+        K = np.asarray(K)
     if K.ndim == 2:
         return K.shape
     elif K.ndim == 3:
@@ -203,11 +202,11 @@ def assert_kraus(operators, n=(None, None), allow_reshaped=False, trace_preservi
             # -> assume it's a list
             # if 4d it's definitely a list of 3d operators
             operators = list(operators)
-    op0 = operators[0]
+    K = operators[0]
     if allow_reshaped:
-        assert op0.ndim in (2,3), f"Operators must be a list of 2D or 3D arrays, but got {op0.shape}"
+        assert K.ndim in (2,3), f"Operators must be a list of 2D or 3D arrays, but got {K.shape}"
     else:
-        assert op0.ndim == 2, f"Operators must be a list of 2D arrays, but got {op0.shape}"
+        assert K.ndim == 2, f"Operators must be a list of 2D arrays, but got {K.shape}"
 
     if check < 1:
         return operators
@@ -217,9 +216,9 @@ def assert_kraus(operators, n=(None, None), allow_reshaped=False, trace_preservi
     if is_int(n):
         n = (n, n)
     if n[0] is not None:
-        assert n[0] == n_out, f"Operators have invalid shape for {n[0]} output qubits: {2**n[0]} x {op0.shape}"
+        assert n[0] == n_out, f"Operators have invalid shape for {n[0]} output qubits: {2**n[0]} x {K.shape}"
     if n[1] is not None:
-        assert n[1] == n_in, f"Operators have invalid shape for {n[1]} input qubits: {op0.shape} x {2**n[1]}"
+        assert n[1] == n_in, f"Operators have invalid shape for {n[1]} input qubits: {K.shape} x {2**n[1]}"
 
     if check < 2:
         return operators  # trace and orthogonality checks are expensive
