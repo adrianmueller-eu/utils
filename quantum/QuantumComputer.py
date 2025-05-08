@@ -20,10 +20,11 @@ from ..utils import is_int, duh, warn, as_list_not_str, nbytes
 from ..prob import entropy
 
 class QuantumComputer:
-    MATRIX_BREAK = 12
-    ENTROPY_EPS = 1e-12
-    FILTER_EPS = 1e-12  # filter out small eigenvalues and zero operators
-    SPARSE_CUTOFF = 0.25
+    MAX_N = 16                # If `track_operators = 'auto'`, number of input + output qubits above which operators are not being tracked anymore.
+    MATRIX_WARN = 12          # self.n above which to issue warnings when converting to density matrix due to collapse=False parameter
+    FILTER_EPS = 1e-12        # Tolerance for filtering out small eigenvalues and operators
+    ENTROPY_EPS = 1e-12       # If measuring a state vector on a subsystem decoherently and `keep_vector == True`, keep the state vector as is if the entropy is below this threshold.
+    SPARSITY_THRESHOLD = 0.2  # If superoperator tracking is active, threshold at which to switch between sparse and dense representation of the superoperator
 
     """
     Simulate a quantum computer! Simulate state vectors or density matrices,
@@ -56,14 +57,14 @@ class QuantumComputer:
         keep_vector (bool): If True, try to keep state vector representation in various operations (e.g. obtaining or plotting the state of a subsystem, qubit removal, decoherent measurement).
                             Requires O(N^3) tests if the state is (and, if tracked, operators are) separable.
         auto_compress (bool): If True and Kraus operators are tracked, compress them after each operation if they exceed the Choi dimension.
-        entropy_eps (float): Epsilon for entropy calculations.
-        filter_eps (float): Epsilon for filtering small eigenvalues and zero operators.
-        filter0 (bool): Whether to filter out zero operators.
-        sparse_cutoff (float): Cutoff for sparse vs dense representation of the superoperator.
-        max_n (int): If `track_operators = 'auto'`, number of input + output qubits above which operators are not being tracked anymore.
+        filter0 (bool): Whether to filter out all-zero operators.
+        filter_eps (float): Tolerance for filtering out small eigenvalues and operators.
+        entropy_eps (float): If measuring a state vector on a subsystem decoherently and `keep_vector == True`, keep the state vector as is if the entropy is below this threshold.
+        sparsity_threshold (float): If superoperator tracking is active, threshold at which to switch between sparse and dense representation of the superoperator.
     """
     def __init__(self, qubits=None, state=0, track_operators='auto', as_superoperator=False, check=2,
-        keep_vector=True, auto_compress=True, entropy_eps=1e-12, filter_eps=1e-12, filter0=True, sparse_cutoff=0.25, max_n=16
+        keep_vector=True, auto_compress=True, filter0=True,
+        filter_eps=FILTER_EPS, entropy_eps=ENTROPY_EPS, sparsity_threshold=SPARSITY_THRESHOLD
     ):
         self._track_operators = track_operators
         if as_superoperator:
@@ -75,12 +76,10 @@ class QuantumComputer:
         # constants
         self.KEEP_VECTOR = keep_vector
         self.AUTO_COMPRESS = auto_compress
-        self.ENTROPY_EPS = entropy_eps
         self.FILTER_EPS = filter_eps
+        self.ENTROPY_EPS = entropy_eps
         self.FILTER0 = filter0
-        self.SPARSE_CUTOFF = sparse_cutoff
-        self.MAX_N = max_n
-        self.MATRIX_BREAK = 12
+        self.SPARSITY_THRESHOLD = sparsity_threshold
 
         self.clear()
 
@@ -275,7 +274,7 @@ class QuantumComputer:
                         return outer(new_state)
                 return new_state
 
-            if q > self.MATRIX_BREAK:
+            if q > self.MATRIX_WARN:
                 warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
             self._reorder(to_remove, reshape=False)
             if not self.is_matrix_mode() and _allow_vector() and \
@@ -428,7 +427,7 @@ class QuantumComputer:
                     if self.KEEP_VECTOR and entropy(probs) < self.ENTROPY_EPS:  # deterministic outcome implies no entanglement, but loss of information can also happen with the "measurement device" (even if there is no entanglement)
                         warn('Outcome is deterministic -> no decoherence')
                         return self
-                    if self.n > self.MATRIX_BREAK:
+                    if self.n > self.MATRIX_WARN:
                         warn("collapse=False for large n. Try using vector collapse (collapse=True) instead of decoherence.")
                     # decohere as as density matrix
                     self.to_dm()
@@ -704,27 +703,28 @@ class QuantumComputer:
                 if k > choi_dim:  # guaranteed not to be minimal
                     self.compress_operators()
 
-    def compress_operators(self, filter_eps=FILTER_EPS):
+    def compress_operators(self, filter_eps=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
         if self._as_superoperator:
             raise ValueError("Cannot compress superoperator representation")
 
+        if filter_eps is None:
+            filter_eps = self.FILTER_EPS
         self._operators = compress_channel(self._operators, filter_eps=filter_eps, check=0)
         return self
 
     def _use_sparse_superoperator(self):
         if self._as_superoperator and self._operators is not None:
-            cut_off = self.SPARSE_CUTOFF*prod(self._operators.shape)  # smaller -> sparse, larger -> dense
-            leeway = 1.5
+            threshold = self.SPARSITY_THRESHOLD*prod(self._operators.shape)  # smaller -> sparse, larger -> dense
             if sp.issparse(self._operators):
                 # print("Is sparse: ", self._operators.nnz, prod(self._operators.shape), f"{self._operators.nnz/prod(self._operators.shape):.2%}")
-                if self.n <= 2 or self._operators.nnz > leeway*cut_off:
+                if self.n <= 2 or self._operators.nnz > threshold:
                     self._operators = self._operators.toarray()
                     return False
                 return True
             # print("Is dense: ", np.count_nonzero(self._operators), prod(self._operators.shape), f"{np.count_nonzero(self._operators)/prod(self._operators.shape):.2%}")
-            if self.n >= 2 and np.count_nonzero(self._operators) < cut_off/leeway:
+            if self.n >= 2 and np.count_nonzero(self._operators) < threshold:
                 self._operators = sp.coo_array(self._operators)
                 return True
             return False
