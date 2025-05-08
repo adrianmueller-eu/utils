@@ -134,7 +134,7 @@ def purify(rho, min_rank=1, ancilla_basis_cb=None, filter_eps=1e-10, check=3):
     return np.tensordot(pkets, ancilla_basis[:len(probs)], axes=(0, 0)).reshape(-1)
 
 def stinespring_dilation(ops, min_rank=1, ancilla_basis_cb=None, check=3):
-    ops = assert_kraus(ops, check=check)
+    ops = assert_kraus(ops, allow_reshaped=False, check=check)
     r = max(len(ops), min_rank)
     n_ancilla = ceil(log2(r))
     if ancilla_basis_cb is None:
@@ -172,11 +172,11 @@ def get_channel_dims(operators, as_qubits=False):
         return prod(K.shape[:2]), K.shape[2]
     raise ValueError(f"Not a valid shape for an operator: {K.shape}")
 
-def is_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10, print_errors=True):
+def is_kraus(operators, n=(None, None), allow_reshaped=False, trace_preserving=True, orthogonal=False, check=3, tol=1e-10, print_errors=True):
     """ Check if the given operators form a valid Kraus decomposition. See `assert_kraus` for detailed doc. """
-    return is_from_assert(assert_kraus, print_errors)(operators, n, trace_preserving, orthogonal, check, tol)
+    return is_from_assert(assert_kraus, print_errors)(operators, n, allow_reshaped, trace_preserving, orthogonal, check, tol)
 
-def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=False, check=3, tol=1e-10):
+def assert_kraus(operators, n=(None, None), allow_reshaped=False, trace_preserving=True, orthogonal=False, check=3, tol=1e-10):
     """
     Ensures the given `operators` form a valid representation of a quantum channel (Kraus operators). Throws an AssertionError if otherwise.
 
@@ -198,11 +198,16 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
     if isinstance(operators, np.ndarray):
         if operators.ndim == 2:
             operators = [operators]
-        else:
+        elif allow_reshaped:
             # just based on ndim, we can't distinguish list of 2d operators vs a single 3d operator
             # -> assume it's a list
+            # if 4d it's definitely a list of 3d operators
             operators = list(operators)
-    assert operators[0].ndim in (2,3), f"Operators must be a list of 2D or 3D arrays, but got {operators[0].shape}"
+    op0 = operators[0]
+    if allow_reshaped:
+        assert op0.ndim in (2,3), f"Operators must be a list of 2D or 3D arrays, but got {op0.shape}"
+    else:
+        assert op0.ndim == 2, f"Operators must be a list of 2D arrays, but got {op0.shape}"
 
     if check < 1:
         return operators
@@ -212,9 +217,9 @@ def assert_kraus(operators, n=(None, None), trace_preserving=True, orthogonal=Fa
     if is_int(n):
         n = (n, n)
     if n[0] is not None:
-        assert n[0] == n_out, f"Operators have invalid shape for {n[0]} output qubits: {2**n[0]} x {operators[0].shape}"
+        assert n[0] == n_out, f"Operators have invalid shape for {n[0]} output qubits: {2**n[0]} x {op0.shape}"
     if n[1] is not None:
-        assert n[1] == n_in, f"Operators have invalid shape for {n[1]} input qubits: {operators[0].shape} x {2**n[1]}"
+        assert n[1] == n_in, f"Operators have invalid shape for {n[1]} input qubits: {op0.shape} x {2**n[1]}"
 
     if check < 2:
         return operators  # trace and orthogonality checks are expensive
@@ -244,7 +249,7 @@ def is_isometric_channel(operators, check=3):
 
 def is_square_channel(operators, check=3):
     try:
-        operators = assert_kraus(operators, check=check)
+        operators = assert_kraus(operators, allow_reshaped=True, check=check)
     except AssertionError:
         return False
     o = operators[0]
@@ -268,7 +273,7 @@ def apply_channel(operators, state, reshaped, check=3):
             tmp_state = state.reshape(prod(state.shape[:2]), -1)
         n = count_qubits(tmp_state)
         assert_state(tmp_state, n=n, check=check)
-        operators = assert_kraus(operators, n=(None, n), check=check)
+        operators = assert_kraus(operators, n=(None, n), allow_reshaped=False, check=check)
         assert operators[0].shape[1] == state.shape[0], f"Input dimension of the operators does not match the state dimension: {operators[0].shape} x {state.shape}"
 
     state_is_dm = reshaped and state.ndim == 4 or not reshaped and state.ndim == 2
@@ -302,14 +307,14 @@ def combine_channels(operators1, operators2, filter0=True, tol=1e-10, check=3):
     Combine two quantum channels to a single quantum channel in the order $E = E_1 \\circ E_2$.
     `filter0` removes zero operators from the result with tolerance `tol`.
     """
-    operators1 = assert_kraus(operators1, check=check)
-    operators2 = assert_kraus(operators2, check=check)
+    operators1 = assert_kraus(operators1, allow_reshaped=False, check=check)
+    operators2 = assert_kraus(operators2, allow_reshaped=True, check=check)
     assert operators1[0].shape[1] == operators2[0].shape[0], f"Input dimension of `operators1` does not match output dimension of `operators2`: {operators1[0].shape} x {operators2[0].shape}"
 
     new_operators = []
     for Ki in operators1:
         for Kj in operators2:
-            # (m x q) x (q x (n-q) x -1) -> m x (n-q) x -1
+            # (m x q) x (q x (n-q) x -1) -> m x (n-q) x -1  or  (m x q) x (q x -1) -> m x -1
             Kij = np.tensordot(Ki, Kj, axes=1)
             if not filter0 or not allclose0(Kij, tol):
                 new_operators.append(Kij)
@@ -480,7 +485,7 @@ def choi_from_channel(operators, n=(None, None), sparse=True, check=3):
     """
     Create the Choi matrix from a set of Kraus operators.
     """
-    operators = assert_kraus(operators, n=n, check=check)
+    operators = assert_kraus(operators, n=n, allow_reshaped=False, check=check)
     choi_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
 
     if sparse:
@@ -550,7 +555,7 @@ def compress_channel(operators, n=(None, None), filter_eps=1e-12, check=3):
     """
     Find a minimal set of Kraus operators that represent the same quantum channel.
     """
-    operators = assert_kraus(operators, check=check)
+    operators = assert_kraus(operators, allow_reshaped=True, check=check)
     n_out, n_in = n if not isinstance(n, int) else (n, n)
     assert n_out is not None or n_in is not None, f"Either n_out or n_in must be provided"
 
