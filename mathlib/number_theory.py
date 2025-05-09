@@ -45,10 +45,13 @@ if not sage_loaded:
         return a * b // gcd(a, b)
 
 def fac(n, k=0):
-    """ n!/k! = n*(n-1)*...*(n-k+1) """
+    """ n!/k! = n*(n-1)*...*(k+1) """
+    if k < -1:  # one of the factors is 0
+        return 0
     if k < 2:
         return factorial(n)
-    return comb(n, k)*factorial(n-k)
+    return comb(n, k)*factorial(n-k)  # n!/((n-k)!k!)*(n-k)! = n!/k!
+    # factorial(n)//factorial(k)
     # return prod(range(k+1, n+1))
 
 ##############
