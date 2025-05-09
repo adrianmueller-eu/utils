@@ -27,8 +27,8 @@ def poly_scale(y, deg=1):
     return y_
 
 def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True, ypoly=1,
-         xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None,
-         vlines=None, hlines=None, area_quantiles=0.99, cloud_alpha=0.8, cloud_s=3,
+         xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None, ste=True, capsize=5, show_data_points=True,
+         vlines=None, hlines=None, area_quantiles=0.99, area_alpha=0.2, cloud_alpha=0.8, cloud_s=3, max_data_sets=12,
          show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
     # arg parsing
@@ -47,9 +47,77 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     if y is not None and type(y) != np.ndarray:
         y = np.array(list(y))
 
+    # data preparation
+    if is_complex(y):
+        assert y.ndim in (1,2), "Complex data must be 1D or 2D"
+        assert labels is None, "labels are not supported for complex data"
+        y = np.array([y.real, y.imag])
+        labels = ["Re", "Im"]
+
+    if y is None:
+        y, x = x, None
+
+    if y.ndim == 3 or (y.ndim == 2 and labels is None and y.shape[0] <= max_data_sets):  # if y is 2D and no x nor labels given, we have to guess
+        if x is None:
+            x = np.arange(y.shape[1])
+    else:
+        if x is None:
+            x = np.arange(y.shape[0])
+        y = y[None, :]
+
+    if "label" in pltargs:
+        labels = [pltargs["label"]]
+        assert labels is None, "label argument is not supported when labels is given"
+    elif labels is None:
+        labels = [None]*y.shape[0]
+    assert len(labels) == y.shape[0], f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
+
+    if fmt != '.':
+        y_stes = None
+        if y.ndim == 3:
+            if isinstance(ste, bool) and ste:
+                y_stes = np.std(y, axis=2)/np.sqrt(y.shape[2])
+
+            if area_quantiles is not None:
+                area_quantiles_ = []
+                for yi in y:
+                    lower = np.quantile(yi, area_quantiles[0], axis=1)
+                    upper = np.quantile(yi, area_quantiles[1], axis=1)
+                    area_quantiles_.append((lower, upper))
+                area_quantiles = area_quantiles_
+        if isinstance(ste, np.ndarray):
+            y_stes = ste
+            if y_stes.ndim == 1:
+                y_stes = y_stes[None, :]
+            assert y_stes.shape == y.shape[:2], f"Shape of ste ({y_stes.shape}) must match shape of y ({y.shape})"
+        if y_stes is not None and len(x) == 1 and fmt == "-":
+            fmt = "x"  # show the mean in the error bar plot
+
+    y = poly_scale(y, 1/ypoly)
+
     # plot
+    assert y.shape[0] <= max_data_sets, f"Please don't plot more than {max_data_sets} sets of data points simultaneously."
     if len(plt.get_fignums()) == 0:
         plt.figure(figsize=figsize)
+    if fmt == ".":
+        for yi, label in zip(y, labels):
+            plt.scatter(x, yi, marker=fmt, label=label, **pltargs)
+    else:
+        for i, yi in enumerate(y):
+            if y.ndim == 3:
+                if area_quantiles is not None:
+                    lower, upper = area_quantiles[i]
+                    plt.fill_between(x, lower, upper, alpha=area_alpha, color=plt.cm.tab10(i))
+                if show_data_points:
+                    plt.scatter([x]*yi.shape[1], yi, alpha=cloud_alpha, s=cloud_s, color=plt.cm.tab10(i))
+                yi = np.mean(yi, axis=1)
+            if y_stes is None:
+                plt.plot(x, yi, fmt, label=labels[i], **pltargs)
+            else:
+                plt.errorbar(x, yi, yerr=2*y_stes[i], fmt=fmt, label=labels[i], capsize=capsize, **pltargs)
+
+    plt.xlim(xlim)
+    plt.ylim(ylim)
     if xlog:
         plt.xscale('log')
     if ylog:
@@ -66,74 +134,6 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
             plt.yticks(yticks)
     if grid and (show or save_file is not None):
         plt.grid()
-
-    y_was_None = y is None
-    if y is None:
-        y = x
-        x = np.linspace(1,len(x),len(x))
-
-    y = poly_scale(y, 1/ypoly)
-
-    if fmt == ".":
-        if is_complex(y):
-            if labels is not None:
-                warn("labels are not supported for complex data")
-            plt.scatter(x, y.real, label="real", **pltargs)
-            plt.scatter(x, y.imag, label="imag", **pltargs)
-            plt.legend()
-        else:
-            if len(y.shape) == 1:
-                if labels is not None:
-                    pltargs["label"] = labels[0]
-                plt.scatter(x, y, marker=fmt, **pltargs)
-            else:
-                if labels is not None:
-                    assert len(labels) == len(y), f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
-                    assert "label" not in pltargs, "label argument is not supported when labels is given"
-                    for yi, label in zip(y, labels):
-                        plt.scatter(x, yi, marker=fmt, label=label, **pltargs)
-                else:
-                    for yi in y:
-                        plt.scatter(x, yi, marker=fmt, **pltargs)
-    else:
-        if is_complex(y):
-            if labels is not None:
-                warn("labels are not supported for complex data")
-            plt.plot(x, y.real, fmt, label="real", **pltargs)
-            plt.plot(x, y.imag, fmt, label="imag", **pltargs)
-            plt.legend()
-        else:
-            if y.ndim == 1:
-                if labels is not None:
-                    pltargs["label"] = str(labels[0])
-                plt.plot(x, y, fmt, **pltargs)
-            else:
-                assert y.ndim in [1, 2, 3], f"y must be 1D, 2D, or 3D, but was {y.shape}"
-                if labels is None:
-                    if y.ndim == 3 or (y_was_None and y.ndim == 2 and y.shape[0] <= 42):  # if y is 2D and no x nor labels given, we have to guess
-                        labels = [None]*y.shape[0]
-                        if y_was_None:
-                            x = np.arange(y.shape[1])
-                    else:
-                        labels = [None]
-                        y = y[None, :]
-                else:
-                    assert len(labels) == y.shape[0], f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
-                    assert "label" not in pltargs, "label argument is not supported when labels is given"
-
-                assert y.shape[0] <= 42, f"Please don't plot more than 42 sets of data points simultaneously."
-                for i, (yi, label) in enumerate(zip(y, labels)):
-                    if yi.ndim == 2:
-                        if area_quantiles is not None:
-                            lower = np.quantile(yi, area_quantiles[0], axis=1)
-                            upper = np.quantile(yi, area_quantiles[1], axis=1)
-                            plt.fill_between(x, lower, upper, alpha=0.3, color=plt.cm.tab10(i))
-                        plt.scatter([x]*yi.shape[1], yi, alpha=cloud_alpha, s=cloud_s, color=plt.cm.tab10(i))
-                        yi = np.mean(yi, axis=1)
-                    plt.plot(x, yi, fmt, label=label, **pltargs)
-
-    plt.xlim(xlim)
-    plt.ylim(ylim)
 
     if ypoly != 1:
         ax = plt.gca()
