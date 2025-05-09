@@ -405,16 +405,23 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
 
     return n, bins
 
-def _simple_hist(ax, data, **hist_kwargs):
+def _simple_hist(ax, data, xlog=False, **hist_kwargs):
     a_bins = max([bins_sqrt(ai) for ai in data])
     a_con = np.concatenate(data)
-    n, a_bins = histogram(a_con.ravel(), bins=a_bins)
+    n, a_bins = histogram(a_con.ravel(), bins=a_bins, xlog=xlog)
     for ai in data:
         ax.hist(ai, bins=a_bins, alpha=0.6 if len(data) > 1 else 1, **hist_kwargs)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    if xlog:
+        if 'orientation' in hist_kwargs and hist_kwargs['orientation'] == 'horizontal':
+            ax.set_yscale('log')
+        else:
+            ax.set_xscale('log')
 
-def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xticks=None, alpha=None, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
+def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xlog=False, xticks=None, alpha=None, s=500, marker="|", save_file=None, show=True, **scatter_kwargs):
     """Create only one axis on which to plot the data."""
 
     # prepare data
@@ -425,7 +432,7 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
     for d in data:
         assert d.ndim == 1, f"Data must be 1D, but was {d.shape}"
 
-    data = clean_hist_data(data, xlim=xlim)
+    data = clean_hist_data(data, log=xlog, xlim=xlim)
     if hist == 'auto':
         hist = sum([len(d) for d in data]) >= 1000
 
@@ -456,6 +463,8 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
             ax.set_xticks(xticks[0], xticks[1])
         else:
             ax.set_xticks(xticks)
+    if xlog:
+        ax.set_xscale('log')
     if xlim is not None:
         ax.set_xlim(xlim)
     if title:
@@ -464,10 +473,10 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
 
     if hist:
         # histogram on the bottom
-        _simple_hist(ax2, clean_hist_data(data))
-        ax2.spines['left'].set_visible(False)
-        ax2.spines['bottom'].set_visible(False)
+        _simple_hist(ax2, data, xlog=xlog)
         ax2.set_xticks([])
+        if xlim is not None:
+            ax2.set_xlim(xlim)
 
     # visuals
     ax.set_yticks([])
@@ -483,8 +492,8 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
         plt.show()
 
 def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto', hist_ratio=0.2,
-            xlim=None, ylim=None, xticks=None, yticks=None, labels=None, alpha=None, s=3, marker='.',
-            save_fig=None, show=True, **scatter_kwargs):
+            xlim=None, ylim=None, xlog=False, ylog=False, xticks=None, yticks=None, labels=None,
+            alpha=None, s=3, marker='.', save_fig=None, show=True, **scatter_kwargs):
     # prepare data
     if is_iterable(a) and not is_iterable(a[0]):  # arrays may have different lengths -> no numpy array!
         a = [a]
@@ -523,7 +532,7 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
                 s = 500
             if marker == '.':
                 marker = '|'
-            return scatter1d(a, figwidth=figwidth, xlabel=xlabel, title=title, hist=hist, xlim=xlim, xticks=xticks,
+            return scatter1d(a, figwidth=figwidth, xlabel=xlabel, title=title, hist=hist, xlim=xlim, xlog=xlog, xticks=xticks,
                              alpha=alpha, s=s, marker=marker, save_file=save_fig, show=show, **scatter_kwargs)
     assert len(a) <= 12, f"Please don't plot more than 12 sets of data points simultaneously."
     if hist == 'auto':
@@ -566,6 +575,10 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
             ax3.set_yticks(yticks[0], yticks[1])
         else:
             ax3.set_yticks(yticks)
+    if xlog:
+        ax3.set_xscale('log')
+    if ylog:
+        ax3.set_yscale('log')
     if xlim is not None:
         ax3.set_xlim(xlim)
     if ylim is not None:
@@ -573,18 +586,20 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
 
     if hist:
         # histogram on the top
-        _simple_hist(ax1, clean_hist_data(a))
-        ax1.spines['left'].set_visible(False)
-        ax1.spines['bottom'].set_visible(False)
+        _simple_hist(ax1, a, xlog=xlog)
         ax1.set_xticks([])
+        if xlim is not None:
+            ax1.set_xlim(xlim)
 
         # histogram on the right
-        _simple_hist(ax4, clean_hist_data(b), orientation='horizontal', align='mid')
+        _simple_hist(ax4, b, xlog=ylog, orientation='horizontal', align='mid')
+        ax4.spines['left'].set_visible(True)
         ax4.spines['left'].set_color('lightgrey')
         ax4.spines['left'].set_linewidth(0.5)
-        ax4.spines['bottom'].set_visible(False)
         ax4.set_yticks([])
         ax4.tick_params(axis='x', rotation=45)
+        if ylim is not None:
+            ax4.set_ylim(ylim)
 
     # visuals
     ax3.spines['right'].set_visible(False)
