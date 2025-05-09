@@ -491,7 +491,9 @@ def anticommute(A, B, tol=1e-10):
 
 def trace_product(A, B):
     """Hilbert-Schmidt product or trace inner product of two matrices."""
-    return A.ravel().conj() @ B.ravel()  # Liouville space inner product <<A|B>>
+    if A.ndim == 2:
+        return A.ravel().conj() @ B.ravel()  # Liouville space inner product <<A|B>>
+    return np.einsum('...ij,...ij->...', U.conj(), V)
     return np.trace(A.T.conj() @ B)
 
 Hilbert_schmidt_inner_product = trace_product
