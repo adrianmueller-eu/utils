@@ -265,6 +265,58 @@ def clean_hist_data(data, log=False, lim=None):
         #     print(f"Filtered {n_before - n_total} points from data ({(n_before - n_total)/n_before:.2%})")
     return data
 
+def clean_data_2d(x, y, xlog=False, ylog=False, xlim=None, ylim=None):
+    # filter nan, -inf, and inf from data
+    x = np.asarray(x)
+    y = np.asarray(y)
+    nan_filter = np.isnan(x) | np.isinf(x) | np.isnan(y) | np.isinf(y)
+    n_filtered = np.sum(nan_filter)
+    if n_filtered > 0:
+        n_original = len(x)
+        x = x[~nan_filter]
+        y = y[~nan_filter]
+        warn(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original:.3%}) filtered out")
+    # filter out invalid data for log scale
+    if xlog:
+        filter0 = x <= 0
+        n_filtered = np.sum(filter0)
+        if n_filtered > 0:
+            n_original = len(x)
+            x = x[~filter0]
+            y = y[~filter0]
+            warn(f"xlog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original:.3%}) filtered out")
+    if ylog:
+        filter0 = y <= 0
+        n_filtered = np.sum(filter0)
+        if n_filtered > 0:
+            n_original = len(y)
+            x = x[~filter0]
+            y = y[~filter0]
+            warn(f"ylog active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original:.3%}) filtered out")
+    # filter out data outside of xlim
+    if xlim is not None:
+        xmin, xmax = np.min(x), np.max(x)
+        xmin_, xmax_ = xlim
+        if xmin_ is not None:
+            xmin = max(xmin, xmin_)
+        if xmax_ is not None:
+            xmax = min(xmax, xmax_)
+        mask = (xmin <= x) & (x <= xmax)
+        x = x[mask]
+        y = y[mask]
+    # filter out data outside of ylim
+    if ylim is not None:
+        ymin, ymax = np.min(y), np.max(y)
+        ymin_, ymax_ = ylim
+        if ymin_ is not None:
+            ymin = max(ymin, ymin_)
+        if ymax_ is not None:
+            ymax = min(ymax, ymax_)
+        mask = (ymin <= y) & (y <= ymax)
+        x = x[mask]
+        y = y[mask]
+    return x, y
+
 def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=False, density=False, xlim=None, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
     """Uses magic to create pretty histograms."""
 
@@ -535,6 +587,8 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
             return scatter1d(a, figwidth=figwidth, xlabel=xlabel, title=title, hist=hist, xlim=xlim, xlog=xlog, xticks=xticks,
                              alpha=alpha, s=s, marker=marker, save_file=save_fig, show=show, **scatter_kwargs)
     assert len(a) <= 12, f"Please don't plot more than 12 sets of data points simultaneously."
+    for i, (ai, bi) in enumerate(zip(a, b)):
+        a[i], b[i] = clean_data_2d(ai, bi, xlog=xlog, ylog=ylog, xlim=xlim, ylim=ylim)
     if hist == 'auto':
         hist = True  # always show by default
 
