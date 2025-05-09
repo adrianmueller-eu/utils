@@ -31,54 +31,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
          vlines=None, hlines=None, area_quantiles=0.99, cloud_alpha=0.8, cloud_s=3,
          show=True, save_file=None, **pltargs):
     """Uses magic to create pretty plots."""
-
-    # make it a bit intelligent
-    if type(x) == tuple and len(x) == 2:
-        title  = ylabel
-        ylabel = xlabel
-        if type(figsize) == str:
-            xlabel = figsize
-            if type(fmt) == tuple:
-                figsize= fmt
-                if type(y) == str:
-                    fmt = y
-        y = x[1]
-        x = x[0]
-    elif type(y) == str: # skip y
-        title  = ylabel
-        ylabel = xlabel
-        if type(figsize) == str:
-            xlabel = figsize
-            if type(fmt) == tuple:
-                figsize= fmt
-        fmt=y
-        y=None
-    elif type(y) == tuple and len(y) == 2 and type(y[0]) == int and type(y[1]) == int: # skip y and fmt
-        title  = xlabel
-        if type(figsize) == str:
-            ylabel = figsize
-            xlabel = fmt
-        figsize= y
-        fmt=None
-        y=None
-    if callable(y):
-        y = np.array([y(i) for i in x])
-    if type(fmt) == tuple: # skip fmt
-        title  = ylabel
-        ylabel = xlabel
-        if type(figsize) == str:
-            xlabel = figsize
-        figsize= fmt
-        fmt=None
-    elif type(figsize) == str: # skip figsize
-        title  = ylabel
-        ylabel = xlabel
-        xlabel = figsize
-        figsize= (10,8)
-
     # arg parsing
-    if fmt is None:
-        fmt = "-"
     if labels is not None:
         labels = as_list_not_str(labels)
     if area_quantiles is None or area_quantiles == 0:
