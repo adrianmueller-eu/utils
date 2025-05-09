@@ -233,15 +233,16 @@ def histogram(data, bins=None, xlog=False, density=False):
         bins = bins_sqrt(data)
     return np.histogram(data, bins=bins, density=density)
 
-def clean_hist_data(data, log=False):
+def clean_hist_data(data, log=False, lim=None):
     # filter nan, -inf, and inf from data
     data = np.asarray(data)
     nan_filter = np.isnan(data) | np.isinf(data)
     n_filtered = np.sum(nan_filter)
     if n_filtered > 0:
         n_original = len(data)
-        data = data[~nan_filter]  # filter out nan and inf
+        data = data[~nan_filter]
         warn(f"nan or inf values detected in data: {n_filtered} values ({n_filtered/n_original:.3%}) filtered out")
+    # filter out invalid data for log scale
     if log:
         filter0 = data <= 0
         n_filtered = np.sum(filter0)
@@ -249,9 +250,22 @@ def clean_hist_data(data, log=False):
             n_original = len(data)
             data = data[~filter0]
             warn(f"log active, but non-positive values detected in data: {n_filtered} values ({n_filtered/n_original:.3%}) filtered out")
+    # filter out data outside of lim
+    if lim is not None:
+        xmin, xmax = np.min(data), np.max(data)
+        xmin_, xmax_ = lim
+        if xmin_ is not None:
+            xmin = max(xmin, xmin_)
+        if xmax_ is not None:
+            xmax = min(xmax, xmax_)
+        # n_before = sum([len(d) for d in data])
+        data = [di[(xmin <= di) & (di <= xmax)] for di in data]
+        # n_total = sum([len(d) for d in data])
+        # if n_total < 0.99*n_before:
+        #     print(f"Filtered {n_before - n_total} points from data ({(n_before - n_total)/n_before:.2%})")
     return data
 
-def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=False, density=False, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
+def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=False, density=False, xlim=None, vlines=None, colored=None, cmap="viridis", save_file=None, show=True, figsize=(10,5)):
     """Uses magic to create pretty histograms."""
 
     if type(bins) == str:
@@ -273,7 +287,7 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
     else:
         ax0 = plt.gca()
 
-    data = clean_hist_data(data, log=xlog)
+    data = clean_hist_data(data, log=xlog, lim=xlim)
     n, bins = histogram(data.ravel(), bins=bins, xlog=xlog, density=density)
     if len(data.shape) > 1 and 1 < data.shape[0] < 10: # not more than 10 distributions
         if labels is None:
@@ -288,6 +302,8 @@ def hist(data, bins=None, xlabel="", title="", labels=None, xlog=False, ylog=Fal
         ax0.set_xscale("log")
     if ylog:
         ax0.set_yscale("log")
+    if xlim is not None:
+        ax0.set_xlim(xlim)
 
     # visuals
     ax0.set_title(title)
@@ -405,12 +421,13 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xti
     if is_iterable(data) and not is_iterable(data[0]):  # arrays may have different lengths -> no numpy array!
         data = [data]
     assert len(data) <= 12, f"Please don't plot more than 12 sets of data points simultaneously."
-    data = [np.asarray(d) for d in data]
+    data = [np.asarray(d) for d in data]  # may have different lengths
     for d in data:
         assert d.ndim == 1, f"Data must be 1D, but was {d.shape}"
+
+    data = clean_hist_data(data, xlim=xlim)
     if hist == 'auto':
-        n_total = sum([len(d) for d in data])
-        hist = n_total >= 1000
+        hist = sum([len(d) for d in data]) >= 1000
 
     # create figure
     figsize = [figwidth,1]
