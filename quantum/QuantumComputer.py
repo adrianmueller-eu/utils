@@ -1044,27 +1044,31 @@ class QuantumComputer:
 
     def _gen_pp(self, gen, qubits, sort, head, title, formatter):
         qubits = self._check_qubit_arguments(qubits, False)
-        if sort == None:
-            skey = None
-            word = ""
-        elif sort == 'in':
-            skey = lambda x: (len(x[0]), x[0])
-            word = "First "
-        elif sort == 'out':
-            skey = lambda x: (len(x[1]), x[1])
-            word = "First "
-        elif sort == 'asc':
-            skey = lambda x: x[2]
-            word = "Lowest "
-        elif sort == 'desc':
-            skey = lambda x: -x[2]
-            word = "Highest "
-        elif type(sort) == 'function':
-            skey = sort
-        else:
-            raise ValueError(f"Invalid sort parameter: {sort}")
 
-        howmany = "All" if head is None or head + 1 >= 2**len(qubits) - 1 else f"{word}{head}"
+        if sort is None or callable(sort):
+            skey = sort
+            word = ""
+        else:
+            match sort:
+                case 'in':
+                    skey = lambda x: (len(x[0]), x[0])
+                    word = "First "
+                case 'out':
+                    skey = lambda x: (len(x[1]), x[1])
+                    word = "First "
+                case 'asc':
+                    skey = lambda x: x[2]
+                    word = "Lowest "
+                case 'desc':
+                    skey = lambda x: -x[2]
+                    word = "Highest "
+                case _:
+                    raise ValueError(f"Invalid sort parameter: {sort}")
+
+        if head is None or head + 1 >= 2**len(qubits) - 1:
+            howmany = "All"
+        else:
+            howmany = f"{word}{head}"
         print(f"{howmany} bipartitions:\n" + "-"*(sum(len(str(q)) + 1 for q in qubits) + 3) + f" \t{title}")
         if skey is not None:
             gen = sorted(gen, key=skey)
