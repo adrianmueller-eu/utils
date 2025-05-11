@@ -70,7 +70,9 @@ class QuantumComputer:
         if as_superoperator:
             import scipy
             assert scipy.__version__ >= '1.15', "scipy >= 1.15 is required for superoperator mode"
-        self._as_superoperator = as_superoperator
+            self._operators = None
+        else:
+            self._operators = []
         self.check_level = check
 
         # constants
@@ -109,6 +111,10 @@ class QuantumComputer:
         return self._qubits
 
     @property
+    def is_superoperator(self):
+        return not isinstance(self._operators, list)
+
+    @property
     def track_operators(self):
         return not self._too_large_to_track_operators(0)
 
@@ -125,15 +131,12 @@ class QuantumComputer:
         if self.track_operators:
             d = 2**self.n
             Id = np.eye(d, dtype=complex)
-            if self._as_superoperator:
+            if self.is_superoperator:
                 self._operators = choi_from_channel(Id, sparse=d > 4, check=0).reshape(d, d, d, d)
             else:
                 self._operators = [Id]
         else:
-            if self._as_superoperator:
-                self._operators = None
-            else:
-                self._operators = []
+            self._operators = None if self.is_superoperator else []
             self._input_qubits = []
         return self
 
@@ -155,7 +158,7 @@ class QuantumComputer:
             # warn(message, stacklevel=3)
 
     def clear(self):
-        if self._as_superoperator:
+        if self.is_superoperator:
             self._state = np.array([[1.]])
         else:
             self._state = np.array([1.])
@@ -171,8 +174,7 @@ class QuantumComputer:
         qc._original_order = self._original_order.copy()
         qc._track_operators = self._track_operators
         qc.check_level = self.check_level
-        qc._as_superoperator = self._as_superoperator
-        if self._as_superoperator:
+        if self.is_superoperator:
             qc._operators = self._operators.copy()
         else:
             qc._operators = [o.copy() for o in self._operators]
@@ -207,7 +209,7 @@ class QuantumComputer:
     def _update_operators(self, operators):
         n_out = count_qubits(operators[0].shape[0])
         if not self._too_large_to_track_operators(n_out - self.n):
-            if self._as_superoperator:
+            if self.is_superoperator:
                 sparse = self._use_sparse_superoperator()
                 self._operators = update_choi(operators, self._operators, sparse=sparse, check=0)
             else:
@@ -243,7 +245,7 @@ class QuantumComputer:
     def get_state(self, qubits='all', collapse=False, allow_vector=True, obs=None):
         """ Moves `qubits` to the *end* of `self._qubits`. """
         def _allow_vector():
-            return self.KEEP_VECTOR and allow_vector and not self._as_superoperator and (not self.track_operators or self.is_isometric())
+            return self.KEEP_VECTOR and allow_vector and (not self.track_operators or not self.is_superoperator and self.is_isometric())
 
         assert isinstance(collapse, bool), f"collapse must be boolean, but was {collapse}"
         with self.observable(obs, qubits) as qubits:
@@ -493,7 +495,7 @@ class QuantumComputer:
                 if new_state.ndim == 1:
                     # unitary was separable
                     U = self.get_unitary(to_retain)  # this needs self._state / self._qubits not updated yet
-                    if self._as_superoperator:
+                    if self.is_superoperator:
                         d = new_state.shape[0]  # 2**len(to_retain)
                         self._operators = choi_from_channel([U]).reshape(d,d,d,d)
                         self._use_sparse_superoperator()  # check to convert to dense
@@ -507,7 +509,7 @@ class QuantumComputer:
                     self._update_operators(ops)
                     # sync operator shaping with new_state (reshape=False, new_state is output space)
                     d_out = new_state.shape[0]  # 2**len(to_retain)
-                    if self._as_superoperator:
+                    if self.is_superoperator:
                         d_in = self._operators.shape[-1]  # 2**len(self._input_qubits)
                         self._operators = self._operators.reshape(d_out, d_in, d_out, d_in)
                     else:
@@ -576,7 +578,7 @@ class QuantumComputer:
         if not self.is_matrix_mode():
             # warn("State is already a vector")
             return self
-        if self._as_superoperator:
+        if self.is_superoperator:
             raise ValueError("State vector mode is not supported for superoperator representation")
 
         if filter_eps is None:
@@ -627,7 +629,7 @@ class QuantumComputer:
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
         with self.observable(obs):
-            if self._as_superoperator:
+            if self.is_superoperator:
                 V = channel_from_choi(self.choi_matrix(), dims=(2**self.n, 2**len(self._input_qubits)), k=1)[0]
                 if is_isometry(V, kind='right'):
                     return V
@@ -652,7 +654,7 @@ class QuantumComputer:
         return is_separable_unitary(U, [self._qubits.index(q) for q in qubits], check=0)
 
     def is_isometric(self):
-        if self._as_superoperator:
+        if self.is_superoperator:
             try:
                 self.get_isometry()
                 return True
@@ -683,7 +685,7 @@ class QuantumComputer:
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
         self._reorder(self._original_order, reshape=False)
-        if self._as_superoperator:
+        if self.is_superoperator:
             return channel_from_choi(self._operators, dims=(2**self.n, 2**len(self._input_qubits)), filter_eps=self.FILTER_EPS)
         return self._operators.copy()
 
@@ -694,14 +696,14 @@ class QuantumComputer:
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
 
-        if self._as_superoperator:
+        if self.is_superoperator:
             choi_dim = 2**(self.n + len(self._input_qubits))
             return self._operators.reshape(choi_dim, choi_dim)
         self._reorder(self._original_order, reshape=False)
         return choi_from_channel(self._operators, check=0)
 
     def _auto_compress(self):
-        if self.AUTO_COMPRESS and self.track_operators and not self._as_superoperator:
+        if self.AUTO_COMPRESS and self.track_operators and not self.is_superoperator:
             k = len(self._operators)
             if k > 4:
                 choi_dim = 2**(self.n + len(self._input_qubits))
@@ -711,7 +713,7 @@ class QuantumComputer:
     def compress_operators(self, filter_eps=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
-        if self._as_superoperator:
+        if self.is_superoperator:
             raise ValueError("Cannot compress superoperator representation")
 
         if filter_eps is None:
@@ -720,7 +722,7 @@ class QuantumComputer:
         return self
 
     def _use_sparse_superoperator(self):
-        if self._as_superoperator and self._operators is not None:
+        if self.is_superoperator and self._operators is not None:
             threshold = self.SPARSITY_THRESHOLD*prod(self._operators.shape)  # smaller -> sparse, larger -> dense
             if sp.issparse(self._operators):
                 # print("Is sparse: ", self._operators.nnz, prod(self._operators.shape), f"{self._operators.nnz/prod(self._operators.shape):.2%}")
@@ -766,7 +768,7 @@ class QuantumComputer:
             assert q not in self._qubits, f"Qubit {q} already allocated"
         q = len(new_qubits)
         if self.n > 0 and self.track_operators:
-            if self._as_superoperator:
+            if self.is_superoperator:
                 RAM_required = (2**(self.n + q + len(self._input_qubits)))**2*8*2
             else:
                 RAM_required = (2**(self.n + q + len(self._input_qubits)))*8*2*max(1, len(self._operators))
@@ -787,14 +789,14 @@ class QuantumComputer:
         if not self._too_large_to_track_operators(n_added):
             if track_in_operators:
                 ops = extension_channel(state, n=q, check=0)  # state already checked above
-                if self._as_superoperator:
+                if self.is_superoperator:
                     d_out, d_in = self._operators.shape[:2]
                     self._operators = self._operators.reshape(1, d_out, d_in, 1, d_out, d_in)
                     self._update_operators(ops)
                 else:
                     self._operators = [np.kron(oi, oj) for oi in self._operators for oj in ops]  # extend output space, but not input space
             else:
-                if self._as_superoperator:
+                if self.is_superoperator:
                     d_q = 2**q
                     d_out, d_in = self._operators.shape[:2]
                     choi = self._operators.reshape(d_out*d_in, -1)
@@ -884,7 +886,7 @@ class QuantumComputer:
         else:
             self._state = _reorder(self._state, 'dm')
         if self.track_operators:
-            if not self._as_superoperator:
+            if not self.is_superoperator:
                 self._operators = [_reorder(o, 'op') for o in self._operators]
             else:
                 self._operators = _reorder(self._operators, 'choi')
@@ -951,7 +953,7 @@ class QuantumComputer:
         if not self.is_matrix_mode():
             # warn("State is already a vector")
             return self
-        if self._as_superoperator:
+        if self.is_superoperator:
             raise ValueError("Purification (state vector mode) is not supported for superoperator representation")
 
         with self.observable(obs):
