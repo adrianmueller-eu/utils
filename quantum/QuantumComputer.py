@@ -646,6 +646,9 @@ class QuantumComputer:
 
     def is_unitary(self, qubits='all', obs=None):
         qubits = self._check_qubit_arguments(qubits, False)
+        if not self.is_superoperator and len(qubits) == self.n:
+            return is_unitary_channel(self._operators, check=0)
+
         try:
             U = self.get_unitary(obs=obs)  # calls reshape=False
         except AssertionError:
