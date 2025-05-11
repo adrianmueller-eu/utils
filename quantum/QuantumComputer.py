@@ -592,6 +592,11 @@ class QuantumComputer:
             self._no_tracking("State vector representation is not compatible with a non-isometric channel")
 
         p, kets = self.ensemble(filter_eps=filter_eps)
+        if len(p) == 1:
+            self._state = kets[0]
+            return 0 if return_outcome else None
+
+        self._no_tracking("Non-linear state conversion is not compatible with operator tracking.")
         if kind == 'sample':
             outcome = choice(len(p), p=normalize(p, p=1))
             self._state = kets[outcome]
