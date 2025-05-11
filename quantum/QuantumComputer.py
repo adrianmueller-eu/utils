@@ -832,87 +832,68 @@ class QuantumComputer:
 
     def _reorder(self, new_order, reshape):
         n, q = self.n, len(new_order)
+        d_n, d_q = 2**n, 2**q
         correct_order = list(self._qubits[:q]) == new_order
-        if reshape and q < n:
-            d_q = 2**q
-            if correct_order and self._state.shape[0] == d_q:
+
+        # shortcut if no reordering / reshaping is needed
+        if correct_order:
+            if reshape:
+                if self._state.shape[0] == d_q:
+                    return
+            elif self._state.shape[0] == d_n:
                 return
-            d_nq = 2**(n-q)
-        else:
-            d_n = 2**n
-            if correct_order and self._state.shape[0] == d_n:
-                return
+
+        d_nq = 2**(n-q)
+        n_in = len(self._input_qubits)
+        d_in = 2**n_in
 
         if not correct_order:
             new_order_all = new_order + [q for q in self._qubits if q not in new_order]
             axes_new = [self._qubits.index(q) for q in new_order_all]
             if self.track_operators:
-                n_in = len(self._input_qubits)
+                # generally, the input space may...
+                # - ... not have qubits that were added to the output space
                 axes_new_in = [n + self._input_qubits.index(q) for q in new_order_all if q in self._input_qubits]
+                # - ... have qubits that are not present anymore in the output space (order unchanged)
                 axes_new_in = axes_new_in + [i for i in range(n,n+n_in) if i not in axes_new_in]
                 axes_new_ = axes_new + axes_new_in  # order is qubits_out + qubits_in
+                n_tot = n + n_in
+
+        _transpose = lambda a, n_, axes: a.reshape([2]*n_).transpose(axes)
+        if reshape and q < n:
+            _reshape = lambda a, sh_q, sh_full: a.reshape(sh_q)
+        else:
+            _reshape = lambda a, sh_q, sh_full: a.reshape(sh_full)
 
         def _reorder(a, kind):
-            if kind == 'ket':
-                if not correct_order:
-                    a = a.reshape([2]*n)
-                    a = a.transpose(axes_new)
-                if reshape and q < n:
-                    a = a.reshape(d_q, d_nq)
-                else:
-                    a = a.reshape(d_n)
-                return a
-
-            if kind == 'dm':
-                if not correct_order:
-                    a = a.reshape([2,2]*n)
-                    a = a.transpose(axes_new + [i + n for i in axes_new])
-                if reshape and q < n:
-                    a = a.reshape(d_q, d_nq, d_q, d_nq)
-                else:
-                    a = a.reshape(d_n, d_n)
-            elif kind == 'op':
-                if not correct_order:
-                    # generally, the input space may
-                    # - have qubits that are not present anymore
-                    # - not have qubits that are added in the output space
-                    # So, we need to track the qubits that are in both spaces input space, so we can order them to the front if requested
-                    assert n_in == count_qubits(a.shape[-1]), f"Invalid input space: {self._input_qubits} <=/=> {a.shape}"
-                    a = a.reshape([2]*(n+n_in))
-                    a = a.transpose(axes_new_)
-                if reshape and q < n:
-                    a = a.reshape(d_q, d_nq, -1)
-                else:
-                    a = a.reshape(d_n, -1)
-            else:  # kind == 'choi'
-                if not correct_order:
-                    n_tot = n + n_in
-                    assert count_qubits(prod(a.shape)) == 2*n_tot, f"Invalid choi shape: {self._qubits, self._input_qubits} <=/=> {a.shape}"
-                    a = a.reshape([2]*2*n_tot)
-                    axes = axes_new_ + [i + n_tot for i in axes_new_]
-                    a = a.transpose(axes)
-                d_in = 2**len(self._input_qubits)
-                if reshape and q < n:
-                    a = a.reshape([d_q, d_nq, d_in]*2)
-                else:
-                    a = a.reshape([d_n, d_in]*2)
+            if not correct_order:
+                match kind:
+                    case 'ket':  a = _transpose(a, n, axes_new)
+                    case 'dm':   a = _transpose(a, 2*n, axes_new + [i + n for i in axes_new])
+                    case 'op':   a = _transpose(a, n_tot, axes_new_)
+                    case 'choi': a = _transpose(a, 2*n_tot, axes_new_ + [i + n_tot for i in axes_new_])
+            match kind:
+                case 'ket':  a = _reshape(a, [d_q, d_nq], [d_n])
+                case 'dm':   a = _reshape(a, [d_q, d_nq]*2, [d_n]*2)
+                case 'op':   a = _reshape(a, [d_q, d_nq, d_in], [d_n, d_in])
+                case 'choi': a = _reshape(a, [d_q, d_nq, d_in]*2, [d_n, d_in]*2)
             return a
 
-        if self.is_matrix_mode():
-            self._state = _reorder(self._state, 'dm')
-        else:
+        if not self.is_matrix_mode():
             self._state = _reorder(self._state, 'ket')
+        else:
+            self._state = _reorder(self._state, 'dm')
         if self.track_operators:
-            if self._as_superoperator:
-                self._operators = _reorder(self._operators, 'choi')
-            else:
+            if not self._as_superoperator:
                 self._operators = [_reorder(o, 'op') for o in self._operators]
+            else:
+                self._operators = _reorder(self._operators, 'choi')
 
         if not correct_order:
-            # update index dictionaries with new locations
+            # update bookkeeping
             self._qubits = tuple(new_order_all)
-            _input_qubits_tmp = [q for q in new_order_all if q in self._input_qubits]
-            self._input_qubits = _input_qubits_tmp + [q for q in self._input_qubits if q not in new_order_all]
+            self._input_qubits = [q for q in new_order_all if q in self._input_qubits] \
+                               + [q for q in self._input_qubits if q not in new_order_all]
 
     @contextmanager
     def observable(self, obs=None, qubits='all', return_energies=False):
