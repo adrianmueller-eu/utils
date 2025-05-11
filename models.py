@@ -209,6 +209,7 @@ class Polynomial(Function):
 
     def normalize(self):
         self.coeffs = tuple(np.array(self.coeffs) / self.coeffs[-1])
+        return self
 
     def is_monic(self):
         return abs(self.coeffs[-1] - 1) <= self.TOLERANCE

@@ -859,7 +859,8 @@ def _test_lcm():
     # Polynomials
     x = Polynomial([0, 1])
     assert lcm(x**3, x**2) == x**3
-    assert lcm(x**2 + 1, x*2 + 2) == x**3 + x**2 + x + 1  # TODO: This seems wrong, should be (x**2 + 1)*(x*2 + 2) = x**4 + 3x**2 + 2
+    assert lcm(x**2 + 1, 2*x + 2) == x**3 + x**2 + x + 1
+    assert lcm(x**2 + 1, x**2 + 2) == -(x**4 + 3*x**2 + 2)
 
 def _test_closest_prime_factors_to():
     assert np.array_equal(closest_prime_factors_to(42, 13), [2, 7])
