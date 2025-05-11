@@ -484,7 +484,7 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xlo
     for d in data:
         assert d.ndim == 1, f"Data must be 1D, but was {d.shape}"
 
-    data = clean_hist_data(data, log=xlog, xlim=xlim)
+    data = clean_hist_data(data, log=xlog, lim=xlim)
     if hist == 'auto':
         hist = sum([len(d) for d in data]) >= 1000
 
