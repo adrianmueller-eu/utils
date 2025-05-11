@@ -18,7 +18,7 @@ def von_neumann_entropy(state, check=2):
     if len(state.shape) == 1:
         return 0  # pure state
     # if it just has a single 1, it's also a pure state
-    # if len(state.shape) == 2 and np.count_nonzero(state) == 1:
+    # if np.count_nonzero(state) == 1:
     #     return 0
     eigs = eigvalsh(state)
     if check >= 1:
@@ -525,7 +525,7 @@ def choi_from_channel(operators, sparse='auto', filter_eps=sys.float_info.epsilo
 
 def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
     """
-    Create the Kraus operators from a Choi matrix. Either `n_out` or `n_in` must be provided.
+    Create the Kraus operators from a Choi matrix. Either `d_out` or `d_in` must be provided.
     """
     if not hasattr(choi, 'shape'):
         choi = np.asarray(choi)
@@ -534,14 +534,14 @@ def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
 
     # infer Choi dimensions
     d_out, d_in = dims if not isinstance(dims, int) else (dims, dims)
-    assert d_out is not None or d_in is not None, f"Either n_out or n_in must be provided"
+    assert d_out is not None or d_in is not None, f"Either d_out or d_in must be provided"
     choi_dim = choi.shape[0]
     if d_out is None:
         d_out = choi_dim // d_in
-        assert choi_dim == d_out*d_in, f"Invalid n_in: {n_in} for {choi.shape}"
+        assert choi_dim == d_out*d_in, f"Invalid d_in: {d_in} for {choi.shape}"
     elif d_in is None:
         d_in = choi_dim // d_out
-        assert choi_dim == d_out*d_in, f"Invalid n_out: {n_out} for {choi.shape}"
+        assert choi_dim == d_out*d_in, f"Invalid d_out: {d_out} for {choi.shape}"
     else:
         choi_dim = d_out*d_in
         assert choi.shape == (choi_dim, choi_dim), f"Choi matrix has invalid shape: {choi.shape} ≠ {(choi_dim, choi_dim)}"

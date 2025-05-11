@@ -28,15 +28,13 @@ class QuantumComputer:
 
     """
     Simulate a quantum computer! Simulate state vectors or density matrices,
-    while tracking the effective quantum channel.
+    while tracking the effective quantum channel as Kraus operators or superoperator (Choi matrix).
 
     Additional features:
+    - Shortcuts for common channels (like Pauli rotations, noise models, quantum fourier transform)
+    - Quantum information metrics (entanglement entropy, purity, mutual information, correlation, schmidt coefficients, etc.)
     - Allows to dynamically add and remove qubits from the system
     - Collapse and decoherent measurements
-    - Shortcuts for common channels (like Pauli rotations, noise models, quantum fourier transform)
-    - Channel compression via Choi matrix
-    - Calculate quantum information metrics (entropy, purity, mutual information)
-    - Supports correlation analysis and Schmidt decomposition
 
     Example:
         # Create a Bell state and track its evolution through a phase estimation circuit
@@ -47,6 +45,10 @@ class QuantumComputer:
         qc.measure(energy_register, collapse=False)
         print(qc[0,1])  # look at the state register reduced density matrix
         operators = qc.get_operators()  # Look at the effective channel
+
+    Note:
+    - State vector mode is not compatible with superoperator mode or non-isometric channels.
+    - Operator tracking is not compatible with non-linear operations (e.g. measurement collapse).
 
     Parameters:
         qubits (list|int): List of qubit identifiers for qubits to be allocated.
@@ -293,6 +295,7 @@ class QuantumComputer:
                 if q == 1:
                     new_state = new_state.reshape([2])
                 return new_state
+            # TODO: if _allow_vector(), check purity(rdm) and i.a. convert to ket?
             return partial_trace(self._state, list(range(nq, self.n)), reorder=False)
 
     def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):
@@ -695,7 +698,7 @@ class QuantumComputer:
         self._reorder(self._original_order, reshape=False)
         if self.is_superoperator:
             return channel_from_choi(self._operators, dims=(2**self.n, 2**len(self._input_qubits)), filter_eps=self.FILTER_EPS)
-        return self._operators.copy()
+        return self._operators
 
     def choi_matrix(self):
         """
@@ -844,7 +847,7 @@ class QuantumComputer:
                         choi = sp.kron(choi, id)
                     else:
                         choi = np.kron(choi, id.toarray())
-                    # reshape to out x in x q x q
+                    # reshape to: out x in x q x q
                     choi = choi.reshape([d_out, d_in, d_q, d_q]*2)
                     # move new q output qubits after output space (and before input space)
                     choi = choi.transpose([0, 2, 1, 3] + [4, 6, 5, 7])
@@ -990,7 +993,7 @@ class QuantumComputer:
             # warn("State is already a vector")
             return self
         if self.is_superoperator:
-            raise ValueError("Purification (state vector mode) is not supported for superoperator representation")
+            raise ValueError("Purification (state vector mode) is not supported for superoperator representation. Convert to Kraus mode first using `.to_kraus()`.")
 
         with self.observable(obs):
             # purify state
@@ -1085,7 +1088,6 @@ class QuantumComputer:
         Calculate the von Neumann entropy of the reduced density matrix of the given qubits.
         """
         state = self.get_state(qubits, obs=obs, allow_vector=False)  # uses von_neumann_entropy to decide if vector is possible -> avoid infinite recursion
-        # shortcut for pure states
         return von_neumann_entropy(state, check=0)
 
     def entanglement_entropy(self, qubits, obs=None):
@@ -1157,6 +1159,9 @@ class QuantumComputer:
     def schmidt_coefficients(self, qubits='all', obs=None, filter_eps=1e-10):
         return self.schmidt_decomposition(qubits, coeffs_only=True, obs=obs, filter_eps=filter_eps)
 
+    def schmidt_number(self, qubits='all', obs=None):
+        return len(self.schmidt_coefficients(qubits, obs))
+
     def _schmidt_coefficients_gen(self, obs=None, filter_eps=1e-10):
         if self.is_matrix_mode():
             raise ValueError("Schmidt coefficients are not available for density matrices")
@@ -1179,9 +1184,6 @@ class QuantumComputer:
         if self.n >= 14 and sort is not None or self.n >= 20:
             warn("This may take a while")
         self._gen_pp(gen, self._qubits, sort, head, title, formatter)
-
-    def schmidt_number(self, qubits='all', obs=None):
-        return len(self.schmidt_coefficients(qubits, obs))
 
     def correlation(self, qubits_A, qubits_B, obs_A, obs_B):
         """
