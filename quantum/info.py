@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from math import prod, log2, ceil
+from math import prod, log2, ceil, sqrt
 try:
     import scipy.sparse as sp
 except ImportError:
@@ -484,25 +484,44 @@ def average_channel(channels, p=None, check=3):
             ops.append(p[i] * o)
     return ops
 
-def choi_from_channel(operators, sparse=True, check=3):
+def choi_from_channel(operators, sparse='auto', filter_eps=sys.float_info.epsilon, check=3):
     """
     Create the Choi matrix from a set of Kraus operators.
     """
     operators = assert_kraus(operators, allow_reshaped=False, check=check)
     choi_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
 
+    if sparse == 'auto':
+        if choi_dim <= 64:  # n <= 3 qubits use dense
+            sparse = False
+        else:
+            thresh = 0.25
+            # heuristic for percentage of non-zero elements in the choi matrix
+            fill = np.mean([(np.count_nonzero(K)/K.size)**2 for K in operators])
+            sparse = fill < thresh
+
     if sparse:
-        Choi = sp.csr_array((choi_dim, choi_dim), dtype=complex)
-        operators = [sp.csr_array(K.reshape(-1, 1)) for K in operators]
+        choi = sp.csr_array((choi_dim, choi_dim), dtype=complex)
+        operators = [sp.csr_array(K) for K in operators]
+        # # filter small entries from operators  # TODO: check performance
+        # for K in operators:
+        #     K.data[np.abs(K.data) < filter_eps] = 0
+        #     K.eliminate_zeros()
     else:
-        Choi = np.zeros((choi_dim, choi_dim), dtype=complex)
+        choi = np.zeros((choi_dim, choi_dim), dtype=complex)
         if sp.issparse(operators[0]):
             operators = [K.toarray() for K in operators]
 
     for K in operators:
         Kvec = K.reshape(-1, 1)
-        Choi += Kvec @ Kvec.conj().T  # outer product
-    return Choi
+        choi += Kvec @ Kvec.conj().T  # outer product
+
+    # # filter small entries  # TODO: check performance
+    # if filter_eps > 0 and sparse:
+    #     choi.data[np.abs(choi.data) < filter_eps] = 0
+    #     choi.eliminate_zeros()
+
+    return choi
 
 def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
     """
@@ -564,8 +583,9 @@ def compress_channel(operators, filter_eps=1e-12, check=3):
     d_out, d_in = get_channel_dims(operators)
     ops = [op.reshape(d_out, d_in) for op in operators]
 
-    # obtain choi matrix and perform SVD
-    choi = choi_from_channel(ops, check=0)
+    # obtain choi matrix
+    choi = choi_from_channel(ops, filter_eps=filter_eps, check=0)
+    # perform SVD to convert back to Kraus operators
     ops_compressed = channel_from_choi(choi, (d_out, d_in), filter_eps=filter_eps, k=len(ops))
 
     # reshape back to original shape

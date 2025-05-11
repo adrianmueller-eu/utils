@@ -565,10 +565,10 @@ def _test_QuantumComputer():
     qc = QC(2, as_superoperator=True)
     U = random_unitary(2**2)
     qc(U)
-    C1 = qc.choi_matrix().toarray()
+    C1 = qc.choi_matrix()
     qc = QC(2, as_superoperator=False)
     qc(U)
-    C2 = qc.choi_matrix().toarray()
+    C2 = qc.choi_matrix()
     assert np.allclose(C1, C2), f"C1 = {C1}\nC2 = {C2}"
     qc(X, 1)  # partial application
 

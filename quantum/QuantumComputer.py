@@ -699,7 +699,7 @@ class QuantumComputer:
 
     def choi_matrix(self):
         """
-        Returns the Choi-Jamiołkowski representation of the Kraus operators as a scipy sparse matrix.
+        Returns the Choi-Jamiołkowski representation of the Kraus operators.
         """
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
@@ -708,7 +708,7 @@ class QuantumComputer:
             choi_dim = 2**(self.n + len(self._input_qubits))
             return self._operators.reshape(choi_dim, choi_dim)
         self._reorder(self._original_order, reshape=False)
-        return choi_from_channel(self._operators, check=0)
+        return choi_from_channel(self._operators, filter_eps=self.FILTER_EPS, check=0)
 
     def _auto_compress(self):
         if self.AUTO_COMPRESS and self.track_operators and not self.is_superoperator:
@@ -732,14 +732,15 @@ class QuantumComputer:
     def _use_sparse_superoperator(self):
         if self.is_superoperator and self._operators is not None:
             threshold = self.SPARSITY_THRESHOLD*prod(self._operators.shape)  # smaller -> sparse, larger -> dense
+            n_tot = self.n + len(self._input_qubits)
             if sp.issparse(self._operators):
                 # print("Is sparse: ", self._operators.nnz, prod(self._operators.shape), f"{self._operators.nnz/prod(self._operators.shape):.2%}")
-                if self.n <= 2 or self._operators.nnz > threshold:
+                if n_tot <= 6 or self._operators.nnz > threshold:
                     self._operators = self._operators.toarray()
                     return False
                 return True
             # print("Is dense: ", np.count_nonzero(self._operators), prod(self._operators.shape), f"{np.count_nonzero(self._operators)/prod(self._operators.shape):.2%}")
-            if self.n >= 2 and np.count_nonzero(self._operators) < threshold:
+            if self.n > 6 and np.count_nonzero(self._operators) < threshold:
                 self._operators = sp.coo_array(self._operators)
                 return True
             return False
@@ -808,7 +809,7 @@ class QuantumComputer:
                     d_q = 2**q
                     d_out, d_in = self._operators.shape[:2]
                     choi = self._operators.reshape(d_out*d_in, -1)
-                    id = choi_from_channel([np.eye(d_q)], check=0)  # identity channel
+                    id = choi_from_channel([np.eye(d_q)], sparse=True, check=0)  # identity channel
                     if self._use_sparse_superoperator():
                         choi = sp.kron(choi, id)  # extend both input and output space
                     elif q > 2:  # identity channel is very sparse
