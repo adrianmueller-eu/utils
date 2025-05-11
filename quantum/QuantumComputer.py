@@ -1090,10 +1090,13 @@ class QuantumComputer:
 
         Alias for `von_neumann_entropy(qubits)`.
         """
-        with self.observable(obs, qubits) as qubits:
-            if len(qubits) == self.n:
-                raise ValueError("Entanglement entropy requires a bipartition of the qubits")
-            return self.von_neumann_entropy(qubits)
+        qubits = self._check_qubit_arguments(qubits, False)
+        if len(qubits) == self.n:
+            raise ValueError("Entanglement entropy requires a bipartition of the qubits")
+        if not self.is_matrix_mode():  # take the smaller subsystem if is pure
+            if len(qubits) > self.n//2:
+                qubits = [q for q in self._qubits if q not in qubits]
+        return self.von_neumann_entropy(qubits, obs=obs)
 
     def _entanglement_entropy_gen(self, qubits='all', obs=None):
         """
@@ -1116,8 +1119,12 @@ class QuantumComputer:
         if printed_all:
             print(f"\nFull state (i.e. classical) entropy: {self.von_neumann_entropy(qubits):.{precision}f}".rstrip('0'))
 
-    def purity(self, qubits='all'):
-        return purity(self.get_state(qubits), check=0)
+    def purity(self, qubits='all', obs=None):
+        if not self.is_matrix_mode():  # take the smaller subsystem if state is pure
+            qubits = self._check_qubit_arguments(qubits, False)
+            if len(qubits) > self.n//2:
+                qubits = [q for q in self._qubits if q not in qubits]
+        return purity(self.get_state(qubits, obs=obs, allow_vector=False), check=0)
 
     def _purity_gen(self, qubits='all', obs=None):
         with self.observable(obs, qubits) as qubits:
