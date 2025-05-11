@@ -1367,11 +1367,6 @@ class QuantumComputer:
         self.iqft(energy, do_swaps=False)
         return self
 
-    @classmethod
-    def from_ensemble(cls, probs, kets):
-        state = np.sum(p * outer(k) for p, k in zip(probs, kets))
-        return cls(state)
-
     @staticmethod
     def parse_unitary(U, n_qubits=None, check=2):
         if isinstance(U, np.ndarray):
