@@ -877,16 +877,27 @@ class QuantumComputer:
         correct_order = list(self._qubits[:q]) == new_order
 
         # shortcut if no reordering / reshaping is needed
-        if correct_order:
-            if reshape:
-                if self._state.shape[0] == d_q:
-                    return
-            elif self._state.shape[0] == d_n:
-                return
+        if correct_order and self._state.shape[0] == (d_q if reshape else d_n):
+            return
 
         d_nq = 2**(n-q)
         n_in = len(self._input_qubits)
         d_in = 2**n_in
+
+        if reshape and q < n:
+            def get_shape(kind):
+                match kind:
+                    case 'ket':  return [d_q, d_nq]
+                    case 'dm':   return [d_q, d_nq]*2
+                    case 'op':   return [d_q, d_nq, d_in]
+                    case 'choi': return [d_q, d_nq, d_in]*2
+        else:
+            def get_shape(kind):
+                match kind:
+                    case 'ket':  return [d_n]
+                    case 'dm':   return [d_n]*2
+                    case 'op':   return [d_n, d_in]
+                    case 'choi': return [d_n, d_in]*2
 
         if not correct_order:
             new_order_all = new_order + [q for q in self._qubits if q not in new_order]
@@ -899,26 +910,18 @@ class QuantumComputer:
                 axes_new_in = axes_new_in + [i for i in range(n,n+n_in) if i not in axes_new_in]
                 axes_new_ = axes_new + axes_new_in  # order is qubits_out + qubits_in
                 n_tot = n + n_in
+            _transpose = lambda a, n_, axes: a.reshape([2]*n_).transpose(axes)
 
-        _transpose = lambda a, n_, axes: a.reshape([2]*n_).transpose(axes)
-        if reshape and q < n:
-            _reshape = lambda a, sh_q, sh_full: a.reshape(sh_q)
+            def _reorder(a, kind):
+                if not correct_order:
+                    match kind:
+                        case 'ket':  a = _transpose(a, n, axes_new)
+                        case 'dm':   a = _transpose(a, 2*n, axes_new + [i + n for i in axes_new])
+                        case 'op':   a = _transpose(a, n_tot, axes_new_)
+                        case 'choi': a = _transpose(a, 2*n_tot, axes_new_ + [i + n_tot for i in axes_new_])
+                return a.reshape(get_shape(kind))
         else:
-            _reshape = lambda a, sh_q, sh_full: a.reshape(sh_full)
-
-        def _reorder(a, kind):
-            if not correct_order:
-                match kind:
-                    case 'ket':  a = _transpose(a, n, axes_new)
-                    case 'dm':   a = _transpose(a, 2*n, axes_new + [i + n for i in axes_new])
-                    case 'op':   a = _transpose(a, n_tot, axes_new_)
-                    case 'choi': a = _transpose(a, 2*n_tot, axes_new_ + [i + n_tot for i in axes_new_])
-            match kind:
-                case 'ket':  a = _reshape(a, [d_q, d_nq], [d_n])
-                case 'dm':   a = _reshape(a, [d_q, d_nq]*2, [d_n]*2)
-                case 'op':   a = _reshape(a, [d_q, d_nq, d_in], [d_n, d_in])
-                case 'choi': a = _reshape(a, [d_q, d_nq, d_in]*2, [d_n, d_in]*2)
-            return a
+            _reorder = lambda a, kind: a.reshape(get_shape(kind))
 
         if not self.is_matrix_mode():
             self._state = _reorder(self._state, 'ket')
@@ -927,6 +930,10 @@ class QuantumComputer:
         if self.track_operators:
             if not self.is_superoperator:
                 self._operators = [_reorder(o, 'op') for o in self._operators]
+                # if not correct_order:
+                #     self._operators = [_transpose(o, n_tot, axes_new_) for o in self._operators]
+                # s = get_shape('op')
+                # self._operators = [o.reshape(s) for o in self._operators]
             else:
                 self._operators = _reorder(self._operators, 'choi')
 
