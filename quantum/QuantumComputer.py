@@ -279,8 +279,8 @@ class QuantumComputer:
             if q > self.MATRIX_WARN:
                 warn("Decoherence from state vector for large n. Try using vector collapse (collapse=True) instead of decoherence.")
             self._reorder(to_remove, reshape=False)
-            if not self.is_matrix_mode() and _allow_vector() and \
-                    self.is_separable_state(to_remove) and (not self.track_operators or self.is_unitary(to_remove)):
+            if not self.is_matrix_mode() and _allow_vector() and self.is_separable_state(to_remove) \
+                and (not self.track_operators or self.is_unitary() and self.is_unitary(to_remove)):
                 # find a non-zero state (-> no diagonalization required)
                 self._reorder(to_remove, reshape=True)
                 new_state = None
