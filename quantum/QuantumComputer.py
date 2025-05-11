@@ -722,6 +722,21 @@ class QuantumComputer:
             if k > choi_dim:  # guaranteed not to be minimal
                 self.compress_operators()
 
+    def to_choi(self):
+        if self.is_superoperator:
+            warn("Already in superoperator mode")
+            return self
+        if not self.is_matrix_mode():
+            warn("Superoperator requires state in density matrix -> converting state to density matrix")
+            self.to_dm()
+        self._operators = self.choi_matrix()
+
+    def to_kraus(self):
+        if not self.is_superoperator:
+            warn("Already in Kraus mode")
+            return self
+        self._operators = self.get_operators()
+
     def compress_operators(self, filter_eps=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
