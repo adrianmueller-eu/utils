@@ -711,22 +711,34 @@ class QuantumComputer:
         return choi_from_channel(self._operators, filter_eps=self.FILTER_EPS, check=0)
 
     def _auto_compress(self):
-        if self.AUTO_COMPRESS and self.track_operators and not self.is_superoperator:
-            k = len(self._operators)
-            if k > 4:
-                choi_dim = 2**(self.n + len(self._input_qubits))
-                if k > choi_dim:  # guaranteed not to be minimal
-                    self.compress_operators()
+        if not self.AUTO_COMPRESS or not self.track_operators:
+            return
+        if self.is_superoperator:
+            return self.compress_operators()
+
+        k = len(self._operators)
+        if k > 4:
+            choi_dim = 2**(self.n + len(self._input_qubits))
+            if k > choi_dim:  # guaranteed not to be minimal
+                self.compress_operators()
 
     def compress_operators(self, filter_eps=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
-        if self.is_superoperator:
-            raise ValueError("Cannot compress superoperator representation")
 
         if filter_eps is None:
             filter_eps = self.FILTER_EPS
-        self._operators = compress_channel(self._operators, filter_eps=filter_eps, check=0)
+
+        if self.is_superoperator:
+            if sp.issparse(self._operators):
+                # filter numbers smaller than filter_eps from sparse array
+                self._operators.data[np.abs(self._operators.data) < filter_eps] = 0
+                self._operators.eliminate_zeros()
+            else:
+                self._operators[self._operators < filter_eps] = 0
+                self._use_sparse_superoperator()  # check to convert to sparse
+        else:
+            self._operators = compress_channel(self._operators, filter_eps=filter_eps, check=0)
         return self
 
     def _use_sparse_superoperator(self):
