@@ -327,7 +327,7 @@ class QuantumComputer:
             # remove qubits from state and operators
             self.remove(to_remove, collapse=collapse, obs=None)
             # extend state and operators by all `qubits`
-            self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
+            self._alloc_qubits(qubits, state=state, track_in_operators=True)
 
             # bookkeeping
             self._original_order = original_order
@@ -826,7 +826,7 @@ class QuantumComputer:
 
         n_added = q if track_in_operators else 2*q
         if not self._too_large_to_track_operators(n_added):
-            if track_in_operators:
+            if track_in_operators:  # only modifies the output space
                 ops = extension_channel(state, n=q, check=0)  # state already checked above
                 if self.is_superoperator:
                     d_out, d_in = self._operators.shape[:2]
@@ -834,8 +834,13 @@ class QuantumComputer:
                     self._update_operators(ops)
                 else:
                     self._operators = [np.kron(oi, oj) for oi in self._operators for oj in ops]  # extend output space, but not input space
-            else:
+            else:  # modifies both output and input space
+                q_new_in = [q for q in new_qubits if q in self._input_qubits]
+                self._reorder_in_end(q_new_in)  # move qubits that are already in the input space to the *end*
+                n_q_new_in = len(q_new_in)
                 if self.is_superoperator:
+                    if n_q_new_in:
+                        raise NotImplementedError("Can't allocate qubits that are already in the input space in the superoperator yet.")
                     d_q = 2**q
                     d_out, d_in = self._operators.shape[:2]
                     choi = self._operators.reshape(d_out*d_in, -1)
@@ -854,8 +859,13 @@ class QuantumComputer:
                     choi = choi.reshape([d_out*d_q, d_in*d_q]*2)
                     self._operators = choi
                 else:
-                    self._operators = [np.kron(o, I_(q)) for o in self._operators]  # extend both output *and* input space
-                self._input_qubits += new_qubits
+                    if n_q_new_in > 0:
+                        d_q_new_in = 2**n_q_new_in
+                        self._operators = [np.repeat(o, d_q_new_in, axis=0) for o in self._operators]  # these already exist -> extend only output space
+                    if q - n_q_new_in > 0:
+                        eye_q_new_not_in = I_(q - n_q_new_in)
+                        self._operators = [np.kron(o, eye_q_new_not_in) for o in self._operators]  # extend both output *and* input space by the others
+                self._input_qubits += [q for q in new_qubits if q not in q_new_in]
 
         # update bookkeeping
         self._qubits += tuple(new_qubits)
@@ -872,6 +882,7 @@ class QuantumComputer:
         self._state = np.kron(self._state, new_state)
 
     def _reorder(self, new_order, reshape):
+        assert all(q in self._qubits for q in new_order), f"Invalid qubits: {new_order}"
         n, q = self.n, len(new_order)
         d_n, d_q = 2**n, 2**q
         correct_order = list(self._qubits[:q]) == new_order
@@ -942,6 +953,28 @@ class QuantumComputer:
             self._qubits = tuple(new_order_all)
             self._input_qubits = [q for q in new_order_all if q in self._input_qubits] \
                                + [q for q in self._input_qubits if q not in new_order_all]
+
+    def _reorder_in_end(self, new_order_in):
+        """ Reorder the input qubits in operators to the *end* while keeping the output dimensions unchanged. """
+        if not new_order_in:
+            return
+        assert all(q in self._input_qubits for q in new_order_in), f"Invalid qubits: {new_order_in}"
+        new_order_all = [q for q in self._input_qubits if q not in new_order_in] + new_order_in
+        axes_new = [0] + [self._input_qubits.index(q) + 1 for q in new_order_all]
+        n_in = len(self._input_qubits)
+        expanded_shape = [2**self.n] + [2]*n_in
+        if self.is_superoperator:
+            tmp_shape = self._operators.shape
+            self._operators = self._operators.reshape(expanded_shape*2)
+            axes_new = axes_new + [1 + n_in + i for i in axes_new]
+            self._operators = self._operators.transpose(axes_new)
+            self._operators = self._operators.reshape(tmp_shape)
+        else:
+            tmp_shape = self._operators[0].shape
+            self._operators = [K.reshape(expanded_shape).transpose(axes_new).reshape(tmp_shape)
+                                for K in self._operators]
+        # update bookkeeping
+        self._input_qubits = new_order_all
 
     @contextmanager
     def observable(self, obs=None, qubits='all', return_energies=False):
