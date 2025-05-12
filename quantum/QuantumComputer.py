@@ -721,8 +721,8 @@ class QuantumComputer:
 
         k = len(self._operators)
         if k > 4:
-            choi_dim = 2**(self.n + len(self._input_qubits))
-            if k > choi_dim:  # guaranteed not to be minimal
+            max_k = 2**(2*min(self.n, len(self._input_qubits)))
+            if k > max_k:  # guaranteed not to be minimal
                 self.compress_operators()
 
     def to_choi(self):
