@@ -47,7 +47,7 @@ def count_qubits(obj):
         return len(obj.qubits)
     raise ValueError(f'Unkown object: {obj}')
 
-def reorder_qubits(state, new_order, reshape=False, batch_shape=()):
+def reorder_qubits(state, new_order, separate=False, batch_shape=()):
     state = np.asarray(state)
     n = count_qubits(state)
 
@@ -72,7 +72,7 @@ def reorder_qubits(state, new_order, reshape=False, batch_shape=()):
     if is_ket:
         state = state.reshape(batch_shape + [2]*n)
         state = state.transpose(batch_idcs + new_order_all)
-        if reshape and 0 < q < n:
+        if separate and 0 < q < n:
             state = state.reshape(batch_shape + [2**q, 2**(n-q)])
         else:
             state = state.reshape(batch_shape + [2**n])
@@ -80,7 +80,7 @@ def reorder_qubits(state, new_order, reshape=False, batch_shape=()):
         state = state.reshape(batch_shape + [2,2]*n)
         new_order_all = new_order_all + [i + n for i in new_order_all]
         state = state.transpose(batch_idcs + new_order_all)
-        if reshape and 0 < q < n:
+        if separate and 0 < q < n:
             state = state.reshape(batch_shape + [2**q, 2**(n-q)]*2)
         else:
             state = state.reshape(batch_shape + [2**n]*2)
@@ -91,7 +91,7 @@ def reorder_qubits(state, new_order, reshape=False, batch_shape=()):
 
 def reverse_qubit_order(state, batch_shape=()):
     """ So the last will be first, and the first will be last. """
-    return reorder_qubits(state, -1, reshape=False, batch_shape=batch_shape)
+    return reorder_qubits(state, -1, separate=False, batch_shape=batch_shape)
 
 def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
     """
@@ -146,6 +146,6 @@ def partial_trace(state, retain_qubits, reorder=False, assume_ket=False):
         state = state.reshape(batch_shape + [2**n, 2**n])
 
     if reorder:
-        state = reorder_qubits(state, np.argsort(retain_qubits), reshape=False, batch_shape=batch_shape)
+        state = reorder_qubits(state, np.argsort(retain_qubits), separate=False, batch_shape=batch_shape)
 
     return state

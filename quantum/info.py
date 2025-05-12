@@ -80,7 +80,7 @@ def trace_distance(rho1, rho2, check=1):
 def schmidt_decomposition(state, subsystem, coeffs_only=False, filter_eps=1e-10, check=1):
     """Calculate the Schmidt decomposition of a pure state with respect to the given subsystem."""
     state = ket(state, renormalize=check>0, check=check)
-    state = reorder_qubits(state, subsystem, reshape=True)
+    state = reorder_qubits(state, subsystem, separate=True)
     assert state.ndim == 2, f"Subsystem needs to be a bipartition, but was: {subsystem} {state.shape}"
 
     def filterS(S):
@@ -104,13 +104,13 @@ def schmidt_rank(state, subsystem, tol=1e-10, check=1):
     state = ket(state, renormalize=check>0, check=check)
     # if is_pure_dm(partial_trace(state, subsystem)):
     #     return 1
-    state = reorder_qubits(state, subsystem, reshape=True)
+    state = reorder_qubits(state, subsystem, separate=True)
     assert state.ndim == 4, f"Subsystem needs to be a bipartition, but was: {subsystem} {state.shape}"
     return np.linalg.matrix_rank(state, tol=tol)
 
 def schmidt_operator_rank(op, subsystem, tol=1e-10):
     """Calculate the Schmidt operator rank of a given operator with respect to the given subsystem."""
-    op = reorder_qubits(op, subsystem, reshape=True)
+    op = reorder_qubits(op, subsystem, separate=True)
     if op.ndim == 2:  # q == 0 or q == n
         return 1
     op = op.transpose(0, 2, 1, 3).reshape(2**(2*len(subsystem)), -1)

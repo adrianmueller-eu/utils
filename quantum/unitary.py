@@ -318,7 +318,7 @@ def get_subunitary(U, subsystem, tol=1e-10, check=2, check_output=True):
     else:
         # fall back to svd
         q = len(subsystem)
-        U = reorder_qubits(U, subsystem, reshape=True)
+        U = reorder_qubits(U, subsystem, separate=True)
         U = U.transpose([0,2,1,3]).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
         U_, S, Vh = np.linalg.svd(U, full_matrices=False)
         assert len(S[S > tol]) == 1, f"U is not separable: {U} ({S[S > tol]})"
@@ -340,7 +340,7 @@ def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
     if q > n - q:  # subsystem should be the smaller part of the bipartition
         subsystem = [q for q in range(n) if q not in subsystem]
         q = n - q
-    U_ = reorder_qubits(U, subsystem, reshape=True)
+    U_ = reorder_qubits(U, subsystem, separate=True)
     U_ = U_.transpose(0, 2, 1, 3).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
 
     # find a nonzero block and a nonzero element in it

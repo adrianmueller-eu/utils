@@ -553,7 +553,7 @@ def is_separable_state(state, subsystem, n=None, tol=1e-12, check=3):
     # use smaller subsystem -> more branches -> faster failure
     if q > n - q:
         subsystem = [q for q in range(n) if q not in subsystem]
-    state_ = reorder_qubits(state, subsystem, reshape=True)
+    state_ = reorder_qubits(state, subsystem, separate=True)
     state_ = state_.transpose(0, 2, 1, 3).reshape(2**(2*q), -1)  # qq x (n-q)(n-q)
 
     # find a nonzero block and a nonzero element in it
