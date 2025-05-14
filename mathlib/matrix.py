@@ -340,6 +340,23 @@ def kron(A, B, op: np.ufunc=np.multiply):
         return res.ravel()
     return res
 
+def kron_eye(d: int, a: np.ndarray, back=False, allow_F=False):
+    """ Faster version to calculate np.kron(np.eye(d), a).
+    Remark: `np.kron(np.eye(d), a)` (back=False) is much faster than `np.kron(a, np.eye(d))` when enforcing C-layout.
+    """
+    rows, cols = a.shape
+    if back:
+        order = 'F' if allow_F else 'C'
+        res = np.zeros((rows, d, cols, d), order=order, dtype=a.dtype)
+        for i in range(d):
+            res[:,i,:,i] = a
+    else:
+        order = 'C'
+        res = np.zeros((d, rows, d, cols), dtype=a.dtype)
+        for i in range(d):
+            res[i,:,i,:] = a
+    return res.reshape(d*rows, d*cols, order=order)
+
 class Sn:
     """
     Symmetric group of order n.
