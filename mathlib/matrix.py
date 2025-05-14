@@ -506,12 +506,16 @@ def anticommute(A, B, tol=1e-10):
     """ Check if two matrices anticommute. """
     return allclose0(anticommutator(A, B), tol=tol)
 
-def trace_product(A, B):
+def trace_product(A, B, normalized=False):
     """Hilbert-Schmidt product or trace inner product of two matrices."""
     if A.ndim == 2:
-        return A.ravel().conj() @ B.ravel()  # Liouville space inner product <<A|B>>
-    return np.einsum('...ij,...ij->...', U.conj(), V)
-    return np.trace(A.T.conj() @ B)
+        res = A.ravel().conj() @ B.ravel()  # Liouville space inner product <<A|B>>
+    else:
+        res = np.einsum('...ij,...ij->...', A.conj(), B)
+    if normalized:
+        res /= A.shape[-2]
+    return res
+    # return np.trace(A.T.conj() @ B)
 
 Hilbert_schmidt_inner_product = trace_product
 
