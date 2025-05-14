@@ -847,7 +847,7 @@ class QuantumComputer:
                         # extend output space by repeating choi 2*d_q_new_in times
                         if self._use_sparse_superoperator():
                             choi = self._operators.reshape(d_out*d_in, -1)  # sp.kron wants 2d
-                            ones = sp.coo_array(np.ones((2*d_q_new_in, 1)))
+                            ones = sp.coo_array(np.ones((d_q_new_in**2, 1)))
                             choi = sp.kron(ones, choi)
                         else:
                             choi = np.repeat(self._operators, 2*d_q_new_in, axis=0)  # much faster than np.kron
