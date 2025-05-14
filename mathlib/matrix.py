@@ -204,7 +204,7 @@ def tf(D, T, T_ = None, is_unitary = True, reverse=False):
     """
     if T_ is None:
         if is_unitary:
-            T_ = np.moveaxis(T, -2, -1).conj()
+            T_ = np.swapaxes(T, -2, -1).conj()
         else:
             T_ = np.linalg.inv(T)
     if reverse:
