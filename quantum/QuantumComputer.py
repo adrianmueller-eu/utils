@@ -209,6 +209,8 @@ class QuantumComputer:
         return self
 
     def _update_operators(self, operators):
+        if not self.track_operators:
+            return
         n_out = count_qubits(operators[0].shape[0])
         if not self._too_large_to_track_operators(n_out - self.n):
             if self.is_superoperator:
