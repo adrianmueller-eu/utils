@@ -1,6 +1,7 @@
 import sys
 import numpy as np
-from math import prod, log2, ceil, sqrt
+from math import prod, log2, ceil
+import itertools
 try:
     import scipy.sparse as sp
 except ImportError:
@@ -591,3 +592,24 @@ def compress_channel(operators, filter_eps=1e-12, check=3):
     # reshape back to original shape
     ops_compressed = [op.reshape(orig_shape) for op in ops_compressed]
     return ops_compressed
+
+def kron_with_id_channel(choi: np.ndarray, d: int, dims: tuple[int], back=False) -> np.ndarray:
+    assert isinstance(choi, np.ndarray), f"Choi matrix must be a numpy array: {type(choi)}"
+    assert choi.ndim in (2,4), f"Choi matrix must be 2D or 4D: {choi.shape}"
+    was_4d = choi.ndim == 4
+    d_out, d_in = dims
+
+    choi = choi.reshape(d_out, d_in, d_out, d_in)
+    idcs = itertools.product(range(d), repeat=2)
+    if back:
+        res = np.zeros((d_out, d, d_in, d)*2, dtype=choi.dtype)
+        for i, j in idcs:
+            res[:,i,:,i,:,j,:,j] = choi
+    else:
+        res = np.zeros((d, d_out, d, d_in)*2, dtype=choi.dtype)
+        for i, j in idcs:
+            res[i,:,i,:,j,:,j,:] = choi
+
+    if was_4d:
+        return res.reshape([d_out*d, d_in*d]*2)
+    return res.reshape([d_out*d*d_in*d]*2)
