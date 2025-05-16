@@ -14,13 +14,13 @@ from ..utils import shape_it, size_samples
 
 def eigh(A, **kwargs):
     """Eigenvalue decomposition of a hermitian matrix."""
-    if len(A) <= 68:
+    if len(A) <= 68 or 'scipy' not in sys.modules:
         return np.linalg.eigh(A, **kwargs)
     return scipy.linalg.eigh(A, **kwargs)
 
 def eigvalsh(A, **kwargs):
     """Eigenvalues of a hermitian matrix."""
-    if len(A) <= 68:
+    if len(A) <= 68 or 'scipy' not in sys.modules:
         return np.linalg.eigvalsh(A, **kwargs)
     return scipy.linalg.eigvalsh(A, **kwargs)
 
