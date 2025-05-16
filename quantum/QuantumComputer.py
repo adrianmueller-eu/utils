@@ -849,29 +849,27 @@ class QuantumComputer:
                             choi = self._operators.reshape(d_out*d_in, -1)  # sp.kron wants 2d
                             ones = sp.coo_array(np.ones((d_q_new_in**2, 1)))
                             choi = sp.kron(ones, choi)
+                            choi = choi.reshape(d_q_new_in, d_q_new_in, d_out, d_in, d_out, d_in)
+                            choi = choi.transpose([2, 0, 3, 4, 1, 5])  # out x q x in x out x q x in
+                            choi = choi.reshape(d_out*d_q_new_in, d_in, d_out*d_q_new_in, d_in)
                         else:
-                            choi = np.repeat(self._operators, 2*d_q_new_in, axis=0)  # much faster than np.kron
-                        choi = choi.reshape(d_q_new_in, d_q_new_in, d_out, d_in, d_out, d_in)
-                        choi = choi.transpose([2, 0, 3, 4, 1, 5])  # out x q x in x out x q x in
-                        choi = choi.reshape(d_out*d_q_new_in, d_in, d_out*d_q_new_in, d_in)
+                            choi = np.repeat(self._operators, d_q_new_in, axis=0)  # much faster than np.kron
+                            choi = np.repeat(self._operators, d_q_new_in, axis=2)
                         self._operators = choi
                     # extend both output *and* input space by the others
                     if q - n_q_new_in > 0:
                         d_q = 2**q
-                        choi = self._operators.reshape(d_out*d_in, -1)  # sp.kron wants them 2D
-                        id = choi_from_channel([np.eye(d_q)], sparse=True, check=0)  # identity channel
-                        if self._use_sparse_superoperator():
-                            choi = sp.kron(choi, id)  # extend both input and output space
-                        elif q > 2:  # identity channel is very sparse
+                        if self._use_sparse_superoperator() or q > 2:  # identity channel is very sparse
+                            choi = self._operators.reshape(d_out*d_in, -1)  # sp.kron wants them 2D
                             choi = sp.coo_array(choi)
-                            choi = sp.kron(choi, id)
+                            id = choi_from_channel([np.eye(d_q)], sparse=True, check=0)  # identity channel
+                            choi = sp.kron(choi, id)  # extend both input and output space
+                            # move new q output qubits after output space (and before input space)
+                            choi = choi.reshape([d_out, d_in, d_q, d_q]*2)
+                            choi = choi.transpose([0, 2, 1, 3] + [4, 6, 5, 7])
+                            choi = choi.reshape([d_out*d_q, d_in*d_q]*2)
                         else:
-                            choi = np.kron(choi, id.toarray())
-                        choi = choi.reshape([d_out, d_in, d_q, d_q]*2)
-                        # move new q output qubits after output space (and before input space)
-                        choi = choi.transpose([0, 2, 1, 3] + [4, 6, 5, 7])
-                        choi = choi.reshape([d_out*d_q, d_in*d_q]*2)
-                        self._operators = choi
+                            self._operators = kron_with_id_channel(self._operators, d_q, dims=(d_out, d_in), back=True)
                 else:
                     if n_q_new_in > 0:
                         d_q_new_in = 2**n_q_new_in
