@@ -270,7 +270,7 @@ class QuantumComputer:
                 probs = self._probs(to_remove)  # calls _reorder(separate=True) for vector and _reorder(separate=False) for matrix
                 outcome = choice(2**nq, p=probs)
                 if self.is_matrix_mode():
-                    idcs = slice(outcome*2**nq, (outcome+1)*2**nq)
+                    idcs = slice(outcome*2**q, (outcome+1)*2**q)
                     new_state = self._state[idcs, idcs] / probs[outcome]
                 else:
                     new_state = self._state[outcome] / sqrt(probs[outcome])

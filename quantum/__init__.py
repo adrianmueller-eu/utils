@@ -436,8 +436,12 @@ def _test_QuantumComputer():
     qc.purify()
     assert np.allclose(qc.get_state(), ket('000 + 111'))  # purification only needs one ancilla qubit in this case
     assert not qc.is_matrix_mode()
+    assert qc[:].shape == (8,8)
     assert not qc.is_unitary()
     assert qc.is_isometric()
+    qc.to_dm()
+    rdm0 = qc.get_state([0], collapse=True)
+    assert rdm0.shape == (2,2), f"{rdm0.shape} ≠ (2,2)"
     qc.remove([0])
     qc.remove(1)
     QC(random_dm(3, rank=3)).purify()
