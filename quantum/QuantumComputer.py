@@ -14,7 +14,7 @@ from .hamiltonian import parse_hamiltonian
 from .info import *
 from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary, is_separable_unitary
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions
-from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer, is_isometry
+from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer, is_isometry, kron_eye
 from ..plot import imshow
 from ..utils import is_int, duh, warn, as_list_not_str, nbytes
 from ..prob import entropy
@@ -875,8 +875,8 @@ class QuantumComputer:
                         d_q_new_in = 2**n_q_new_in
                         self._operators = [np.repeat(o, d_q_new_in, axis=0) for o in self._operators]  # these already exist -> extend only output space
                     if q - n_q_new_in > 0:
-                        eye_q_new_not_in = I_(q - n_q_new_in)
-                        self._operators = [np.kron(o, eye_q_new_not_in) for o in self._operators]  # extend both output *and* input space by the others
+                        d_new = 2**(q - n_q_new_in)
+                        self._operators = [kron_eye(d_new, o, back=True) for o in self._operators]  # extend both output *and* input space by the others
                 self._input_qubits = [q for q in self._input_qubits if q not in new_qubits]  # move q_new_in to the end
                 self._input_qubits += q_new_in + [q for q in new_qubits if q not in q_new_in]
 
