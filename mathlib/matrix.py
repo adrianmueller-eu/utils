@@ -341,7 +341,7 @@ def kron(A, B, op: np.ufunc=np.multiply):
     return res
 
 def kron_eye(d: int, a: np.ndarray, back=False, allow_F=False):
-    """ Faster version to calculate np.kron(np.eye(d), a).
+    """ Faster version to calculate `np.kron(np.eye(d), a)`.
     Remark: `np.kron(np.eye(d), a)` (back=False) is much faster than `np.kron(a, np.eye(d))` when enforcing C-layout.
     """
     rows, cols = a.shape
