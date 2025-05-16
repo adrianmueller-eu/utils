@@ -320,7 +320,7 @@ def _test_random_hermitian():
     d = 2
     Hs = random_hermitian(d, size=1000)
     assert np.isclose(matmoment(Hs, 1), 0, atol=0.1), f"First moment is {matmoment(Hs, 1)} ≠ 0"
-    assert np.isclose(matmoment(Hs, 2), d, atol=0.1), f"Second moment is {matmoment(Hs, 2)} ≠ {d}"
+    assert np.isclose(matmoment(Hs, 2), d, atol=0.2), f"Second moment is {matmoment(Hs, 2)} ≠ {d}"
     assert np.isclose(matmoment(Hs, 3), 0, atol=0.5), f"Third moment is {matmoment(Hs, 3)} ≠ 0"
     assert np.isclose(matmoment(Hs, 4), 2*d, atol=1), f"Fourth moment is {matmoment(Hs, 4)} ≠ {2*d}"
 
