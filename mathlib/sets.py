@@ -46,7 +46,7 @@ def allclose_set(a, b):
     a = np.sort(np.reshape(a, -1))
     if isinstance(b, set):
         b = list(b)
-    b = np.sort(np.reshape(a, -1))
+    b = np.sort(np.reshape(b, -1))
     # check if they have the same length
     if len(a) != len(b):
         return False
