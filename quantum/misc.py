@@ -25,7 +25,7 @@ def bell_experiment(N=10000):
     obss = [QS, RS, RT, QT]
     s = {i: 0 for i in range(len(obss))}
     n = {i: 0 for i in range(len(obss))}
-    singlet = QC('01 - 10', track_unitary=False, check=0)
+    singlet = QC('01 - 10', track_operators=False, check=0)
     for _ in range(N):
         qc = singlet.copy()
         i = choice(4)
