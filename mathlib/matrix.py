@@ -48,7 +48,7 @@ def outer(a, b=None):
 
 def _sq_matrix_allclose(a, f, tol=1e-12):
     a = np.asarray(a)
-    assert is_square(a), "Expected square matrix, got {a.shape}"
+    assert is_square(a), f"Expected square matrix, got {a.shape}"
     # a[np.isnan(a)] = 0
     a, b = f(a)
     # considerable speedup for large matrices if they are both contiguous
