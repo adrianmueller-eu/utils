@@ -296,7 +296,8 @@ def apply_channel(operators, state, reshaped, check=3):
                 # m x (n-q) x (n-q) x m -> m x (n-q) x m x (n-q)
                 new_state += tmp.transpose([0, 1, 3, 2])
     else:
-        assert is_unitary_channel(operators, check=0), "Non-unitary operators can't be applied to state vectors!"
+        if check:
+            assert is_unitary_channel(operators, check=0), "Non-unitary operators can't be applied to state vectors!"
         U = operators[0]
         # (q x q) x (q x (n-q)) -> q x (n-q)  or  (q x q) x q -> q
         new_state = np.tensordot(U, state, axes=1)
