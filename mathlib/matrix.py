@@ -1082,15 +1082,20 @@ def random_unitary(n, size=(), kind='haar'):
     """
     Sample a random unitary.
     - `kind = 'haar'` samples from the complex Haar measure (default).
-    - `kind = 'gue'` samples a GUE matrix and returns its eigenbasis. Also Haar-distributed, but slower than above.
-    - `kind = 'polar'` is the fastest for very small matrices.
+    - `kind = 'gue'` samples a GUE matrix and returns exp(icH) where c is half of a root of the Bessel function J_1 (not Haar-distributed!).
+    - `kind = 'polar'` is fast for very small matrices.
     """
     if not hasattr(size, '__len__'):
         size = (size,)
     if kind == 'haar':
         return random_isometry(n, n, size=size)
     elif kind == 'gue':
-        return eigh(random_hermitian(n, size=size))[1]
+        H = random_hermitian(n, size=size)
+        D, U = np.linalg.eigh(H)
+        # return U  # always Haar-distributed, but slower
+        c = 1.9158529851037562  # J_1(3.8317059702075125) = 0
+        D = np.exp(1j*c*D)
+        return tf(D, U, is_unitary=True)  # not Haar-distributed!
     elif kind == 'polar':  # fastest for very small and slowest for very large matrices
         A = random_square(n, complex=True, kind='normal')
         D, U = eigh(A.T.conj() @ A)
