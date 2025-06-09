@@ -281,18 +281,19 @@ class Group:
     def pow(self, x, n):
         if n == 0:
             return self.identity
-        assert np.isclose(n, int(n)), "Exponent must be an integer"
+        assert n == int(n), f"Exponent must be an integer, but was: {n}"
         n = int(n)
         if n < 0:
             x = self.inv(x)
             n = -n
-        while n % 2 == 0:
+        res = x if n & 1 else None
+        n >>= 1
+        while n:
             x = self.op(x, x)
-            n //= 2
-        tmp = x
-        for _ in range(n):
-            x = self.op(x, tmp)
-        return x
+            if n & 1:
+                res = x if res is None else self.op(res, x)
+            n >>= 1
+        return res
 
     @property
     def id(self):

@@ -313,14 +313,14 @@ class Polynomial(Function):
         if n == 0:
             return Polynomial([1], self.TOLERANCE)
         coeffs = list(self.coeffs)
-        while n % 2 == 0:
-            n //= 2
+        res = coeffs if n & 1 else None
+        n >>= 1
+        while n:
             coeffs = Polynomial._polymul(coeffs, coeffs)
-        coeffs_ = coeffs
-        while n > 1:
-            coeffs = Polynomial._polymul(coeffs, coeffs_)
-            n -= 1
-        return Polynomial(coeffs, self.TOLERANCE)
+            if n & 1:
+                res = coeffs if res is None else Polynomial._polymul(res, coeffs)
+            n >>= 1
+        return Polynomial(res, self.TOLERANCE)
 
     @property
     def roots(self):
