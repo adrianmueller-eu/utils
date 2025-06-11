@@ -25,6 +25,7 @@ class QuantumComputer:
     FILTER_EPS = 1e-12        # Tolerance for filtering out small eigenvalues and operators
     ENTROPY_EPS = 1e-12       # If measuring a state vector on a subsystem decoherently and `keep_vector == True`, keep the state vector as is if the entropy is below this threshold.
     SPARSITY_THRESHOLD = 0.2  # If superoperator tracking is active, threshold at which to switch between sparse and dense representation of the superoperator
+    NOISE_P = 0.1             # Value for noise level if self.noise is called (or scheduler active) using a `noise_models` identifier
 
     """
     Simulate a quantum computer! Simulate state vectors or density matrices,
@@ -51,11 +52,12 @@ class QuantumComputer:
     - Operator tracking is not compatible with non-linear operations (e.g. measurement collapse).
 
     Parameters:
-        qubits (list|int): List of qubit identifiers for qubits to be allocated.
-        state (array): Initial state of the system (default: |0>).
-        track_operators (bool): Whether to track the effective quantum channel. `'auto'` tracks as long as the system is not too large (see `MATRIX_SLOW`).
+        qubits (None|list|int): List of qubit identifiers for qubits to be allocated.
+        state (int|array): Initial state of the system (default: |0>).
+        track_operators (bool|str): Whether to track the effective quantum channel. `'auto'` tracks as long as the system is not too large (see `MATRIX_SLOW`).
         as_superoperator (bool): Whether to use superoperator (Choi matrix) representation (True) or Kraus operators (False).
         check (int): Check level for input validation (see `../../check levels.md`)
+        noise_schedule (None|str|list|function): `None`, a `noise_models` identifier, a set of Kraus operators, or a callback function taking the `qubits` on which the currently applied channel acts and returning either of the previous types.
         keep_vector (bool): If True, try to keep state vector representation in various operations (e.g. obtaining or plotting the state of a subsystem, qubit removal, decoherent measurement).
                             Requires O(N^3) tests if the state is (and, if tracked, operators are) separable.
         auto_compress (bool): If True and Kraus operators are tracked, compress them after each operation if they exceed the Choi dimension.
@@ -66,7 +68,8 @@ class QuantumComputer:
     """
     def __init__(self, qubits=None, state=0, track_operators='auto', as_superoperator=False, check=2,
         keep_vector=True, auto_compress=True, filter0=True,
-        filter_eps=FILTER_EPS, entropy_eps=ENTROPY_EPS, sparsity_threshold=SPARSITY_THRESHOLD
+        filter_eps=FILTER_EPS, entropy_eps=ENTROPY_EPS, sparsity_threshold=SPARSITY_THRESHOLD,
+        noise_schedule=None
     ):
         self._track_operators = track_operators
         if as_superoperator:
@@ -76,6 +79,7 @@ class QuantumComputer:
         else:
             self._operators = []
         self.check_level = check
+        self.noise_schedule = noise_schedule
 
         # constants
         self.KEEP_VECTOR = keep_vector
@@ -182,7 +186,7 @@ class QuantumComputer:
             qc._operators = [o.copy() for o in self._operators]
         return qc
 
-    def __call__(self, operators, qubits='all'):
+    def __call__(self, operators, qubits='all', apply_noise_schedule=True):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         self._alloc_qubits(to_alloc)
         operators = assert_kraus(operators, check=0)  # convert into the correct format
@@ -192,6 +196,7 @@ class QuantumComputer:
             for q in qubits:
                 self(operators, q)
             return self
+
         if self.check_level > 0:
             operators = assert_kraus(operators, n=(None, len(qubits)), check=self.check_level)
 
@@ -206,6 +211,14 @@ class QuantumComputer:
 
         # multiply each operator with the new operators
         self._update_operators(operators)
+
+        if apply_noise_schedule and self.noise_schedule is not None:
+            noise_channel = self.noise_schedule
+            if callable(noise_channel):
+                noise_channel = noise_channel(qubits)
+            if noise_channel is not None:
+                self.noise(noise_channel, qubits)
+
         return self
 
     def _update_operators(self, operators):
@@ -1242,17 +1255,20 @@ class QuantumComputer:
                 A_idcs = list(range(len(qubits_A)))
                 return mutual_information_quantum(state, A_idcs, check=0)
 
-    def noise(self, noise_model=None, qubits='all', p=0.1, obs=None):
+    def noise(self, noise_channel='depolarizing', qubits='all', p=None, obs=None):
         """
-        Apply noise to the qubits. See `noise_models.keys()` for available noise models.
+        Apply noise to the qubits. See `noise_models.keys()` for available noise channel identifiers.
         """
-        if noise_model is None:
-            raise ValueError("No noise model provided. Valid options are: " + ', '.join(noise_models.keys()))
-        if noise_model not in noise_models:
-            raise ValueError(f"Invalid noise model: {noise_model}. Valid options are: " + ', '.join(noise_models.keys()))
+        if isinstance(noise_channel, str):
+            if noise_channel not in noise_models:
+                raise ValueError(f"Invalid noise model: {noise_channel}. Valid options are: " + ', '.join(noise_models.keys()))
+            if p == 0:
+                return self  # no effect
+            assert p is None or 0 < p <= 1, f"p must be a float between 0 and 1, but was: {p}"
+            p = p or self.NOISE_P
+            noise_channel = noise_models[noise_channel](p)
         with self.observable(obs, qubits) as qubits:
-            operators = noise_models[noise_model](p)
-            return self(operators, qubits)
+            return self(noise_channel, qubits, apply_noise_schedule=False)
 
     def __str__(self, sort_qubits=True):
         try:
