@@ -1113,6 +1113,18 @@ def random_isometry(n, m, size=()):
             u = random_vec(size, complex=True, kind='uniform')
             return np.exp(1j*2*np.pi*u)[...,None]
         return normalize(random_vec(size + (n,), complex=True, kind='normal'), axis=-1)[...,None]
+    if n == m and n == 2:
+        u = random_vec((4,) + size, complex=False, kind='uniform')
+        alpha, beta, gamma = 1j*2*np.pi*u[:3]
+        theta = 0.5*np.arccos(1 - 2*u[3])
+        c, s = np.cos(theta), np.sin(theta)
+
+        U = np.empty(size + (2, 2), dtype=complex)
+        U[..., 0, 0] =  np.exp( beta)  * c
+        U[..., 0, 1] =  np.exp( gamma) * s
+        U[..., 1, 0] = -np.exp(-gamma) * s
+        U[..., 1, 1] =  np.exp(-beta)  * c
+        return np.exp(alpha)[...,None,None] * U
     # general case
     A = random_vec(size + (n,m), complex=True, kind='normal')
     Q, R = np.linalg.qr(A)
