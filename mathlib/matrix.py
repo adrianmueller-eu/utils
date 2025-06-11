@@ -1107,6 +1107,13 @@ def random_unitary(n, size=(), kind='haar'):
 
 def random_isometry(n, m, size=()):
     assert n >= m, f"n must be >= m, but got {n} < {m}"
+    # special cases
+    if m == 1:
+        if n == 1:
+            u = random_vec(size, complex=True, kind='uniform')
+            return np.exp(1j*2*np.pi*u)[...,None]
+        return normalize(random_vec(size + (n,), complex=True, kind='normal'), axis=-1)[...,None]
+    # general case
     A = random_vec(size + (n,m), complex=True, kind='normal')
     Q, R = np.linalg.qr(A)
     R_ = np.zeros(size + (m,), dtype=complex)

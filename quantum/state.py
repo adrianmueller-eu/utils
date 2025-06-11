@@ -7,7 +7,7 @@ from functools import reduce
 from .utils import count_qubits, reorder_qubits, verify_subsystem, partial_trace
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf, allclose0
+from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, random_isometry, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf, allclose0
 from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
@@ -174,25 +174,12 @@ def random_ket(n, size=(), kind='fast'):
         size = (size,)
     assert all(s >= 1 for s in size), f"size should contain only integers >= 1, but was: {size}"
     if kind == 'fast' or size == ():
-        if size == ():
-            return normalize(random_vec(2**n, complex=True, kind='normal'))
-        kets = random_vec((*size, 2**n), complex=True, kind='normal')
-        return normalize(kets, axis=-1)
+        return random_isometry(2**n, 1, size=size)[..., 0]
     elif kind == 'ortho':
-        if len(size) > 1:
-            res = np.empty(size + (2**n,), dtype=complex)
-            for i in shape_it(size[:-1]):
-                res[i] = random_ket(n, size[-1], kind='ortho')
-            return res
-        size_ = size[0] if len(size) > 0 else 1
-        assert size_ <= 2**n, f"Can't generate more than 2**{n} = {2**n} orthogonal states, but requested was: {size}"
-        # inspired by the method to sample Haar-random unitaries
-        kets = random_vec((2**n, size_), complex=True, kind='normal')
-        Q, R = np.linalg.qr(kets)
-        Rd = np.diag(R)
-        L = Rd / np.abs(Rd)
-        kets = L[:,None] * Q.T
-        return kets
+        num_kets = size[-1] if len(size) > 0 else 1
+        assert num_kets <= 2**n, f"Can't generate more than 2**{n} = {2**n} orthogonal states, but requested was: {size}"
+        kets = random_isometry(2**n, num_kets, size=size[:-1])
+        return np.swapaxes(kets, -2, -1)  # non-contiguous (copying unavoidable, but don't make it contiguous here to avoid double-copying)
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
