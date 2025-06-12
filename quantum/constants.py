@@ -136,4 +136,5 @@ noise_models = {
     'pauli':        lambda p, n=1: pauli_channel(p, n),
     'amplitude_damping': lambda p: [np.array([[1, 0], [0, sqrt(1 - p)]]), np.array([[0, sqrt(p)], [0, 0]])],
     'phase_damping':     lambda p: [sqrt(1 - p) * I, np.array([[sqrt(p), 0], [0, 0]]), np.array([[0, 0], [0, sqrt(p)]])],
+    'z_drift': lambda p: [np.array([[np.exp(-1j*p/2), 0], [0, np.exp(1j*p/2)]])]
 }
