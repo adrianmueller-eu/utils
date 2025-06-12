@@ -1014,7 +1014,8 @@ class QuantumComputer:
                                + [q for q in self._input_qubits if q not in new_order_all]
 
     @contextmanager
-    def no_noise():
+    def no_noise(self):
+        """ Context manager to temporarily disable noise channel tracking. """
         prev_flag = self._noise_channel_flag
         self._noise_channel_flag = True
         try:
