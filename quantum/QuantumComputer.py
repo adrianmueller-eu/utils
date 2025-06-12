@@ -219,6 +219,7 @@ class QuantumComputer:
 
         # if it's a 1-qubit channel and multiple qubits are given, apply it to all qubits
         if operators[0].shape == (2,2) and len(qubits) > 1:
+            # TODO: benchmark if creating a tensor product is faster (esp for matrix mode / operators)
             for q in qubits:
                 self(operators, q)
             return self

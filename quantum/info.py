@@ -294,7 +294,7 @@ def apply_channel(operators, state, reshaped, check=3):
                 # (m x (n-q) x q x (n-q)) x (q x m) -> m x (n-q) x (n-q) x m
                 tmp = np.tensordot(tmp, K.T.conj(), axes=(2,0))
                 # m x (n-q) x (n-q) x m -> m x (n-q) x m x (n-q)
-                new_state += tmp.transpose([0, 1, 3, 2])
+                new_state += tmp.transpose([0, 1, 3, 2])  # TODO: change convention to q x (n-q) x (n-q) x q to avoid the transpose here? (5~10% faster)
     else:
         if check:
             assert is_unitary_channel(operators, check=0), "Non-unitary operators can't be applied to state vectors!"
@@ -353,7 +353,7 @@ def update_choi(operators, choi, sparse=True, check=3):
             tmp = np.tensordot(K, choi, axes=1)
             tmp = np.tensordot(tmp, K.conj().T, axes=axes)
 
-        if choi.ndim == 4:
+        if choi.ndim == 4:  # TODO: Similarly here, change the convention to have q at the outsides: q x (n-q) x n_in x n_in x (n-q) x q. Then remove the transpose.
             tmp = tmp.transpose([0, 1, 3, 2])
         else:
             tmp = tmp.transpose([0, 1, 2, 5, 3, 4])
