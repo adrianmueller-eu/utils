@@ -1443,30 +1443,32 @@ class QuantumComputer:
 
         # implement using elementary gates (Nielsen p. 219)
         n = len(qubits)
-        if inverse:
-            Rks_inv = [np.array([[1,0],[0,np.exp(-2j*np.pi/2**k)]]) for k in range(2,n+1)]
-            if do_swaps:
-                for i in range(n//2):
-                    self.swap(qubits[i], qubits[n-i-1])
-            for i in reversed(range(n)):
-                for j in reversed(range(n-i-1)):
-                    self.c(Rks_inv[j], qubits[i+j+1], qubits[i])
-                self.h(qubits[i])
-        else:
+        if not inverse:
             Rks = [np.array([[1,0],[0,np.exp(2j*np.pi/2**k)]]) for k in range(2,n+1)]
             for i, q in enumerate(qubits):
                 self.h(q)
                 for j in range(n-i-1):
                     self.c(Rks[j], qubits[i+j+1], q)
-            if do_swaps:
-                for i in range(n//2):
-                    self.swap(qubits[i], qubits[n-i-1])
+
+        if do_swaps:
+            for i in range(n//2):
+                # swap
+                self.cx(qubits[i], qubits[n-i-1])
+                self.cx(qubits[n-i-1], qubits[i])
+                self.cx(qubits[i], qubits[n-i-1])
+
+        if inverse:
+            Rks_inv = [np.array([[1,0],[0,np.exp(-2j*np.pi/2**k)]]) for k in range(2,n+1)]
+            for i in reversed(range(n)):
+                for j in reversed(range(n-i-1)):
+                    self.c(Rks_inv[j], qubits[i+j+1], qubits[i])
+                self.h(qubits[i])
         return self
 
     def iqft(self, qubits, do_swaps=True, single_unitary=True):
         return self.qft(qubits, True, do_swaps, single_unitary)
 
-    def pe(self, U, state, energy):
+    def pe(self, U, state, energy, use_elementary_gate_qft=False):
         # 1. Hadamard on energy register
         self.h(energy)
 
@@ -1478,7 +1480,7 @@ class QuantumComputer:
             self.c(U, q, state)
 
         # 3. IQFT on energy register
-        self.iqft(energy, do_swaps=False)
+        self.iqft(energy, do_swaps=False, single_unitary=not use_elementary_gate_qft)
         return self
 
     @staticmethod
