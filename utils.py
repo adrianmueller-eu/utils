@@ -421,7 +421,7 @@ class Timer:
         return elapsed
 
 class ConvergenceCondition:
-    def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_value=None, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False, verbose=True):
+    def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_value=None, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False, verbose=1):
         """ Convergence condition for iterative algorithms.
 
         Parameters
@@ -430,10 +430,10 @@ class ConvergenceCondition:
             max_value (float):           Maximum value in the sequence (useful to check for divergence)
             max_time (float):            Maximum time in seconds. If `None`, no maximum is set.
             period (int):                Number of previous iterations to check for convergence (useful for oscillating sequences)
-            skip_initial (int):          Number of iterations to let pass in the beggining before checking for convergence
+            skip_initial (int):          Number of iterations to let pass in the beginning before checking for convergence
             skip_converged (int):        Number of successive iterations the error must be below `eps`
             use_tqdm (bool | tqdm.tqdm): Set `True` to show a `tqdm` progress bar. Give a `tqdm.tqdm` object to use a custom `tqdm` progress bar.
-            verbose (bool):              Set `True` to print the reason for termination.
+            verbose (int):               Set `0` to print nothing, `1` to print only the reason for termination, `2` to print stats at every iteration.
 
         Additional properties
             has_converged (bool): Whether any convergence condition has been met.
@@ -464,12 +464,12 @@ class ConvergenceCondition:
         self.period = period
         self.skip_initial = skip_initial
         self.skip_converged = skip_converged
-        self.verbose = verbose
+        self.verbose = int(verbose)
 
         self.x_prev = None
         self.error = None
         self.start_time = None
-        self.iter = 0
+        self.iter = -1  # start at -1 so that the first call to __call__ increments it to 0
         self.skipped = 0
 
         self.has_converged = False
@@ -492,14 +492,39 @@ class ConvergenceCondition:
         if max_iter is None and eps is None and max_value is None and max_time is None:
             raise ValueError("You must specify at least one of `max_iter`, `eps`, `max_value`, and `max_time`.")
 
-    def __call__(self, x, iteration=None):
+        if self.max_time or verbose > 1:
+            self.timer = Timer(log=False)
+        else:
+            self.timer = None
+
+    def __call__(self, x=None, iteration=None):
         if self.has_converged:
             return True
+        if self.eps is not None or self.max_value is not None:
+            assert x is not None, "`x` needs to be numeric for `eps` or `max_value` to be checked."
 
-        self.has_converged = self._check_convergence(x, iteration)
+        if self._check_convergence(x, iteration):
+            self.has_converged = True
+            self.close()
+        if self.verbose > 1:
+            elapsed = self.timer.done()
+            if self.iter > 0:
+                print(f"Round finished after {to_timestring(elapsed)}, total {to_timestring(self.timer.total)}")
+
+            if self.has_converged:
+                print(f"******** DONE ******** (finished at {time.ctime()})")
+            elif self.iter == 0:
+                print(f"******** {self.iter} ******** (started at {time.ctime()})")
+            elif self.max_iter is None:
+                print(f"******** {self.iter} ********")
+            else:
+                iteration_time = self.timer.total / self.iter
+                final_time = self.timer.start_time + self.max_iter*iteration_time
+                print(f"******** {self.iter} ******** (expect to finish at {time.ctime(final_time)})")
+
         return self.has_converged
 
-    def _check_convergence(self, x, iteration=None):
+    def _check_convergence(self, x, iteration):
         if iteration is not None:
             self.iter = iteration
         else:
@@ -507,7 +532,7 @@ class ConvergenceCondition:
         if self.pbar is not None:
             if iteration is not None:
                 self.pbar.update(iteration - self.pbar.n)
-            else:
+            elif self.iter > 0:  # only indicate "finished" iterations
                 self.pbar.update(1)
         if self.iter <= self.skip_initial:
             return False
@@ -522,29 +547,23 @@ class ConvergenceCondition:
                 else:
                     if self.verbose:
                         print(f"Converged at iteration {self.iter} with error {self.error}")
-                    self.close()
                     return True
             else:
                 self.skipped = 0
         if self.max_iter is not None:
             if self.iter >= self.max_iter:
                 if self.verbose:
-                    print(f"Reached maximum number of iterations {self.max_iter}")
-                self.close()
+                    print("Reached maximum number of iterations")
                 return True
         if self.max_value is not None:
             if np.max(np.abs(x)) >= self.max_value:
                 if self.verbose:
                     print(f"Maximum value {self.max_value} (index {np.argmax(abs(x))}) at iteration {self.iter}")
-                self.close()
                 return True
         if self.max_time is not None:
-            if self.start_time is None:
-                self.start_time = time.time()
-            if time.time() - self.start_time > self.max_time:
+            if self.timer.total > self.max_time:
                 if self.verbose:
                     print(f"Time limit reached at iteration {self.iter}")
-                self.close()
                 return True
 
         # store x
