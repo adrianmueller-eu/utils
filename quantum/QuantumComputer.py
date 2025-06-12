@@ -914,7 +914,8 @@ class QuantumComputer:
                             choi = choi.transpose([0, 2, 1, 3] + [4, 6, 5, 7])
                             choi = choi.reshape([d_out*d_q, d_in*d_q]*2)
                         else:
-                            self._operators = kron_with_id_channel(self._operators, d_q, dims=(d_out, d_in), back=True)
+                            choi = kron_with_id_channel(self._operators, d_q, dims=(d_out, d_in), back=True)
+                        self._operators = choi
                 else:
                     if n_q_new_in > 0:
                         d_q_new_in = 2**n_q_new_in
