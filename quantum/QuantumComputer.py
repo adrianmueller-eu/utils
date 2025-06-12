@@ -300,7 +300,11 @@ class QuantumComputer:
             return True
 
     def get_state(self, qubits='all', collapse=False, allow_vector=True, obs=None):
-        """ Moves `qubits` to the *end* of `self._qubits`. """
+        """
+        Returns the state for the specified qubits.
+
+        This method moves `qubits` to the *end* of `self._qubits` for internal calculations.
+        """
         def _allow_vector():
             return self.KEEP_VECTOR and allow_vector and (not self.track_operators or not self.is_superoperator and self.is_isometric())
 
@@ -320,7 +324,7 @@ class QuantumComputer:
             to_remove = [q for q in self._qubits if q not in qubits]
             nq = self.n - q
             if collapse:
-                probs = self._probs(to_remove)  # calls _reorder(separate=True) for vector and _reorder(separate=False) for matrix
+                probs = self._probs(to_remove)
                 outcome = choice(2**nq, p=probs)
                 if self.is_matrix_mode():
                     idcs = slice(outcome*2**q, (outcome+1)*2**q)
@@ -466,6 +470,7 @@ class QuantumComputer:
                     if q == self.n:
                         self._state = np.diag(np.diag(self._state))
                     else:
+                        # Zero out off-diagonal elements in the measured space using a broadcasted identity matrix
                         reshaped_state = self._state.reshape([2**(self.n-q), d_q]*2)
                         reshaped_state *= np.eye(d_q, dtype=bool).reshape(1, d_q, 1, d_q)
                     if self.track_operators:
@@ -517,8 +522,11 @@ class QuantumComputer:
                 print(f"{p:.{precision}f}  {binstr_from_int(i, len(qubits))}")
 
     def _probs(self, qubits='all'):
+        """
+        calls _reorder(separate=True) for vector and _reorder(separate=True) on the REMAINING qubits for matrix
+        """
         if self.is_matrix_mode():
-            state = self.get_state(qubits, collapse=False)  # calls _reorder(separate=False) on the REMAINING qubits
+            state = self.get_state(qubits, collapse=False)
             return np.diag(state).real  # computational basis
         else:
             self._reorder(qubits, separate=True)
