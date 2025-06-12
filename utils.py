@@ -115,6 +115,23 @@ def tqt(iterable, **kwargs):
     chat_id = os.environ['TELEGRAM_CHAT_ID']
     return telegram.tqdm(iterable, token=token, chat_id=chat_id, **kwargs)
 
+def timeit(fun, *args, runs=7, target=.01, max_loops=10**9):
+    n = 1
+    while True:
+        t0 = time.perf_counter()
+        for _ in range(n): fun(*args)
+        dt = time.perf_counter() - t0
+        if dt >= target or n >= max_loops: break
+        n *= 10
+
+    samples = np.empty(runs)
+    samples[0] = dt / n
+    for i in range(1, runs):
+        t0 = time.perf_counter()
+        for _ in range(n): fun(*args)
+        samples[i] = (time.perf_counter() - t0) / n
+    return samples.mean(), samples.std(ddof=1), n * runs
+
 def print_gen(gen):
     for x in gen:
         print(x)
