@@ -398,6 +398,28 @@ def reissue_warnings(func):
         return result
     return inner
 
+class Timer:
+    def __init__(self, log=True):
+        self._log = log
+        self.restart()
+
+    def restart(self):
+        """Reset the initial and total time for the timer."""
+        self.total = 0
+        self.start_time = self._last_time = time.perf_counter()
+
+    def done(self, task=""):
+        """
+        Call this method when a task is completed.
+        Prints the message and the time elapsed since the last call.
+        """
+        elapsed = time.perf_counter() - self._last_time
+        if self._log:
+            print(f"Done {task} in " + to_timestring(elapsed))
+        self.total += elapsed
+        self._last_time = time.perf_counter()
+        return elapsed
+
 class ConvergenceCondition:
     def __init__(self, max_iter=1000, eps=sys.float_info.epsilon, max_value=None, max_time=None, period=2, skip_initial=0, skip_converged=0, use_tqdm=False, verbose=True):
         """ Convergence condition for iterative algorithms.
