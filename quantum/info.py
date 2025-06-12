@@ -192,7 +192,7 @@ def assert_kraus(operators, n=(None, None), allow_reshaped=False, trace_preservi
         np.ndarray: Kraus operators as a numpy array of shape (n_ops, n_out, n_in).
     """
     # 1. Check ndim
-    assert len(operators) > 0, f"No operators provided"
+    assert len(operators) > 0, "No operators provided"
     if isinstance(operators, list) and not isinstance(operators[0], np.ndarray):
         np.asarray(operators)  # check same shape of all operators
     if isinstance(operators, np.ndarray):
@@ -535,7 +535,7 @@ def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
 
     # infer Choi dimensions
     d_out, d_in = dims if not isinstance(dims, int) else (dims, dims)
-    assert d_out is not None or d_in is not None, f"Either d_out or d_in must be provided"
+    assert d_out is not None or d_in is not None, "Either d_out or d_in must be provided"
     choi_dim = choi.shape[0]
     if d_out is None:
         d_out = choi_dim // d_in
@@ -557,7 +557,7 @@ def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
     try:
         assert k < choi_dim//4  # use dense SVD for large k
         U, S, _ = sp.linalg.svds(sp.csr_array(choi), k=k, return_singular_vectors='u')
-    except Exception as e:
+    except Exception:
         if hasattr(choi, 'toarray'):
             choi = choi.toarray()
         U, S, _ = svd(choi)
