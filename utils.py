@@ -2,11 +2,17 @@ import os, time, sys, numbers, warnings
 import numpy as np
 from warnings import warn
 from collections.abc import Iterable
+from collections import Counter
 from copy import deepcopy
 from math import log2, prod
 
 def reversed_keys(d):
     return {k[::-1]:v for k,v in d.items()}
+
+def nonunique(a, include_count=True):
+    if include_count:
+        return [(k, v) for k, v in Counter(a).most_common() if v > 1]
+    return [k for k, v in Counter(a).items() if v > 1]
 
 def mapl(func, *iterables, iterator=list, **kwargs):
     """map function that returns a collection (default: list)"""
