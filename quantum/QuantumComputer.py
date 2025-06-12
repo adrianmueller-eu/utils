@@ -1586,8 +1586,9 @@ def create_benchmark_noise_scheduler(
                 qc.noise('z_drift', qubits, p=qc._drift_angle)
             if P_IDLE:
                 others = [q for q in qc.qubits if q not in qubits]
-                qc.noise('depolarizing', others, p=P_IDLE)
-                qc.noise('amplitude_damping', others, p=P_IDLE)
+                if others:
+                    qc.noise('depolarizing', others, p=P_IDLE)
+                    qc.noise('amplitude_damping', others, p=P_IDLE)
         if process_type == 'measure':
             return noise_models['bitflip'](p=P_MEAS)
     return benchmark_noise_scheduler
