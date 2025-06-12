@@ -212,7 +212,7 @@ class QuantumComputer:
             qc._operators = [o.copy() for o in self._operators]
         return qc
 
-    def __call__(self, operators, qubits='all', apply_noise_schedule=True):
+    def __call__(self, operators, qubits='all'):
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
         self._alloc_qubits(to_alloc)
         operators = assert_kraus(operators, check=0)  # convert into the correct format
@@ -238,8 +238,8 @@ class QuantumComputer:
         # multiply each operator with the new operators
         self._update_operators(operators)
 
-        if apply_noise_schedule:
-            self._auto_noise(qubits, process_type='apply')
+        # apply noise if noise schedule is set
+        self._auto_noise(qubits, process_type='apply')
 
         return self
 
