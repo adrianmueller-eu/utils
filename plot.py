@@ -57,7 +57,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     if y is None:
         y, x = x, None
 
-    if y.ndim == 3 or (y.ndim == 2 and labels is None and y.shape[0] <= max_data_sets):  # if y is 2D and no x nor labels given, we have to guess
+    if y.ndim == 3 or (y.ndim == 2 and y.shape[0] <= max_data_sets):
         if x is None:
             x = np.arange(y.shape[1])
     else:
@@ -66,8 +66,8 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         y = y[None, :]
 
     if "label" in pltargs:
-        labels = [pltargs["label"]]
         assert labels is None, "label argument is not supported when labels is given"
+        labels = [pltargs["label"]]
     elif labels is None:
         labels = [None]*y.shape[0]
     assert len(labels) == y.shape[0], f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
