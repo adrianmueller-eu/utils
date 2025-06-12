@@ -448,6 +448,8 @@ def _test_QuantumComputer():
 
     qc = QuantumComputer('00 + 01')
     assert np.allclose(qc.schmidt_coefficients([1]), [1])
+    rdm0 = qc.to_dm().get_state(0, collapse=True)
+    assert_dm(rdm0, n=1)
     qc = QC('00 + 01 + 11')
     assert np.isclose(trace_product(qc[0], qc[0]), 7/9)
     assert np.isclose(trace_product(qc[1], qc[1]), 7/9)

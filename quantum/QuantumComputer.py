@@ -327,9 +327,11 @@ class QuantumComputer:
                 probs = self._probs(to_remove)
                 outcome = choice(2**nq, p=probs)
                 if self.is_matrix_mode():
-                    idcs = slice(outcome*2**q, (outcome+1)*2**q)
-                    new_state = self._state[idcs, idcs] / probs[outcome]
+                    # order is to_keep + to_remove -> pick the qxq block of outcome
+                    reshaped_state = self._state.reshape([2**nq, 2**q]*2)
+                    new_state = reshaped_state[:, outcome, :, outcome] / probs[outcome]
                 else:
+                    # order is to_remove + to_keep -> select the row `outcome`, containing the `to_keep` qubits
                     new_state = self._state[outcome] / sqrt(probs[outcome])
                     if q == 1:
                         new_state = new_state.reshape([2])
