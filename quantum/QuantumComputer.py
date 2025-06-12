@@ -226,6 +226,12 @@ class QuantumComputer:
                 self(operators, q)
             return self
 
+        # for convenience, add qubits if there aren't any yet
+        if self.n == 0:
+            n = count_qubits(operators[0])
+            qubits = list(range(n))
+            self._alloc_qubits(qubits)
+
         if self.check_level > 0:
             operators = assert_kraus(operators, n=(None, len(qubits)), check=self.check_level)
 
