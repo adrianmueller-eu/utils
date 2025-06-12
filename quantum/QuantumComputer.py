@@ -95,6 +95,8 @@ class QuantumComputer:
         filter_eps=FILTER_EPS, entropy_eps=ENTROPY_EPS, sparsity_threshold=SPARSITY_THRESHOLD,
         noise_schedule=None
     ):
+        assert isinstance(track_operators, bool) or track_operators == 'auto', f"track_operators must be boolean or 'auto', but was: {track_operators}"
+
         self._track_operators = track_operators
         if as_superoperator:
             import scipy
