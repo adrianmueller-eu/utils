@@ -1110,8 +1110,8 @@ def random_isometry(n, m, size=()):
     # special cases
     if m == 1:
         if n == 1:
-            u = random_vec(size, complex=True, kind='uniform')
-            return np.exp(1j*2*np.pi*u)[...,None]
+            u = random_vec(size, complex=False, kind='uniform')
+            return np.exp(1j*2*np.pi*u)[...,None,None]
         return normalize(random_vec(size + (n,), complex=True, kind='normal'), axis=-1)[...,None]
     if n == m and n == 2:
         u = random_vec((4,) + size, complex=False, kind='uniform')
