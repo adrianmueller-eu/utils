@@ -319,6 +319,8 @@ def combine_channels(operators1, operators2, filter0=True, tol=1e-10, check=3):
             Kij = np.tensordot(Ki, Kj, axes=1)
             if not filter0 or not allclose0(Kij, tol):
                 new_operators.append(Kij)
+    # sanity check
+    assert len(new_operators) > 0, f"Combined channel is empty. Filter tolerance too large ({tol:.6g})?"
     return new_operators
 
 def update_choi(operators, choi, sparse=True, check=3):
