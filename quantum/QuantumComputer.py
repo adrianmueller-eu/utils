@@ -323,7 +323,8 @@ class QuantumComputer:
     def init(self, state, qubits='all', collapse='auto', track_in_operators='auto'):
         assert isinstance(collapse, bool) or collapse == 'auto', f"collapse must be boolean or 'auto', but was {collapse}"
         qubits, to_alloc = self._check_qubit_arguments(qubits, True)
-        if qubits == to_alloc:  # all new
+        to_remove = [q for q in qubits if q not in to_alloc]
+        if not to_remove:  # all new
             if track_in_operators == 'auto':
                 track_in_operators = self.is_matrix_mode()
             return self.add(qubits, state, track_in_operators)
@@ -331,11 +332,7 @@ class QuantumComputer:
         if collapse == 'auto':
             collapse = not self.is_matrix_mode()
         if track_in_operators == 'auto':
-            track_in_operators = not collapse and self.track_operators
-
-        to_remove = [q for q in qubits if q not in to_alloc]
-        if not to_remove:
-            return self._alloc_qubits(qubits, state=state, track_in_operators=track_in_operators)
+            track_in_operators = not collapse and (self.track_operators or self.n == len(to_remove))
 
         # trace out already allocated qubits to be re-initialized
         if track_in_operators:
