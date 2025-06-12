@@ -1395,15 +1395,38 @@ class QuantumComputer:
     def rot(self, phi, theta, lam, q):
         return self(Rot(phi, theta, lam), q)
 
-    def qft(self, qubits, inverse=False, do_swaps=True):
+    def qft(self, qubits, inverse=False, do_swaps=True, single_unitary=True):
         qubits = self._check_qubit_arguments(qubits, False)
-        QFT = Fourier_matrix(n=2**len(qubits), swap=not do_swaps)
-        if inverse:
-            QFT = QFT.T.conj()
-        return self(QFT, qubits)
+        if single_unitary:
+            QFT = Fourier_matrix(n=2**len(qubits), swap=not do_swaps)
+            if inverse:
+                QFT = QFT.T.conj()
+            return self(QFT, qubits)
 
-    def iqft(self, qubits, do_swaps=True):
-        return self.qft(qubits, inverse=True, do_swaps=do_swaps)
+        # implement using elementary gates (Nielsen p. 219)
+        n = len(qubits)
+        if inverse:
+            Rks_inv = [np.array([[1,0],[0,np.exp(-2j*np.pi/2**k)]]) for k in range(2,n+1)]
+            if do_swaps:
+                for i in range(n//2):
+                    self.swap(qubits[i], qubits[n-i-1])
+            for i in reversed(range(n)):
+                for j in reversed(range(n-i-1)):
+                    self.c(Rks_inv[j], qubits[i+j+1], qubits[i])
+                self.h(qubits[i])
+        else:
+            Rks = [np.array([[1,0],[0,np.exp(2j*np.pi/2**k)]]) for k in range(2,n+1)]
+            for i, q in enumerate(qubits):
+                self.h(q)
+                for j in range(n-i-1):
+                    self.c(Rks[j], qubits[i+j+1], q)
+            if do_swaps:
+                for i in range(n//2):
+                    self.swap(qubits[i], qubits[n-i-1])
+        return self
+
+    def iqft(self, qubits, do_swaps=True, single_unitary=True):
+        return self.qft(qubits, True, do_swaps, single_unitary)
 
     def pe(self, U, state, energy):
         # 1. Hadamard on energy register
