@@ -223,9 +223,8 @@ def ket(specification, n=None, renormalize=True, check=1):
     if isinstance(specification, (np.ndarray, list, tuple)):
         psi = np.asarray(specification)
         if psi.ndim == 1 and renormalize:
-            psi_norm = np.linalg.norm(psi)
-            psi /= psi_norm
-            assert_ket(psi, n, check=0)  # norm is already checked
+            psi = normalize(psi)
+            check = 0  # norm is already checked
         assert_ket(psi, n, check=check)
         return psi
     if is_int(specification):
