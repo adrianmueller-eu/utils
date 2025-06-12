@@ -433,16 +433,17 @@ class QuantumComputer:
 
             probs = self._probs(qubits)
             q = len(qubits)
+            d_q = 2**q
             if self.is_matrix_mode():
                 if collapse:
-                    outcome = choice(range(2**q), p=probs)
+                    outcome = choice(range(d_q), p=probs)
 
                     # P = np.kron(dm(outcome, n=q), I_(self.n-q))  # projector
                     # self._state = P @ self._state @ P.conj().T / probs[outcome]
-                    mask = np.zeros_like(self._state, dtype=bool)
-                    idcs = slice(outcome*2**(self.n-q), (outcome+1)*2**(self.n-q))
-                    mask[idcs, idcs] = True
-                    self._state[~mask] = 0
+                    reshaped_state = self._state.reshape([2**(self.n-q), d_q]*2)
+                    kept_block = reshaped_state[:, outcome, :, outcome].copy()
+                    reshaped_state[:] = 0  # Zero out everything
+                    reshaped_state[:, outcome, :, outcome] = kept_block
                     self._state /= probs[outcome]
                 else:
                     # partial measurement of density matrix without "looking" -> decoherence
@@ -456,12 +457,8 @@ class QuantumComputer:
                     if q == self.n:
                         self._state = np.diag(np.diag(self._state))
                     else:
-                        mask = np.zeros_like(self._state, dtype=bool)
-                        for i in range(2**q):
-                            idcs = slice(i*2**(self.n-q), (i+1)*2**(self.n-q))
-                            mask[idcs, idcs] = True
-                        self._state[~mask] = 0
-
+                        reshaped_state = self._state.reshape([2**(self.n-q), d_q]*2)
+                        reshaped_state *= np.eye(d_q, dtype=bool).reshape(1, d_q, 1, d_q)
                     if self.track_operators:
                         ops = [dm(i, n=q) for i in range(2**q)]
                         self._reorder(qubits, separate=True)
@@ -470,7 +467,7 @@ class QuantumComputer:
             else:
                 if collapse:
                     # play God
-                    outcome = np.random.choice(2**q, p=probs)
+                    outcome = np.random.choice(d_q, p=probs)
                     # collapse
                     keep = self._state[outcome] / sqrt(probs[outcome])
                     self._state = np.zeros_like(self._state)
@@ -512,7 +509,7 @@ class QuantumComputer:
 
     def _probs(self, qubits='all'):
         if self.is_matrix_mode():
-            state = self.get_state(qubits, collapse=False)  # calls _reorder(separate=False)
+            state = self.get_state(qubits, collapse=False)  # calls _reorder(separate=False) on the REMAINING qubits
             return np.diag(state).real  # computational basis
         else:
             self._reorder(qubits, separate=True)
