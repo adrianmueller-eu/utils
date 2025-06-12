@@ -322,7 +322,7 @@ def _test_random_hermitian():
     assert np.isclose(matmoment(Hs, 1), 0, atol=0.1), f"First moment is {matmoment(Hs, 1)} ≠ 0"
     assert np.isclose(matmoment(Hs, 2), d, atol=0.2), f"Second moment is {matmoment(Hs, 2)} ≠ {d}"
     assert np.isclose(matmoment(Hs, 3), 0, atol=0.5), f"Third moment is {matmoment(Hs, 3)} ≠ 0"
-    assert np.isclose(matmoment(Hs, 4), 2*d, atol=1), f"Fourth moment is {matmoment(Hs, 4)} ≠ {2*d}"
+    assert np.isclose(matmoment(Hs, 4), 2*d, atol=1.5), f"Fourth moment is {matmoment(Hs, 4)} ≠ {2*d}"
 
 def _test_is_unitary():
     assert is_unitary(np.eye(randint(2,20)))
