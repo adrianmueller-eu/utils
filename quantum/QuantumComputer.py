@@ -88,6 +88,7 @@ class QuantumComputer:
         self.FILTER_EPS = filter_eps
         self.ENTROPY_EPS = entropy_eps
         self.FILTER0 = filter0
+        self.FILTER0_EPS = filter_eps
         self.SPARSITY_THRESHOLD = sparsity_threshold
 
         self.clear()
@@ -227,7 +228,7 @@ class QuantumComputer:
                 sparse = self._use_sparse_superoperator()
                 self._operators = update_choi(operators, self._operators, sparse=sparse, check=0)
             else:
-                self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER_EPS, check=0)
+                self._operators = combine_channels(operators, self._operators, filter0=self.FILTER0, tol=self.FILTER0_EPS, check=0)
                 self._auto_compress()
 
     def _apply_operators(self, operators, qubits):
