@@ -1,10 +1,9 @@
 import os, time, sys, numbers, warnings
 import numpy as np
-from warnings import warn
 from collections.abc import Iterable
 from collections import Counter
 from copy import deepcopy
-from math import log2, prod
+from math import log2, prod, floor, log10
 
 def reversed_keys(d):
     return {k[::-1]:v for k,v in d.items()}
@@ -214,6 +213,84 @@ def duh(n, precision=3):
     if decimals < 0 or unit == 'B':
         decimals = 0
     return f"{n:.{decimals}f} {unit}"
+
+def to_timestring(n, precision=4):
+    """Takes a number of seconds and returns a human-readable string with the
+    duration in y, d, h, min, s, ms, µs, or ns.
+
+    Parameters
+        n (int | float): The number of seconds
+        precision (int): The number of significant digits to use in the output
+    """
+    assert n >= 0, f"n must be a positive number, but was: {n}"
+    assert precision > 0, f"precision must be a positive number, but was: {precision}"
+
+    units = [
+        ('y', 31536000),      # 365.25 days
+        ('d', 86400),
+        ('h', 3600),
+        ('min', 60),
+        ('s', 1),
+        ('ms', 1e-3),
+        ('µs', 1e-6),
+        ('ns', 1e-9),
+    ]
+
+    res = []
+    for s, duration in units:
+        if not res and n < duration and s != 'ns':
+            continue
+        qty = int(n//duration)
+        if duration >= 60:
+            if not res:
+                precision -= floor(log10(qty)+1)
+            elif s in ['h', 'min']:
+                precision -= 2
+            elif s == 'd':
+                precision -= 3
+            if precision <= 0:
+                res += [[round(n/duration), 0, s]]
+                break
+            else:
+                n %= duration
+                res += [[qty, 0, s]]
+        else:
+            # ensure of these only one is printed
+            if not res:
+                if s != 'ns' or qty > 0:
+                    precision -= floor(log10(qty)+1)
+            elif s == 's':
+                precision -= 2
+            else:
+                precision -= -floor(log10(duration)) + 3
+            gap = np.inf if qty == 0 else floor(log10(qty)+1)
+            if not res or precision + gap > 0:
+                res += [[n/duration, max(precision, 0), s]]
+            break
+
+    # Carry over values rounded to a whole of the next higher unit
+    unit_limits = {
+        's': (60, 'min'),
+        'min': (60, 'h'),
+        'h': (24, 'd'),
+        'd': (365, 'y'),
+    }
+    for i in range(len(res))[::-1]:
+        resi0_displayed, unit = np.round(res[i][0], res[i][1]), res[i][2]
+        if unit in unit_limits and resi0_displayed >= unit_limits[unit][0]:
+            # This unit exceeds its limit
+            carry, res[i][0] = divmod(resi0_displayed, unit_limits[unit][0])
+
+            # Find the next unit up in our result
+            next_idx = i - 1
+            next_unit = unit_limits[unit][1]
+            if next_idx >= 0 and res[next_idx][2] == next_unit:
+                res[next_idx][0] += carry
+            else:
+                # Insert the next unit if it doesn't exist
+                res.insert(next_idx + 1, [carry, 0, next_unit])
+
+    return ' '.join(f'{q:.{prec}f}{s}' for q,prec,s in res)
 
 def shape_it(shape, progress=False):
     """ Iterate over all indices of a numpy array. """
