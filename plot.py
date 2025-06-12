@@ -479,7 +479,7 @@ def scatter1d(data, figwidth=6, xlabel="", title="", hist='auto', xlim=None, xlo
     # prepare data
     if is_iterable(data) and not is_iterable(data[0]):  # arrays may have different lengths -> no numpy array!
         data = [data]
-    assert len(data) <= 12, f"Please don't plot more than 12 sets of data points simultaneously."
+    assert len(data) <= 12, "Please don't plot more than 12 sets of data points simultaneously."
     data = [np.asarray(d) for d in data]  # may have different lengths
     for d in data:
         assert d.ndim == 1, f"Data must be 1D, but was {d.shape}"
@@ -586,7 +586,7 @@ def scatter(a, b=None, figsize=(6,6), xlabel="", ylabel="", title="", hist='auto
                 marker = '|'
             return scatter1d(a, figwidth=figwidth, xlabel=xlabel, title=title, hist=hist, xlim=xlim, xlog=xlog, xticks=xticks,
                              alpha=alpha, s=s, marker=marker, save_file=save_fig, show=show, **scatter_kwargs)
-    assert len(a) <= 12, f"Please don't plot more than 12 sets of data points simultaneously."
+    assert len(a) <= 12, "Please don't plot more than 12 sets of data points simultaneously."
     for i, (ai, bi) in enumerate(zip(a, b)):
         a[i], b[i] = clean_data_2d(ai, bi, xlog=xlog, ylog=ylog, xlim=xlim, ylim=ylim)
     if hist == 'auto':
@@ -1061,7 +1061,7 @@ def pdcolor(df, threshold=None, minv=None, maxv=None, colors=('#ff0000', '#fffff
         if not minv:
             minv = df.min().min()
         if maxv <= minv:
-            raise ValueError(f"Maxv must be higher than minv, but was: %f <= %f" % (maxv, minv))
+            raise ValueError("Maxv must be higher than minv, but was: %f <= %f" % (maxv, minv))
 
         def getRGB(v):
             scaled = (v - minv)/(maxv - minv) * (len(colors)-1)
@@ -1078,7 +1078,7 @@ def pdcolor(df, threshold=None, minv=None, maxv=None, colors=('#ff0000', '#fffff
                 color = 'white'
             else:
                 bg_color, color = getRGB(value)
-            return f"background-color: %s; color: %s" % (bg_color, color)
+            return "background-color: %s; color: %s" % (bg_color, color)
 
     if tril_if_symmetric and is_symmetric(df):
         df = df.where(np.tril(np.ones(df.shape), -1).astype(bool))

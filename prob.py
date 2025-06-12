@@ -296,9 +296,6 @@ class P:
         y_centers = moving_avg(y,2)
         integral = np.sum(dx*y_centers)
         if integral < 1e-20 or integral > 1e20 or np.isnan(integral):
-            raise ValueError(f"Not normalizable! Integral was %s" % integral)
+            raise ValueError("Not normalizable! Integral was %s" % integral)
         y = y/integral # copy
         return x, y
-
-
-

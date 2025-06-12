@@ -314,7 +314,7 @@ def get_subunitary(U, subsystem, tol=1e-10, check=2, check_output=True):
         Tr_U2 = detA**(1/A.shape[0])
         U1 = A/Tr_U2
         if check_output:
-            assert is_unitary(U1), f"U is not separable."
+            assert is_unitary(U1), "U is not separable."
     else:
         # fall back to svd
         q = len(subsystem)

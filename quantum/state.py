@@ -7,7 +7,7 @@ from functools import reduce
 from .utils import count_qubits, reorder_qubits, verify_subsystem, partial_trace
 
 from ..utils import is_int, is_iterable, duh, is_from_assert, shape_it
-from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_vec, random_isometry, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf, allclose0
+from ..mathlib.matrix import normalize, is_hermitian, is_psd, random_isometry, trace_product, generate_recursive, su, commutes, is_diag, eigh, outer, tf, allclose0
 from ..mathlib import binstr_from_int, softmax, choice
 from ..plot import colorize_complex
 from ..prob import random_p, check_probability_distribution
@@ -28,7 +28,7 @@ def state_trace(state, retain_qubits, reorder=True):
     elif n == len(retain_qubits):
         return state, np.abs(state)**2
     elif max(retain_qubits) >= n:
-        raise ValueError(f"No such qubit: %d" % max(retain_qubits))
+        raise ValueError(f"No such qubit: {max(retain_qubits)}")
 
     state = state.reshape(tuple([2]*n))
     probs = np.abs(state)**2
@@ -95,7 +95,7 @@ def plotQ(state, showqubits=None, showcoeff=True, showprobs=True, showrho=False,
             cumsum += probs[idx]
         if np.abs(1-cumsum) > 1e-15:
             toshow["rest"] = max(0,1-cumsum)
-        ax.pie(toshow.values(), labels=toshow.keys(), autopct=lambda x: f"%.1f%%" % x)
+        ax.pie(toshow.values(), labels=toshow.keys(), autopct=lambda x: "%.1f%%" % x)
 
     def plotrho(ax, rho):
         n = count_qubits(rho)
@@ -397,7 +397,7 @@ def dm(kets, p=None, n=None, renormalize=True, check=3):
         assert kets.ndim < 3, f"Invalid shape for state vectors: {kets.shape}"
         if kets.ndim == 2:
             if p is None:
-                assert kets.shape[0] == kets.shape[1], f"More than 1 ket given, but no probabilities"
+                assert kets.shape[0] == kets.shape[1], "More than 1 ket given, but no probabilities"
                 rho = kets
                 if renormalize:
                     rho_tr = np.trace(rho)
@@ -458,13 +458,13 @@ def assert_ket(psi, n=None, check=1):
     if isinstance(psi, str):
         try:
             psi = ket(psi)
-        except Exception as e:
+        except Exception:
             assert False, f"Invalid state vector: {psi}"
     elif isinstance(psi, int):
         return n is None or psi < 2**n
     try:
         psi = np.asarray(psi)
-    except Exception as e:
+    except Exception:
         assert False, f"Invalid state vector: {psi}"
     assert np.issubdtype(psi.dtype, np.number)  # norm is faster for float than complex
     n = n or count_qubits(psi)
@@ -481,13 +481,13 @@ def assert_dm(rho, n=None, check=3):
     if isinstance(rho, str):
         try:
             rho = dm(rho, renormalize=False, check=0)
-        except Exception as e:
+        except Exception:
             assert False, f"Invalid density matrix: {rho}"
     elif isinstance(rho, int):
         return n is None or rho < 2**n
     try:
         rho = np.asarray(rho, dtype=complex)  # float is no performance difference in np.trace
-    except Exception as e:
+    except Exception:
         assert False, f"Invalid density matrix: {rho}"
     assert len(rho.shape) == 2 and rho.shape[0] == rho.shape[1], f"Invalid density matrix shape: {rho.shape}"
     n = n or count_qubits(rho)
