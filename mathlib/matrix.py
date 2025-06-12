@@ -342,7 +342,7 @@ def kron(A, B, op: np.ufunc=np.multiply):
 
 def kron_eye(d: int, a: np.ndarray, back=False, allow_F=False):
     """ Faster version to calculate `np.kron(np.eye(d), a)`.
-    Remark: `np.kron(np.eye(d), a)` (back=False) is much faster than `np.kron(a, np.eye(d))` when enforcing C-layout.
+    Remark: `np.kron(np.eye(d), a)` (`back=False`) is much faster than `np.kron(a, np.eye(d))` (`back=True`) when enforcing C-layout.
     """
     rows, cols = a.shape
     if back:
@@ -956,7 +956,7 @@ def pauli_basis(n, kind='np', normalize=False):
         norm_str = f"{1/sqrt(2**n)}*" if normalize else ""
         return [norm_str + ''.join(i) for i in itertools.product(['I', 'X', 'Y', 'Z'], repeat=n)]
         # basis = ['I', 'X', 'Y', 'Z']
-        # res = generate_recursive(basis, n, basis, lambda a, b: a+b, normalize)
+        # res = generate_recursive(basis, n, basis, lambda a, b: a+b)
         # if normalize:
         #     res = [f'{norm_str}({i})' for i in res]
         # return res
