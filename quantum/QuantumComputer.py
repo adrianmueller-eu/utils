@@ -80,6 +80,7 @@ class QuantumComputer:
             self._operators = []
         self.check_level = check
         self.noise_schedule = noise_schedule
+        self._noise_channel_flag = False
 
         # constants
         self.KEEP_VECTOR = keep_vector
@@ -212,12 +213,8 @@ class QuantumComputer:
         # multiply each operator with the new operators
         self._update_operators(operators)
 
-        if apply_noise_schedule and self.noise_schedule is not None:
-            noise_channel = self.noise_schedule
-            if callable(noise_channel):
-                noise_channel = noise_channel(qubits)
-            if noise_channel is not None:
-                self.noise(noise_channel, qubits)
+        if apply_noise_schedule:
+            self._auto_noise(qubits)
 
         return self
 
@@ -248,6 +245,16 @@ class QuantumComputer:
             to_remove = qubits[-(n_in - n_out):]
             self._qubits = tuple(q for q in self._qubits if q not in to_remove)
             self._original_order = [q for q in self._original_order if q not in to_remove]
+
+    def _auto_noise(self, qubits):
+        if self.noise_schedule is not None and not self._noise_channel_flag:
+            self._noise_channel_flag = True
+            noise_channel = self.noise_schedule
+            if callable(noise_channel):
+                noise_channel = noise_channel(qubits)
+            if noise_channel is not None:
+                self.noise(noise_channel, qubits)
+            self._noise_channel_flag = False
 
     def is_matrix_mode(self):
         if self._state.shape[0] == 2**self.n:
