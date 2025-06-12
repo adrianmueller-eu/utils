@@ -361,9 +361,6 @@ def update_choi(operators, choi, sparse=True, check=3):
             tmp = tmp.transpose([0, 1, 2, 5, 3, 4])
         new_choi += tmp
 
-    if new_choi.ndim == 6:
-        d_out = prod(new_choi.shape[:2])
-        new_choi = new_choi.reshape(d_out, d_in, d_out, d_in)
     if sparse:
         # actually execute the addition
         s = new_choi.shape
