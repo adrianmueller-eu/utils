@@ -57,7 +57,31 @@ class QuantumComputer:
         track_operators (bool|str): Whether to track the effective quantum channel. `'auto'` tracks as long as the system is not too large (see `MATRIX_SLOW`).
         as_superoperator (bool): Whether to use superoperator (Choi matrix) representation (True) or Kraus operators (False).
         check (int): Check level for input validation (see `../../check levels.md`)
-        noise_schedule (None|str|list|function): `None`, a `noise_models` identifier, a set of Kraus operators, or a callback function taking the `qubits` on which the currently applied channel acts and returning either of the previous types.
+        noise_schedule (None|str|list|function): `None`, a `noise_models` identifier, a set of Kraus operators, or a callback function like this:
+            ```
+            def noise_schedule(qubits: list, process_type: str, qc: QuantumComputer):
+                \"\"\"
+                A sample noise scheduler for the QuantumComputer class.
+
+                Parameters
+                ----------
+                qubits : list
+                    The list of qubits being operated on in the current operation.
+                process_type : str
+                    The type of process triggering the noise application. Possible values: 'apply' (gate application), 'init' (initialization), 'measure' (before measurement).
+                qc : QuantumComputer
+                    The quantum computer object, providing access to its state and methods.
+                \"\"\"
+                P1 = 1e-3
+                P2 = 1e-2
+                P_MEAS = 2e-2
+                if process_type == 'measure':
+                    return noise_models['bitflip'](p=P_MEAS)  # return a channel or even just a string (a valid key of `noise_models`) and use qc.NOISE_P for the probability
+                if process_type == 'apply':
+                    k = len(qubits)
+                    p = P1 if k == 1 else p = P2 * (k - 1)
+                    qc.noise('depolarizing', qubits, p=p)  # or we use the qc object itself
+            ```
         keep_vector (bool): If True, try to keep state vector representation in various operations (e.g. obtaining or plotting the state of a subsystem, qubit removal, decoherent measurement).
                             Requires O(N^3) tests if the state is (and, if tracked, operators are) separable.
         auto_compress (bool): If True and Kraus operators are tracked, compress them after each operation if they exceed the Choi dimension.
@@ -215,7 +239,7 @@ class QuantumComputer:
         self._update_operators(operators)
 
         if apply_noise_schedule:
-            self._auto_noise(qubits)
+            self._auto_noise(qubits, process_type='apply')
 
         return self
 
@@ -247,15 +271,14 @@ class QuantumComputer:
             self._qubits = tuple(q for q in self._qubits if q not in to_remove)
             self._original_order = [q for q in self._original_order if q not in to_remove]
 
-    def _auto_noise(self, qubits):
+    def _auto_noise(self, qubits, process_type):
         if self.noise_schedule is not None and not self._noise_channel_flag:
-            self._noise_channel_flag = True
             noise_channel = self.noise_schedule
             if callable(noise_channel):
-                noise_channel = noise_channel(qubits)
+                with self.no_noise():  # prevent recursion
+                    noise_channel = noise_channel(list(qubits), process_type, self)
             if noise_channel is not None:
                 self.noise(noise_channel, qubits)
-            self._noise_channel_flag = False
 
     def is_matrix_mode(self):
         if self._state.shape[0] == 2**self.n:
@@ -371,6 +394,8 @@ class QuantumComputer:
             # recover order to_retain + qubits
             if to_remove + to_alloc != qubits:  # they are set-wise the same, but could be in a different order
                 self._reorder(to_retain + qubits)  # move to_alloc where it is in `qubits`
+
+        self._auto_noise(qubits, process_type='init')
         return self
 
     def reset(self, qubits='all', collapse='auto', track_in_operators='auto'):
@@ -403,6 +428,8 @@ class QuantumComputer:
         with self.observable(obs, qubits, return_energies=True) as (qubits, energies):
             if collapse:
                 self._no_tracking("Collapse is incompatible with operator tracking.")
+
+            self._auto_noise(qubits, process_type='measure')
 
             probs = self._probs(qubits)
             q = len(qubits)
@@ -986,6 +1013,15 @@ class QuantumComputer:
                                + [q for q in self._input_qubits if q not in new_order_all]
 
     @contextmanager
+    def no_noise():
+        prev_flag = self._noise_channel_flag
+        self._noise_channel_flag = True
+        try:
+            yield
+        finally:
+            self._noise_channel_flag = prev_flag
+
+    @contextmanager
     def observable(self, obs=None, qubits='all', return_energies=False):
         qubits = self._check_qubit_arguments(qubits, False)
         if obs is not None:
@@ -1265,15 +1301,16 @@ class QuantumComputer:
         Apply noise to the qubits. See `noise_models.keys()` for available noise channel identifiers.
         """
         if isinstance(noise_channel, str):
-            if noise_channel not in noise_models:
-                raise ValueError(f"Invalid noise model: {noise_channel}. Valid options are: " + ', '.join(noise_models.keys()))
             if p == 0:
                 return self  # no effect
+            if noise_channel not in noise_models:
+                raise ValueError(f"Invalid noise model: {noise_channel}. Valid options are: " + ', '.join(noise_models.keys()))
             assert p is None or 0 < p <= 1, f"p must be a float between 0 and 1, but was: {p}"
             p = p or self.NOISE_P
             noise_channel = noise_models[noise_channel](p)
         with self.observable(obs, qubits) as qubits:
-            return self(noise_channel, qubits, apply_noise_schedule=False)
+            with self.no_noise():  # Prevent application of the noise scheduler
+                return self(noise_channel, qubits)
 
     def __str__(self, sort_qubits=True):
         try:
@@ -1482,3 +1519,71 @@ class QuantumComputer:
             n_obs = count_qubits(H)
             assert n_obs == n_qubits, f"Observable has {n_obs} qubits, but {n_qubits} qubits were provided"
         return H
+
+def create_benchmark_noise_scheduler(
+    P1=3e-4,
+    P2=5e-3,
+    PAD=2e-4,
+    DRIFT_SIGMA=0.01,
+    P_MEAS=2e-2,
+    P_IDLE=5e-5,
+    depolarizing_scaling='linear'
+):
+    """
+    Factory for a noise scheduler for the QuantumComputer class.
+
+    Parameters
+    ----------
+    P1 : float
+        1-qubit depolarising probability.
+    P2 : float
+        2-qubit depolarising probability (also used as base for multi-qubit gates).
+    PAD : float
+        Amplitude-damping probability per gate.
+    DRIFT_SIGMA : float
+        Standard deviation for Z-phase drift (radians), re-sampled once per shot.
+    P_MEAS : float
+        Measurement bit-flip probability.
+    P_IDLE : float
+        Idle depolarizing + amplitude-damping probability per gate.
+    depolarizing_scaling : str
+        'linear' for p_dep_k = P2 * (k-1)
+        'quadratic' for p_dep_k = P2 * (k-1) * k / 2
+
+    Returns
+    -------
+    benchmark_noise_scheduler : function
+        A noise scheduler with the specified parameters.
+    """
+    assert 0 <= P1 <= 1, f"P1 must be between 0 and 1, got {P1}"
+    assert 0 <= P2 <= 1, f"P2 must be between 0 and 1, got {P2}"
+    assert 0 <= PAD <= 1, f"PAD must be between 0 and 1, got {PAD}"
+    assert DRIFT_SIGMA >= 0, f"DRIFT_SIGMA must be non-negative, got {DRIFT_SIGMA}"
+    assert 0 <= P_MEAS <= 1, f"P_MEAS must be between 0 and 1, got {P_MEAS}"
+    assert 0 <= P_IDLE <= 1, f"P_IDLE must be between 0 and 1, got {P_IDLE}"
+    assert depolarizing_scaling in ('linear', 'quadratic'), f"depolarizing_scaling must be 'linear' or 'quadratic', got {depolarizing_scaling}"
+
+    def benchmark_noise_scheduler(qubits, process_type, qc: QuantumComputer):
+        if process_type == 'init' and DRIFT_SIGMA:
+            qc._drift_angle = np.random.normal(0, DRIFT_SIGMA)
+        if process_type == 'apply':
+            k = len(qubits)
+            if k == 1:
+                p_dep = P1
+            else:
+                if depolarizing_scaling == 'linear':
+                    p_dep = P2*(k-1)
+                else:
+                    p_dep = P2*(k-1)*k/2
+                p_dep = min(p_dep, 1.0)
+            qc.noise('depolarizing', qubits, p=p_dep)
+            qc.noise('amplitude_damping', qubits, p=PAD)
+            if hasattr(qc, '_drift_angle'):
+                qc.noise('z_drift', qubits, p=qc._drift_angle)
+            if P_IDLE:
+                others = [q for q in qc.qubits if q not in qubits]
+                qc.noise('depolarizing', others, p=P_IDLE)
+                qc.noise('amplitude_damping', others, p=P_IDLE)
+        if process_type == 'measure':
+            return noise_models['bitflip'](p=P_MEAS)
+    return benchmark_noise_scheduler
