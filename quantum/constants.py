@@ -19,10 +19,12 @@ S = np.array([  # matsqrt(Z)
     [1,  0],
     [0, 1j]
 ])
+S_dg = S.conj()  # = Rz(-pi/2)*np.exp(-1j*pi/4) up to a global phase
 T_gate = np.array([  # matsqrt(S)
     [1,  0],
     [0,  np.sqrt(1j)]
 ])
+T_gate_dg = T_gate.conj()
 H = H_gate = fs2 * np.array([ # Fourier_matrix(2) = fs2*(X + Z) = 1j*fs2*(Rx(pi) + Rz(pi))
     [1,  1],
     [1, -1]
@@ -42,6 +44,8 @@ def Ry(theta):  # beam splitter
 def Rz(theta):  # phase shift
     jt2 = 1j*theta/2
     return np.array([[np.exp(-jt2), 0], [0, np.exp(jt2)]], dtype=complex)
+def P(theta):  # phase gate (with another global phase than Rz)
+    return np.array([[1, 0], [0, np.exp(1j*theta)]], dtype=complex)
 
 def Rot(phi, theta, lam):
     # return Rz(lam) @ Ry(theta) @ Rz(phi)  # 2x slower

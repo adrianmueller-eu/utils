@@ -1419,14 +1419,23 @@ class QuantumComputer:
     def t(self, q):
         return self(T_gate, q)
 
-    def t_dg(self, q):
-        return self(T_gate.T.conj(), q)
+    def tdg(self, q):
+        return self(T_gate_dg, q)
 
     def s(self, q):
         return self(S, q)
 
+    def sdg(self, q):
+        return self(S_dg, q)
+
     def cx(self, control, target):
         return self(CX, [control, target])
+
+    def cy(self, control, target):
+        return self(CY, [control, target])
+
+    def cz(self, control, target):
+        return self(CZ, [control, target])
 
     def nx(self, control, target):
         return self(NX, [control, target])
@@ -1460,6 +1469,15 @@ class QuantumComputer:
 
     def rz(self, angle, q):
         return self(Rz(angle), q)
+
+    def p(self, angle, q):
+        return self(P(angle), q)
+
+    def cp(self, angle, control, target):
+        return self.c(P(angle), control, target)
+
+    def phase(self, angle, q):
+        return self(np.exp(-1j*angle/2)*I, q)
 
     def rot(self, phi, theta, lam, q):
         return self(Rot(phi, theta, lam), q)
