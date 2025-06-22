@@ -696,6 +696,11 @@ class QuantumComputer:
             return AssertionError(f"Unitary is not separable on requested subsystem: {qubits}")
         return U1
 
+    @property
+    def U(self):
+        assert not self.is_superoperator, "Property U only available for Kraus operator tracking"
+        return self.get_unitary()
+
     def get_isometry(self, obs=None):
         if not self.track_operators:
             raise ValueError("Operator tracking is disabled")
