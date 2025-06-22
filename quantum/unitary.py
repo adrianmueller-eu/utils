@@ -112,9 +112,8 @@ try:
     ### Qiskit ###
     ##############
 
-    from qiskit import transpile
-    from qiskit_aer import Aer
-    from qiskit import QuantumCircuit
+    from qiskit import QuantumCircuit, transpile
+    from qiskit_aer import AerSimulator
 
     # Other useful imports
     from qiskit.visualization import plot_histogram
@@ -124,12 +123,13 @@ try:
             n_gates = count_gates(circuit)
             print("#gates: %d, expected running time: %.3fs" % (n_gates, n_gates * 0.01))
         if generate_state:
-            simulator = Aer.get_backend("statevector_simulator")
+            circuit.save_statevector()
+            simulator = AerSimulator(method="statevector")
             if shots is None or shots == 0:
-                warnings.warn("shots=0 is not supported for statevector_simulator. Using shots=1 instead.", stacklevel=2)
+                warnings.warn("shots=0 is not supported for statevector simulator. Using shots=1 instead.", stacklevel=2)
                 shots = 1
         else:
-            simulator = Aer.get_backend('aer_simulator')
+            simulator = AerSimulator()
         t_circuit = transpile(circuit, simulator, optimization_level=optimization_level)
         result = simulator.run(t_circuit, shots=shots).result()
 
@@ -232,7 +232,8 @@ try:
             return circ.get_unitary()
         if hasattr(circ, 'to_matrix'):
             return circ.to_matrix()
-        sim = Aer.get_backend('unitary_simulator')
+        circ.save_unitary()
+        sim = AerSimulator(method="unitary")
         circ = transpile(circ, sim, optimization_level=1)  # simplify, but make no assumption about the initial state
         res = sim.run(circ).result()
         U   = res.get_unitary(decimals=decimals)
@@ -242,7 +243,7 @@ try:
 
     def count_gates(qc, decompose_iterations=4, isTranspiled=False):
         if not isTranspiled:
-            simulator = Aer.get_backend('aer_simulator')
+            simulator = AerSimulator()
             t_circuit = transpile(qc, simulator)
         else:
             t_circuit = qc
