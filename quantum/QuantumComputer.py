@@ -1343,6 +1343,40 @@ class QuantumComputer:
             with self.no_noise():  # Prevent application of the noise scheduler
                 return self(noise_channel, qubits)
 
+    def apply_unitary_elementary(self, U, qubits):
+        U = self.parse_unitary(U)
+        n = count_qubits(U)
+        qubits = self._check_qubit_arguments(qubits, False)
+        assert len(qubits) == n, f"Number of qubits ({len(qubits)}) does not match unitary size ({n})"
+        if n == 1: # decompose using ZYZ Euler angles
+            U /= sqrt(np.linalg.det(U))
+            angle_U = np.angle(U)
+
+            gamma = 2 * np.arccos(np.clip(np.abs(U[0,0]), -1, 1))
+            if np.sin(gamma/2) > 1e-12:
+                beta = angle_U[1,0] - angle_U[0,0]
+                delta = angle_U[0,1] - angle_U[1,0]
+            else:
+                beta = 0
+                delta = angle_U[1,1] - angle_U[0,0]
+
+            self.rz(beta, qubits[0])
+            self.ry(gamma, qubits[0])
+            self.rz(delta, qubits[0])
+            return
+        else:
+            if "qiskit" in sys.modules:
+                from qiskit import QuantumCircuit
+                qcirc = QuantumCircuit(n)
+                qcirc.unitary(U, list(range(n)))
+                self.apply_qiskit_circuit(qcirc, qubits, elementary_only=True)
+                return
+            # TODO
+            # 1. Matrix logarithm
+            # 2. Pauli decomposition
+            # 3. Trotterization (for n steps)
+            raise ValueError(f"Can't decompose a unitary with more than 1 qubit, but was {n}")
+
     def __str__(self, sort_qubits=True):
         try:
             if sort_qubits:
