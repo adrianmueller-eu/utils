@@ -1,6 +1,6 @@
 import sys, psutil
 from contextlib import contextmanager
-from math import prod
+from math import prod, sqrt
 import numpy as np
 try:
     import scipy.sparse as sp
