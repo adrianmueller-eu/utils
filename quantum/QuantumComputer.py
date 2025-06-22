@@ -1734,8 +1734,9 @@ def create_benchmark_noise_scheduler(
     P_IDLE : float
         Idle depolarizing + amplitude-damping probability per gate.
     depolarizing_scaling : str
-        'linear' for p_dep_k = P2 * (k-1)
-        'quadratic' for p_dep_k = P2 * (k-1) * k / 2
+        'none'      for Pk = P2  (constant)
+        'linear'    for Pk = P2 * (k-1)
+        'quadratic' for Pk = P2 * (k-1) * k / 2
 
     Returns
     -------
@@ -1748,22 +1749,22 @@ def create_benchmark_noise_scheduler(
     assert DRIFT_SIGMA >= 0, f"DRIFT_SIGMA must be non-negative, got {DRIFT_SIGMA}"
     assert 0 <= P_MEAS <= 1, f"P_MEAS must be between 0 and 1, got {P_MEAS}"
     assert 0 <= P_IDLE <= 1, f"P_IDLE must be between 0 and 1, got {P_IDLE}"
-    assert depolarizing_scaling in ('linear', 'quadratic'), f"depolarizing_scaling must be 'linear' or 'quadratic', got {depolarizing_scaling}"
+    assert depolarizing_scaling in ('linear', 'quadratic', 'none'), f"depolarizing_scaling must be 'linear', 'quadratic', or 'none', but got {depolarizing_scaling}"
 
     def benchmark_noise_scheduler(qubits, process_type, qc: QuantumComputer):
         if process_type == 'init' and DRIFT_SIGMA:
             qc._drift_angle = np.random.normal(0, DRIFT_SIGMA)
-        if process_type == 'apply':
+        elif process_type == 'apply':
             k = len(qubits)
-            if k == 1:
-                p_dep = P1
-            else:
+            Pk = P1
+            if k > 1 and P2:
+                Pk = P2
                 if depolarizing_scaling == 'linear':
-                    p_dep = P2*(k-1)
-                else:
-                    p_dep = P2*(k-1)*k/2
-                p_dep = min(p_dep, 1.0)
-            qc.noise('depolarizing', qubits, p=p_dep)
+                    Pk = P2*(k-1)
+                elif depolarizing_scaling == 'quadratic':
+                    Pk = P2*(k-1)*k/2
+                Pk = min(Pk, 1.0)
+            qc.noise('depolarizing', qubits, p=Pk)
             qc.noise('amplitude_damping', qubits, p=PAD)
             if hasattr(qc, '_drift_angle'):
                 qc.noise('zdrift', qubits, p=qc._drift_angle)
@@ -1772,6 +1773,6 @@ def create_benchmark_noise_scheduler(
                 if others:
                     qc.noise('depolarizing', others, p=P_IDLE)
                     qc.noise('amplitude_damping', others, p=P_IDLE)
-        if process_type == 'measure':
+        elif process_type == 'measure' and P_MEAS:
             return noise_models['bitflip'](p=P_MEAS)
     return benchmark_noise_scheduler
