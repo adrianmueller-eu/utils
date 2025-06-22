@@ -801,29 +801,36 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
 
     def generate_ticks_and_labels(ticks, shape, max_ticks=10):
+        def auto_round(x):
+            if isinstance(x[0], float):
+                return [f"{xi:.4g}" for xi in x]
+            return ticks
+
         if isinstance(ticks, tuple) and len(ticks) == 2:
             if isinstance(ticks[0], (int, float)):
-                ticklabels = np.linspace(ticks[0], ticks[1], min(max_ticks, shape))
-                ticklabels = np.round(ticklabels, -int(log10(ticks[-1]-ticks[0])-3))
+                ticklabels = np.linspace(np.min(ticks), np.max(ticks), min(max_ticks, shape))
+                ticklabels = auto_round(ticklabels)
                 ticks = np.linspace(0, shape-1, len(ticklabels))
             else:
                 ticklabels = ticks[1]
                 ticks = ticks[0]
         else:
             if len(ticks) > max_ticks:
-                ticklabels = np.linspace(ticks[0], ticks[-1], max_ticks)
-                ticklabels = np.round(ticklabels, -int(np.round(log10(ticks[-1]-ticks[0])-3)))
+                ticklabels = np.linspace(np.min(ticks), np.max(ticks), min(max_ticks, shape))
+                ticklabels = auto_round(ticklabels)
+            elif isinstance(ticks[0], float):
+                ticklabels = auto_round(ticks)
             else:
                 ticklabels = ticks
             ticks = np.linspace(0, shape-1, len(ticklabels))
         return ticks, ticklabels
 
-    if xticks == False:
+    if isinstance(xticks, bool) and xticks == False:
         xticks = []
     if xticks is not None:
         xticks, xticklabels = generate_ticks_and_labels(xticks, a.shape[1])
         plt.xticks(xticks, xticklabels, rotation=xticks_rot, ha='center')
-    if yticks == False:
+    if isinstance(yticks, bool) and yticks == False:
         yticks = []
     if yticks is not None:
         yticks, yticklabels = generate_ticks_and_labels(yticks, a.shape[0])
