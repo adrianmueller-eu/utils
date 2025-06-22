@@ -1479,8 +1479,28 @@ class QuantumComputer:
     def phase(self, angle, q):
         return self(np.exp(-1j*angle/2)*I, q)
 
-    def rot(self, phi, theta, lam, q):
+    def su(self, phi, theta, lam, q):
+        """ Always generates SU(2) unitaries. """
         return self(Rot(phi, theta, lam), q)
+
+    def u(self, theta, phi, lam, q, include_phase=False, elementary=False):
+        if elementary:
+            self.rz(lam, q)
+            self.ry(theta, q)
+            self.rz(phi, q)
+            if include_phase:
+                self.phase(-(phi + lam), q)
+        else:
+            c = cos(theta/2)
+            s = sin(theta/2)
+            U = np.array([
+                [c, -np.exp(1j*lam) * s],
+                [np.exp(1j*phi) * s, np.exp(1j*(phi+lam)) * c]
+            ], dtype=complex)
+            if not include_phase:
+                U *= np.exp(-1j*(phi + lam)/2)
+            self(U, q)
+        return self
 
     def qft(self, qubits, inverse=False, do_swaps=True, single_unitary=True):
         qubits = self._check_qubit_arguments(qubits, False)
