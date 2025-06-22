@@ -375,3 +375,6 @@ def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
     S = np.linalg.svd(U_, compute_uv=False)
     return np.count_nonzero(S > tol) == 1
     # return schmidt_operator_rank(U, subsystem) == 1
+
+def global_phase(U):
+    return np.exp(1j*np.angle(np.linalg.det(U))/U.shape[0])
