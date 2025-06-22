@@ -587,24 +587,58 @@ def _test_QuantumComputer():
 
     if "qiskit" in sys.modules:
         warnings.filterwarnings("ignore")  # ignore deprecation warnings
-        from qiskit.circuit.library import PhaseEstimation, RYGate, QFT
+        from qiskit.circuit.library import phase_estimation, RYGate, QFTGate
         U = QuantumCircuit(2)  # RYGate(np.pi/12) fails for pi/(2**(n-2)) for n >= 3
         U.rx(0.1, 0)
         n = randint(1,8)
         s_reg, e_reg = [0,1], list(range(2, n+2))
-        U_PE1 = get_unitary(PhaseEstimation(n, U))
+        U_PE1 = get_unitary(phase_estimation(n, U))
         U_PE1 = reorder_qubits(U_PE1, (e_reg + s_reg)[::-1])  # qiskit outputs qubits backwards
         qc2 = QC(2+n, track_operators=True).pe(get_unitary(U), s_reg[::-1], e_reg)
         U_PE2 = qc2.get_unitary()
         assert np.allclose(U_PE1, U_PE2)
 
-        U_QFT1 = get_unitary(QFT(n, do_swaps=False))
-        U_QFT2 = get_unitary(QC(n, track_operators=True).qft(range(n), do_swaps=False))
+        U_QFT1 = get_unitary(QFTGate(n))
+        U_QFT2 = get_unitary(QC(n, track_operators=True).qft(range(n)))
         assert np.allclose(U_QFT1, U_QFT2)
-        U_QFT1 = get_unitary(QFT(n, do_swaps=True))
-        U_QFT2 = get_unitary(QC(n, track_operators=True).qft(range(n), do_swaps=True))
-        assert np.allclose(U_QFT1, U_QFT2)
+
+        def check_apply_qiskit_circuit(qc, qubits='all'):
+            U1 = reverse_qubit_order(get_unitary(qc))
+
+            for elementary in [True, False]:
+                qc2 = QC()
+                qc2.apply_qiskit_circuit(qc, qubits, include_phases=True, elementary_only=elementary)
+                U2 = get_unitary(qc2)
+                assert np.allclose(U1, U2), np.linalg.norm(U1 - U2)
+
+            qc2 = QC()
+            qc2.apply_qiskit_circuit(qc, include_phases=False, elementary_only=True)
+            U3 = get_unitary(qc2)
+            qc2 = QC()
+            qc2.apply_qiskit_circuit(qc, include_phases=False, elementary_only=False)
+            U4 = get_unitary(qc2)
+            assert np.allclose(U3, U4), np.linalg.norm(U3 - U4)
+
+        qc1 = QuantumCircuit(2)
+        qc1.u(0.1, 0.2, 0.3, 0)
+        qc1.h(0)
+        qc1.cx(0,1)
+        check_apply_qiskit_circuit(qc1)
+
+        qc1 = QuantumCircuit(2, 4)
+        qc1.x(0)  # state '10'
+        qc1.measure([0,1], [0,1])
+        qc1.x([0,1])  # state '01'
+        qc1.measure([0,1], [2,3])
+        qc2 = QC()
+        outcome = qc2.apply_qiskit_circuit(qc1)
+        assert outcome == '1001', f"Outcome was: {outcome}"
+
+        from qiskit.circuit.library import QFT
+        check_apply_qiskit_circuit(QFT(4, do_swaps=False))
+        check_apply_qiskit_circuit(QFT(4, do_swaps=True))
         warnings.filterwarnings("default")
+
 
 def _test_channels():
     # POVM

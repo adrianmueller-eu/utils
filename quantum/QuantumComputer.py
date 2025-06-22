@@ -1591,6 +1591,88 @@ class QuantumComputer:
             assert n_obs == n_qubits, f"Observable has {n_obs} qubits, but {n_qubits} qubits were provided"
         return H
 
+    def apply_qiskit_circuit(self, circuit, qubits='all', collapse=True, elementary_only=False, include_phases=False):
+        """
+        Apply all gates specified in a qiskit QuantumCircuit object to QuantumComputer.
+        """
+        gate_map = {
+            'x':      lambda self, qubits, params: self.x(qubits[0]),
+            'y':      lambda self, qubits, params: self.y(qubits[0]),
+            'z':      lambda self, qubits, params: self.z(qubits[0]),
+            'h':      lambda self, qubits, params: self.h(qubits[0]),
+            's':      lambda self, qubits, params: self.s(qubits[0]),
+            't':      lambda self, qubits, params: self.t(qubits[0]),
+            'sdg':    lambda self, qubits, params: self.sdg(qubits[0]),
+            'tdg':    lambda self, qubits, params: self.t_dg(qubits[0]),
+            'cx':     lambda self, qubits, params: self.cx(qubits[0], qubits[1]),
+            'rx':     lambda self, qubits, params: self.rx(params[0], qubits[0]),
+            'ry':     lambda self, qubits, params: self.ry(params[0], qubits[0]),
+            'rz':     lambda self, qubits, params: self.rz(params[0], qubits[0]),
+            'p':      lambda self, qubits, params: self.p(params[0], qubits[0]),
+            'u':      lambda self, qubits, params: self.u(*params, qubits[0],
+                                include_phase=include_phases, elementary=elementary_only),
+        }
+
+        if not elementary_only:
+            gate_map.update({
+                'cy':     lambda self, qubits, params: self.cy(qubits[0], qubits[1]),
+                'cz':     lambda self, qubits, params: self.cz(qubits[0], qubits[1]),
+                'cp':     lambda self, qubits, params: self.cp(params[0], qubits[0], qubits[1]),
+                'swap':   lambda self, qubits, params: self.swap(qubits[0], qubits[1]),
+                'cswap':  lambda self, qubits, params: self.cswap(qubits[0], qubits[1], qubits[2]),
+                'ccx':    lambda self, qubits, params: self.ccx(qubits[0], qubits[1], qubits[2]),
+            })
+
+        def _from_qiskit_inner(circuit, qubit_map, measurement_results):
+            for el in circuit.data:
+                instr, qargs, cargs = el.operation, el.qubits, el.clbits
+                name = instr.name.lower()
+                qubits = [qubit_map[q] for q in qargs]
+                if name in gate_map:
+                    # print("Apply", name, qubits, getattr(instr, 'params', []))
+                    gate_map[name](self, qubits, getattr(instr, 'params', []))
+                elif name == 'measure':
+                    result = self.measure(qubits, collapse=collapse, return_as='binstr')
+                    if collapse:
+                        for idx, cbit in enumerate(cargs):
+                            measurement_results[cbit._index] = result[idx]
+                elif name == 'unitary':
+                    self(instr.to_matrix(), qubits)
+                elif name == 'qft':
+                    if not instr.definition:
+                        raise ValueError("QFT gate has no valid definition")
+                    do_swaps = instr.definition.data[-1].operation.name.lower() == 'swap'
+                    self.qft(qubits[::-1], do_swaps=do_swaps, single_unitary=not elementary_only)
+                elif instr.definition:
+                    # print("Unknown:", name)
+                    _from_qiskit_inner(
+                        instr.definition,
+                        {subq: qubits[i] for i, subq in enumerate(instr.definition.qubits)},
+                        measurement_results
+                    )
+                elif name.startswith("save_"):
+                    # Ignore Qiskit instructions that start with "save_", e.g. "save_unitary"
+                    continue
+                else:
+                    raise NotImplementedError(f"Gate '{name}' not supported and cannot be decomposed further.")
+            return
+
+        qubit_list = list(circuit.qubits)
+        n = len(qubit_list)
+        # Allocate/check qubits if needed
+        qubits, to_alloc = self._check_qubit_arguments(qubits, True)
+        if self.n == 0:
+            qubits = to_alloc = list(range(n))
+        self._alloc_qubits(to_alloc)
+        assert len(qubits) == n, f"Provided qubits length {len(qubits)} does not match the number of qubits in the given circuit {n}"
+        qubit_map = {q: qubits[i] for i, q in enumerate(qubit_list)}
+        n_clbits = len(circuit.clbits)
+        measurement_results = ['0'] * n_clbits
+        _from_qiskit_inner(circuit, qubit_map, measurement_results)
+        if n_clbits != 0 and collapse:
+            return ''.join(measurement_results)
+        return None
+
 def create_benchmark_noise_scheduler(
     P1=3e-4,
     P2=5e-3,
