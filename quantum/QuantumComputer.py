@@ -1333,8 +1333,11 @@ class QuantumComputer:
                 return self  # no effect
             if noise_channel not in noise_models:
                 raise ValueError(f"Invalid noise model: {noise_channel}. Valid options are: " + ', '.join(noise_models.keys()))
-            assert p is None or 0 < p <= 1, f"p must be a float between 0 and 1, but was: {p}"
-            p = p or self.NOISE_P
+            if noise_channel == 'zdrift':
+                p = p or np.random.normal()
+            else:
+                assert p is None or 0 < p <= 1, f"p must be a float between 0 and 1, but was: {p}"
+                p = p or self.NOISE_P
             noise_channel = noise_models[noise_channel](p)
         with self.observable(obs, qubits) as qubits:
             with self.no_noise():  # Prevent application of the noise scheduler
@@ -1609,7 +1612,7 @@ def create_benchmark_noise_scheduler(
             qc.noise('depolarizing', qubits, p=p_dep)
             qc.noise('amplitude_damping', qubits, p=PAD)
             if hasattr(qc, '_drift_angle'):
-                qc.noise('z_drift', qubits, p=qc._drift_angle)
+                qc.noise('zdrift', qubits, p=qc._drift_angle)
             if P_IDLE:
                 others = [q for q in qc.qubits if q not in qubits]
                 if others:
