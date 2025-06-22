@@ -514,12 +514,13 @@ class ConvergenceCondition:
             if self.has_converged:
                 print(f"******** DONE ******** (finished at {time.ctime()})")
             elif self.iter == 0:
+                self.start_time = time.time()
                 print(f"******** {self.iter} ******** (started at {time.ctime()})")
-            elif self.max_iter is None:
+            elif self.max_iter is None or not hasattr(self, 'start_time'):
                 print(f"******** {self.iter} ********")
             else:
                 iteration_time = self.timer.total / self.iter
-                final_time = self.timer.start_time + self.max_iter*iteration_time
+                final_time = self.start_time + self.max_iter*iteration_time
                 print(f"******** {self.iter} ******** (expect to finish at {time.ctime(final_time)})")
 
         return self.has_converged
