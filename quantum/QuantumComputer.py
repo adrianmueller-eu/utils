@@ -1590,12 +1590,12 @@ class QuantumComputer:
     def parse_unitary(U, n_qubits=None, check=2):
         if isinstance(U, np.ndarray):
             pass
-        elif isinstance(U, list):
+        elif isinstance(U, (list, tuple)):
             U = np.asarray(U)
+        elif hasattr(U, 'toarray'):
+            U = U.toarray()
         elif isinstance(U, str):
             U = parse_unitary(U)
-        elif "scipy" in sys.modules and sp.issparse(U):
-            U = U.toarray()
         else:
             try: # qiskit might not be loaded
                 U = get_unitary(U)
@@ -1610,12 +1610,14 @@ class QuantumComputer:
 
     @staticmethod
     def parse_hermitian(H, n_qubits=None, check=2):
-        if isinstance(H, (np.ndarray, list)):
+        if isinstance(H, np.ndarray):
+            pass
+        elif isinstance(H, (list, tuple)):
             H = np.asarray(H)
+        elif hasattr(H, 'toarray'):
+            H = H.toarray()
         elif isinstance(H, str):
             H = parse_hamiltonian(H)
-        elif "scipy" in sys.modules and sp.issparse(H):
-            H = H.toarray()
         else:
             raise ValueError(f"Can't process observable of type {type(H)}: {H}")
         if check >= 2:
