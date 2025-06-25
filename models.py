@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from numpy.polynomial.polynomial import polyfit, polyval, polyroots, polyadd, polysub, polyder, polyint, polymul
 from abc import ABC, abstractmethod
 
+from .mathlib.basic import choice
+
 # convenience functions
 def pm(x, y=None, deg=1, plot=True, xlog=False, ylog=False):
     if y is None:
@@ -34,15 +36,15 @@ def lm(x, y=None, plot=True):
     return pm(x, y, 1, plot)
 
 # expm
-def expm(x, y=None, plot=True, scaling_factor=True):
+def expm(x, y=None, plot=True, n_seeds=100, asymptote=None, scaling_factor=False):
     if y is None:
         y = x
         x = np.arange(1, len(y)+1)
-    exp = Exponential.fit(x, y, scaling_factor=scaling_factor)
+    exp = Exponential.fit(x, y, n_seeds=n_seeds, asymptote=asymptote, scaling_factor=scaling_factor)
     if plot:
         x_ = np.linspace(min(x), max(x), 200)
         ax = exp.plot(x_)
-        ax.scatter(x,y)
+        ax.scatter(x, y)
     return exp
 
 # logm
@@ -506,7 +508,7 @@ class InversePolynomial(Function):
         "1/(" + _generate_poly_label(self.coeffs, precision) + ")"
 
 class Exponential(Function):
-    """y = a*exp(b*(x-c)) + d"""
+    """y = a * exp(b*(x-c)) + d"""
 
     def __init__(self, coeffs):
         if len(coeffs) != 4:
@@ -514,38 +516,94 @@ class Exponential(Function):
         self.coeffs = coeffs
 
     @staticmethod
-    def fit(x, y, scaling_factor=True):
-        from scipy.optimize import curve_fit
+    def fit(x, y, n_seeds=100, d=None, scaling_factor=False):
+        """
+        Fit an exponential of the form a * exp(b * (x - c)) + d.
 
-        x = np.array(list(x))
-        y = np.array(list(y))
+        Parameters:
+            x, y: Data to fit.
+            n_seeds: Number of random initializations for optimization.
+            d: If provided, fixes the offset d and does not optimize it.
+            scaling_factor:
+                If True: optimize a, b, d (or a, b if d is given), with c=0.
+                If False: set a as sign (+1 or -1), optimize b, c, d (or b, c if d is given).
+
+        Returns:
+            Exponential: fitted model.
+        """
+        from scipy.optimize import minimize
+
+        x, y = np.asarray(x), np.asarray(y)
+        mask = np.abs(y) > np.finfo(float).eps
+        x = x[mask]
+        y = y[mask]
+
+        def loss(a, b, c, d):
+            model = a * np.exp(b * (x - c)) + d
+            diff = np.abs((model - y) / y)
+            diff = diff[diff > np.finfo(float).eps]
+            if diff.size == 0:
+                return 0
+            return np.max(np.log(diff))
+
+        def best_fit(func, n_params):
+            best = None
+            best_seeds = []
+            funs = []
+            for i in range(n_seeds):
+                if np.random.random() < np.sqrt(10/(i+1)) or len(best_seeds) == 0:
+                    x0 = np.random.normal(size=n_params)
+                else:
+                    x0 = choice(best_seeds)
+                res = minimize(func, x0, method='Nelder-Mead', options={'maxiter': 1000})
+                funs.append(res.fun)
+                if best is None or res.fun < best.fun:
+                    best = res
+                if i > 10 and res.fun < 0.9 * best.fun:
+                    best_seeds.append(x0)
+            return best.x
+
         if scaling_factor:
-            def func(x, a, b, c, d):
-                return a*np.exp(b*(x-c)) + d
-            coeffs, _ = curve_fit(func, x, y)
+            c = 0
+            if d is not None:
+                a, b = best_fit(lambda o: loss(o[0], o[1], c, d), 2)
+            else:
+                a, b, d = best_fit(lambda o: loss(o[0], o[1], c, o[2]), 3)
         else:
-            def func(x, b, c, d):
-                return np.exp(b*(x-c)) + d
-            coeffs, _ = curve_fit(func, x, y)
-            coeffs = [1]+list(coeffs)
-        f = Exponential(coeffs)
-        f.error = f.mse(x,y)
+            a = -1 if y[np.argmax(x)] >= y[np.argmin(x)] else 1
+            if d is not None:
+                b, c = best_fit(lambda o: loss(a, o[0], o[1], d), 2)
+            else:
+                b, c, d = best_fit(lambda o: loss(a, o[0], o[1], o[2]), 3)
+
+        f = Exponential([a, b, c, d])
+        f.error = f.mse(x, y)
         return f
 
     def __call__(self, x):
-        return self.coeffs[0]*np.exp(self.coeffs[1]*(x-self.coeffs[2])) + self.coeffs[3]
+        a, b, c, d = self.coeffs
+        return a * np.exp(b * (np.asarray(x) - c)) + d
 
     def __str__(self, precision=12):
-        b = f"{self.coeffs[1]:.{precision}g}"
-        if b != '1':
-            exponent = b + '*(' + f"x{-self.coeffs[2]:+.{precision}g}" + ')'
+        a, b, c, d = self.coeffs
+        b_str = f"{b:.{precision}g}"
+        if a == 1:
+            prefix = ""
+        elif a == -1:
+            prefix = "-"
         else:
-            exponent = f"x{-self.coeffs[2]:+.{precision}g}"
-        a = f"{self.coeffs[0]:.{precision}g}"
-        d = f"{self.coeffs[3]:+.{precision}g}"
-        pre  = a + '*' if a != '1' else ''
-        post = d if d[1:] != '0' else ''
-        return pre+f"exp({exponent})"+post
+            a_str = f"{a:.{precision}g}"
+            prefix = f"{a_str}*"
+        if c == 0:
+            exponent = f"{b_str}*x"
+        else:
+            c_str = f"{-c:+.{precision}g}"
+            exponent = f"{b_str}*(x{c_str})"
+        if d == 0:
+            post = ''
+        else:
+            post = f"{d:+.{precision}g}"
+        return f"{prefix}exp({exponent}){post}"
 
 # class Exponential(Function): # y = poly(exp(poly(x)))
 # class Logarithm(Function): # y = poly(log_b(poly(x)))
