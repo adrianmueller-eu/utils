@@ -7,7 +7,7 @@ import numpy as np
 from math import log2, log10, ceil, prod, floor
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
-from .utils import is_iterable, as_list_not_str, warn
+from .utils import is_iterable, as_list_not_str, warn, is_numeric
 
 def poly_scale(y, deg=1):
     if deg == 1:
@@ -16,15 +16,25 @@ def poly_scale(y, deg=1):
         if y < 0:
             return -(-y)**deg
         return y**deg
-    if is_complex(y):
+    if isinstance(y, complex):
         return y**deg
 
-    y_neg = y < 0
-    y_neg_res = -(-y[y_neg])**deg  # infer float dtype if necessary
-    y_ = np.zeros_like(y, dtype=y_neg_res.dtype)
-    y_[y_neg] = y_neg_res
-    y_[~y_neg] = y[~y_neg]**deg
-    return y_
+    def _poly_scale(y):
+        # assert isinstance(y, np.ndarray)
+        if is_complex(y):
+            return y**deg
+        y_neg = y < 0
+        y_neg_res = -(-y[y_neg])**deg
+        y_ = np.zeros_like(y, dtype=y_neg_res.dtype)  # infer float dtype if necessary
+        y_[y_neg] = y_neg_res
+        y_[~y_neg] = y[~y_neg]**deg
+        return y_
+
+    if isinstance(y, np.ndarray):
+        return _poly_scale(y)
+    elif is_numeric(y[0]):  # already know y is not numeric
+        return _poly_scale(np.asarray(y))
+    return [poly_scale(yi) for yi in y]
 
 def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None),  xlog=False, ylog=False, grid=True, ypoly=1,
          xlabel="", ylabel="", title="", labels=None, xticks=None, yticks=None, ste=True, capsize=5, show_data_points=True,
@@ -42,82 +52,104 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         upper = 1 - lower
         area_quantiles = (lower,upper)
 
-    if type(x) != np.ndarray:
-        x = np.array(list(x))
-    if y is not None and type(y) != np.ndarray:
-        y = np.array(list(y))
-
-    # data preparation
-    if is_complex(y):
-        assert y.ndim in (1,2), "Complex data must be 1D or 2D"
-        assert labels is None, "labels are not supported for complex data"
-        y = np.array([y.real, y.imag])
-        labels = ["Re", "Im"]
-
     if y is None:
         y, x = x, None
 
-    if y.ndim == 3 or (y.ndim == 2 and y.shape[0] <= max_data_sets):
+    # data preparation
+    assert len(y) > 0, "Empty data array"
+    scatter_mode = not is_numeric(y[0]) and not is_numeric(y[0][0])
+    to_test_for_complex = y[0][0] if scatter_mode else y[0]
+    if is_complex(to_test_for_complex):
+        if is_numeric(y[0]):
+            y = [np.asarray(y)]
+        else:
+            y = [np.asarray(yi) for yi in y]  # assume scatter dimension all equal length for complex data (for now)
+        assert y[0].ndim in (0,1), "Complex data must be 1D or 2D"
+        assert labels is None, "labels are not supported for complex data"
+        y = [np.asarray(r_or_im) for r_or_im in zipl((yi.real, yi.imag) for yi in y)]
+        labels = ["Re", "Im"]
+    elif (scatter_mode or (not is_numeric(y[0]) and is_numeric(y[0][0]) and len(y) <= max_data_sets)) and \
+        (x is None or is_numeric(x[0]) and not is_numeric(y[0]) and len(x) >= len(y[0]) or not is_numeric(x[0]) and len(x) == len(y)):
+        # print(len(y), "datasets")
+        # y is a list of data sets to plot individually
         if x is None:
-            x = np.arange(y.shape[1])
+            x = [np.arange(len(yi)) for yi in y]
+        elif is_numeric(x[0]):
+            x = [x[:len(yi)] for yi in y]
     else:
+        # print("One dataset")
+        # single dataset (single color)
         if x is None:
-            x = np.arange(y.shape[0])
-        y = y[None, :]
+            x = np.arange(len(y))
+        x = [x[:len(y)]]
+        y = [y]
+
+    for i in range(len(y)):
+        assert len(x[i]) == len(y[i]), f"x and y in dataset {i} do not have the same length: {len(x[i])} < {len(y[i])}"
+        assert is_numeric(x[i][0]), f"x of dataset {i} must be 1D"
+    scatter_mode = not is_numeric(y[0]) and not is_numeric(y[0][0])
 
     if "label" in pltargs:
         assert labels is None, "label argument is not supported when labels is given"
         labels = [pltargs["label"]]
     elif labels is None:
-        labels = [None]*y.shape[0]
-    assert len(labels) == y.shape[0], f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
+        labels = [None]*len(y)
+    assert len(labels) == len(y), f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
 
     if fmt != '.':
+        if 's' in pltargs:
+            cloud_s = pltargs.pop('s')
         y_stes = None
-        if y.ndim == 3:
+        if scatter_mode:
             if isinstance(ste, bool) and ste:
-                y_stes = np.std(y, axis=2)/np.sqrt(y.shape[2])
+                y_stes = [[np.std(yij)/np.sqrt(len(yij)) for yij in yi] for yi in y]
 
             if area_quantiles is not None:
                 area_quantiles_ = []
                 for yi in y:
-                    lower = np.quantile(yi, area_quantiles[0], axis=1)
-                    upper = np.quantile(yi, area_quantiles[1], axis=1)
+                    lower = [np.quantile(yij, area_quantiles[0]) for yij in yi]
+                    upper = [np.quantile(yij, area_quantiles[1]) for yij in yi]
                     area_quantiles_.append((lower, upper))
                 area_quantiles = area_quantiles_
-        if isinstance(ste, np.ndarray):
-            y_stes = ste
-            if y_stes.ndim == 1:
-                y_stes = y_stes[None, :]
-            assert y_stes.shape == y.shape[:2], f"Shape of ste ({y_stes.shape}) must match shape of y ({y.shape})"
-        if y_stes is not None and len(x) == 1 and fmt == "-":
+        if not is_numeric(ste):
+            if not is_numeric(ste[0]):
+                y_stes = [np.asarray(ste_i) for ste_i in ste]
+            else:
+                y_stes = [np.asarray(ste)]
+            for i, (yi, ystei) in enumerate(zip(y, y_stes)):
+                assert len(ystei) == len(yi), f"Number of ste_{i} ({len(ystei)}) must match y_{i} ({len(yi)})"
+        if y_stes is not None and len(x[0]) == 1 and fmt == "-":
             fmt = "x"  # show the mean in the error bar plot
 
     y = poly_scale(y, 1/ypoly)
 
     # plot
-    assert y.shape[0] <= max_data_sets, f"Please don't plot more than {max_data_sets} sets of data points simultaneously."
+    assert len(y) <= max_data_sets, f"Please don't plot more than {max_data_sets} sets of data points simultaneously."
     if len(plt.get_fignums()) == 0:
         plt.figure(figsize=figsize)
     if fmt == ".":
-        for yi, label in zip(y, labels):
-            plt.scatter(x, yi, marker=fmt, label=label, **pltargs)
+        for xi, yi, label in zip(x, y, labels):
+            plt.scatter(xi, yi, marker=fmt, label=label, **pltargs)
     else:
-        for i, yi in enumerate(y):
-            if y.ndim == 3:
+        for i, (xi, yi) in enumerate(zip(x,y)):
+            if scatter_mode:
                 if area_quantiles is not None:
                     lower, upper = area_quantiles[i]
-                    plt.fill_between(x, lower, upper, alpha=area_alpha, color=plt.cm.tab10(i))
+                    plt.fill_between(xi, lower, upper, alpha=area_alpha, color=plt.cm.tab10(i))
                 if show_data_points:
-                    plt.scatter([x]*yi.shape[1], yi, alpha=cloud_alpha, s=cloud_s, color=plt.cm.tab10(i))
-                yi = np.mean(yi, axis=1)
+                    for j, yij in enumerate(yi):
+                        plt.scatter([xi[j]]*len(yij), yij, alpha=cloud_alpha, s=cloud_s, color=plt.cm.tab10(i))
+                yi = [np.mean(yij) for yij in yi]
             if y_stes is None:
-                plt.plot(x, yi, fmt, label=labels[i], **pltargs)
+                plt.plot(xi, yi, fmt, label=labels[i], **pltargs)
             else:
-                plt.errorbar(x, yi, yerr=2*y_stes[i], fmt=fmt, label=labels[i], capsize=capsize, **pltargs)
+                y_2stes_i = 2*np.array(y_stes[i])
+                plt.errorbar(xi, yi, yerr=y_2stes_i, fmt=fmt, label=labels[i], capsize=capsize, **pltargs)
 
-    plt.xlim(xlim)
-    plt.ylim(ylim)
+    if isinstance(xlim, tuple) and (xlim[0] is not None or xlim[1] is not None):
+        plt.xlim(xlim)
+    if isinstance(ylim, tuple) and (ylim[0] is not None or ylim[1] is not None):
+        plt.ylim(ylim)
     if xlog:
         plt.xscale('log')
     if ylog:
@@ -132,7 +164,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
             plt.yticks(yticks[0], yticks[1])
         else:
             plt.yticks(yticks)
-    if grid and (show or save_file is not None):
+    if grid:
         plt.grid()
 
     if ypoly != 1:
