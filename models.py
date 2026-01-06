@@ -36,11 +36,11 @@ def lm(x, y=None, plot=True):
     return pm(x, y, 1, plot)
 
 # expm
-def expm(x, y=None, plot=True, n_seeds=100, asymptote=None, scaling_factor=False):
+def expm(x, y=None, plot=True, n_seeds=100, asymptote=None, scaling_factor=False, x_offset=0):
     if y is None:
         y = x
         x = np.arange(1, len(y)+1)
-    exp = Exponential.fit(x, y, n_seeds=n_seeds, asymptote=asymptote, scaling_factor=scaling_factor)
+    exp = Exponential.fit(x, y, n_seeds=n_seeds, d=asymptote, scaling_factor=scaling_factor, x_offset=x_offset)
     if plot:
         x_ = np.linspace(min(x), max(x), 200)
         ax = exp.plot(x_)
@@ -516,7 +516,7 @@ class Exponential(Function):
         self.coeffs = coeffs
 
     @staticmethod
-    def fit(x, y, n_seeds=100, d=None, scaling_factor=False):
+    def fit(x, y, n_seeds=100, d=None, scaling_factor=False, x_offset=0):
         """
         Fit an exponential of the form a * exp(b * (x - c)) + d.
 
@@ -539,8 +539,11 @@ class Exponential(Function):
         y = y[mask]
 
         def loss(a, b, c, d):
-            model = a * np.exp(b * (x - c)) + d
-            diff = np.abs((model - y) / y)
+            model = a * np.exp(b * (x - c - x_offset)) + d
+            mask = np.isfinite(model)
+            model = model[mask]
+            y_masked = y[mask]
+            diff = np.abs((model - y_masked) / y_masked)
             diff = diff[diff > np.finfo(float).eps]
             if diff.size == 0:
                 return 0
@@ -558,6 +561,7 @@ class Exponential(Function):
                 res = minimize(func, x0, method='Nelder-Mead', options={'maxiter': 1000})
                 funs.append(res.fun)
                 if best is None or res.fun < best.fun:
+                    print(res.fun)
                     best = res
                 if i > 10 and res.fun < 0.9 * best.fun:
                     best_seeds.append(x0)
@@ -570,13 +574,13 @@ class Exponential(Function):
             else:
                 a, b, d = best_fit(lambda o: loss(o[0], o[1], c, o[2]), 3)
         else:
-            a = -1 if y[np.argmax(x)] >= y[np.argmin(x)] else 1
+            a = 1 if y[np.argmax(x)] >= y[np.argmin(x)] else -1
             if d is not None:
                 b, c = best_fit(lambda o: loss(a, o[0], o[1], d), 2)
             else:
                 b, c, d = best_fit(lambda o: loss(a, o[0], o[1], o[2]), 3)
 
-        f = Exponential([a, b, c, d])
+        f = Exponential([a, b, c+x_offset, d])
         f.error = f.mse(x, y)
         return f
 
