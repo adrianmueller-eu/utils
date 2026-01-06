@@ -1509,10 +1509,13 @@ class QuantumComputer:
     def c(self, U, control, target, negative=False):
         control = as_list_not_str(control)
         target  = as_list_not_str(target)
+        if isinstance(negative, bool):
+            negative = [negative]*len(control)
 
         U = self.parse_unitary(U, len(target), check=self.check_level)
-        for _ in control:
-            U = C_(U, negative=negative)
+        assert len(control) == len(negative), f"There must be as many negative/positive flags are control qubits, but were: {len(control)} ≠ {len(negative)}"
+        for neg_i in negative:
+            U = C_(U, negative=neg_i)
         return self(U, control + target)
 
     def cc(self, U, control1, control2, target):
