@@ -44,13 +44,6 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
     # arg parsing
     if labels is not None:
         labels = as_list_not_str(labels)
-    if area_quantiles is None or area_quantiles == 0:
-        area_quantiles = None
-    elif isinstance(area_quantiles, (float, int)):
-        assert 0 < area_quantiles <= 1, f"Invalid percentage: {area_quantiles}"
-        lower = (1 - area_quantiles)/2
-        upper = 1 - lower
-        area_quantiles = (lower,upper)
 
     if y is None:
         y, x = x, None
@@ -80,7 +73,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         # print("One dataset")
         # single dataset (single color)
         if x is None:
-            x = np.arange(len(y))
+            x = np.arange(1,len(y)+1)
         x = [x[:len(y)]]
         y = [y]
 
@@ -89,9 +82,22 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         assert is_numeric(x[i][0]), f"x of dataset {i} must be 1D"
     scatter_mode = not is_numeric(y[0]) and not is_numeric(y[0][0])
 
+    if area_quantiles is None or area_quantiles == 0:
+        area_quantiles = None
+    elif scatter_mode and isinstance(area_quantiles, (float, int)):
+        assert 0 < area_quantiles <= 1, f"Invalid percentage: {area_quantiles}"
+        lower = (1 - area_quantiles)/2
+        upper = 1 - lower
+        area_quantiles = (lower,upper)
+    elif isinstance(area_quantiles, (float, int)):
+        area_quantiles = None
+    if hasattr(area_quantiles, '__len__') and len(area_quantiles) == 2 and len(y) == 1:
+        area_quantiles = [area_quantiles]
+
     if "label" in pltargs:
         assert labels is None, "label argument is not supported when labels is given"
         labels = [pltargs["label"]]
+        del pltargs["label"]
     elif labels is None:
         labels = [None]*len(y)
     assert len(labels) == len(y), f"Number of labels ({len(labels)}) must match number of data vectors ({len(y)})"
@@ -140,6 +146,9 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
                     for j, yij in enumerate(yi):
                         plt.scatter([xi[j]]*len(yij), yij, alpha=cloud_alpha, s=cloud_s, color=plt.cm.tab10(i))
                 yi = [np.mean(yij) for yij in yi]
+            elif area_quantiles is not None and hasattr(area_quantiles[0], '__len__'):
+                lower, upper = area_quantiles[i]
+                plt.fill_between(xi, lower, upper, alpha=area_alpha, color=plt.cm.tab10(i))
             if y_stes is None:
                 plt.plot(xi, yi, fmt, label=labels[i], **pltargs)
             else:
@@ -181,9 +190,12 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         ax.yaxis.set_major_formatter(formatter)
         ax.yaxis.set_minor_formatter(NullFormatter())
 
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+    if title:
+        plt.title(title)
     if "label" in pltargs or labels is not None and not all(l is None for l in labels):
         plt.legend()
     plt.gca().spines["top"].set_visible(False)
