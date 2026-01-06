@@ -303,6 +303,20 @@ def to_timestring(n, precision=3, unit='s'):
 
     return ' '.join(f'{q:.{prec}f}{s}' for q,prec,s in res)
 
+def countdown(seconds):
+    """
+    Countdown timer that prints the remaining time in a human-readable format.
+
+    Parameters
+        seconds (int): Number of seconds to count down from.
+    """
+    for s in range(seconds, 0, -1):
+        s = to_timestring(s)
+        print("\033[K\r", s, end="", flush=True)
+        time.sleep(1)
+    print("\033[K\r", "0s", end="")
+    print()
+
 def shape_it(shape, progress=False):
     """ Iterate over all indices of a numpy array. """
     from itertools import product
