@@ -161,6 +161,9 @@ def kl_divergence(p, q, check=1):
     q = q[mask]
     return np.sum(p*np.log2(p/q))
 
+# TODO: Jensen-Shannon
+# TODO: Total-variation distance
+
 relative_entropy = kl_divergence
 
 def mutual_information(pxy, check=1):
