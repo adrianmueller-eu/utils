@@ -1497,6 +1497,12 @@ class QuantumComputer:
     def nx(self, control, target):
         return self(NX, [control, target])
 
+    def ny(self, control, target):
+        return self(NY, [control, target])
+
+    def nz(self, control, target):
+        return self(NZ, [control, target])
+
     def ccx(self, control1, control2, target):
         return self(Toffoli, [control1, control2, target])
 
@@ -1526,6 +1532,15 @@ class QuantumComputer:
 
     def rz(self, angle, q):
         return self(Rz(angle), q)
+
+    def crx(self, angle, control, target):
+        return self.c(Rx(angle), control, target)
+
+    def cry(self, angle, control, target):
+        return self.c(Ry(angle), control, target)
+
+    def crz(self, angle, control, target):
+        return self.c(Rz(angle), control, target)
 
     def p(self, angle, q):
         return self(P(angle), q)
