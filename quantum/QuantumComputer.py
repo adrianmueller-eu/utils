@@ -498,10 +498,10 @@ class QuantumComputer:
                     self.to_dm()
                     return self.measure(qubits, collapse=collapse, obs=obs)
 
-        if return_as == 'energy' and energies is not None:
+        if return_as == 'energy':
+            if energies is None:
+                return (-1)**(outcome.bit_count())  # Z observable
             return energies[outcome]
-        elif return_as == 'energy':
-            warn("No observable provided for return_as_energy=True. Returning as outcome index instead.")
         elif return_as == 'binstr':
             return binstr_from_int(outcome, q)
         return outcome
