@@ -7,6 +7,7 @@ from .QuantumComputer import QuantumComputer as QC
 from ..mathlib import choice
 from ..quantum import ket, count_qubits, fidelity
 from ..plot import imshow_clean
+from ..utils import is_int
 
 # simulate Bell experiment (CHSH inequality)
 def bell_experiment(N=10000):
@@ -66,6 +67,35 @@ def the_arrow(n=1, figsize=None):
         figsize = (fs, fs)
     imshow_clean(~m, figsize, cmap='hot')
 
-# TODO: Grover's algorithm
+def grover(key, n=None):
+    """
+    Grover's algorithm for searching an unsorted database.
+
+    Parameters
+    ----------
+    key : int
+        The key to search for.
+    n : int
+        The number of qubits in the database.
+
+    Returns
+    -------
+    QC
+        The quantum circuit for Grover's algorithm.
+    result: str
+        The result of the measurement.
+    """
+    assert is_int(key) and key > 0, f"Invalid key: {key}"
+    if n is None:
+        n = ceil(log2(key))
+    assert is_int(key) and is_int(n) and n > 0, f"Invaoid input: key={key}, n={n}"
+    assert 0 <= key < 2**n, f"Too few qubits: {key} >= {2**n}"
+    qc = QC(n)
+    reps = ceil(np.pi/4*1/np.arcsin(1/sqrt(2**n)))  # where 1/np.arcsin(1/sqrt(2**n)) ≈ sqrt(2**n)
+    qc.h(range(n))
+    for i in range(reps):
+        raise NotImplementedError("Grover's algorithm is not implemented yet.")
+    return qc.measure()
+
 # TODO: number factorization (Shor's algorithm)
 # TODO: HHL algorithm
