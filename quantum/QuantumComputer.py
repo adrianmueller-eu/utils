@@ -325,7 +325,7 @@ class QuantumComputer:
             nq = self.n - q
             if collapse:
                 probs = self._probs(to_remove)
-                outcome = choice(2**nq, p=probs)
+                outcome = np.random.choice(2**nq, p=probs)
                 if self.is_matrix_mode():
                     # order is to_keep + to_remove -> pick the qxq block of outcome
                     reshaped_state = self._state.reshape([2**q, 2**nq]*2)
@@ -451,7 +451,7 @@ class QuantumComputer:
             d_q = 2**q
             if self.is_matrix_mode():
                 if collapse:
-                    outcome = choice(range(d_q), p=probs)
+                    outcome = np.random.choice(range(d_q), p=probs)
 
                     # P = np.kron(dm(outcome, n=q), I_(self.n-q))  # projector
                     # self._state = P @ self._state @ P.conj().T / probs[outcome]
@@ -664,7 +664,7 @@ class QuantumComputer:
 
         self._no_tracking("Non-linear state conversion is not compatible with operator tracking.")
         if kind == 'sample':
-            outcome = choice(len(p), p=normalize(p, p=1))
+            outcome = np.random.choice(len(p), p=normalize(p, p=1))
             self._state = kets[outcome]
         elif kind == 'max':
             outcome = np.argmax(p)
