@@ -7,7 +7,7 @@ import numpy as np
 from math import log2, log10, ceil, prod, floor
 from .mathlib import is_complex, is_symmetric, int_sqrt, next_good_int_sqrt
 from .data import logbins, bins_sqrt
-from .utils import is_iterable, as_list_not_str, warn, is_numeric
+from .utils import is_iterable, as_list_not_str, warn, is_numeric, zipl
 
 def poly_scale(y, deg=1):
     if deg == 1:
