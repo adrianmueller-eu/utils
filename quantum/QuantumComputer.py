@@ -16,7 +16,7 @@ from .unitary import parse_unitary, get_unitary, Fourier_matrix, get_subunitary,
 from ..mathlib import choice, normalize, binstr_from_int, bipartitions
 from ..mathlib.matrix import normalize, is_unitary, is_hermitian, is_diag, trace_product, eigh, outer, is_isometry, kron_eye
 from ..plot import imshow
-from ..utils import is_int, duh, warn, as_list_not_str, nbytes
+from ..utils import is_int, duh, warn, as_list_not_str, nbytes, shape_it
 from ..prob import entropy
 
 class QuantumComputer:
@@ -508,6 +508,29 @@ class QuantumComputer:
 
     def decohere(self, qubits='all', obs=None):
         return self.measure(qubits, collapse=False, obs=obs)
+
+    def sample(self, qubits='all', shots=None, return_as='binstr', obs=None):
+        with self.observable(obs, qubits, return_energies=True) as (qubits, energies):
+            probs = self.probs(qubits)
+            outcomes = np.random.choice(len(probs), shots, p=probs, replace=True)
+            if return_as == 'energy':
+                if energies is None:
+                    if isinstance(outcomes, int):
+                        return (-1)**outcomes.bit_count()
+                    arr = np.empty_like(outcomes, dtype=int)
+                    for idx in shape_it(outcomes):
+                        arr[idx] = outcomes[idx].bit_count()
+                    return (-1)**arr
+                return energies[outcomes]
+            elif return_as == 'binstr':
+                n = len(qubits)
+                if isinstance(outcomes, int):
+                    return f"{outcomes:0{n}b}"
+                arr = np.empty_like(outcomes, dtype=object)
+                for idx in shape_it(outcomes):
+                    arr[idx] = f"{outcomes[idx]:0{n}b}"
+                return arr
+            return outcomes
 
     def probs(self, qubits='all', obs=None):
         with self.observable(obs, qubits) as qubits:
