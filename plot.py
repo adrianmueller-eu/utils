@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.animation import FuncAnimation
 from matplotlib.ticker import NullFormatter
+from collections.abc import Sequence
 
 import numpy as np
 from math import log2, log10, ceil, prod, floor
@@ -844,29 +845,18 @@ def imshow(a, figsize=None, title="", cmap='hot', xticks=None, yticks=None, xtic
     else:
         raise ValueError(f"Array must be 2D or 1D, but shape was {a.shape}")
 
-    def generate_ticks_and_labels(ticks, shape, max_ticks=10):
-        def auto_round(x):
-            if isinstance(x[0], float):
-                return [f"{xi:.4g}" for xi in x]
-            return ticks
+    def generate_ticks_and_labels(ticks: Sequence, shape, max_ticks=10, display_digits=4):
+        if len(ticks) == 2 and hasattr(ticks[0], '__len__'):
+            assert len(ticks[0]) == len(ticks[1]), f"{len(ticks[0])} ≠ {len(ticks[1])}"
+            return ticks[0], ticks[1]
 
-        if isinstance(ticks, tuple) and len(ticks) == 2:
-            if isinstance(ticks[0], (int, float)):
-                ticklabels = np.linspace(np.min(ticks), np.max(ticks), min(max_ticks, shape))
-                ticklabels = auto_round(ticklabels)
-                ticks = np.linspace(0, shape-1, len(ticklabels))
-            else:
-                ticklabels = ticks[1]
-                ticks = ticks[0]
+        if len(ticks) > 0 and isinstance(ticks[0], (int,float)):
+            if len(ticks) > max_ticks or (isinstance(ticks, tuple) and len(ticks) == 2):
+                ticks = np.linspace(np.min(ticks), np.max(ticks), min(max_ticks, shape))
+            ticklabels = [f"{t:.{display_digits}g}" for t in ticks]  # round
         else:
-            if len(ticks) > max_ticks:
-                ticklabels = np.linspace(np.min(ticks), np.max(ticks), min(max_ticks, shape))
-                ticklabels = auto_round(ticklabels)
-            elif isinstance(ticks[0], float):
-                ticklabels = auto_round(ticks)
-            else:
-                ticklabels = ticks
-            ticks = np.linspace(0, shape-1, len(ticklabels))
+            ticklabels = ticks
+        ticks = np.linspace(0, shape-1, len(ticklabels))
         return ticks, ticklabels
 
     if isinstance(xticks, bool) and xticks == False:
