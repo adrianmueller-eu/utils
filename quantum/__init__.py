@@ -226,6 +226,7 @@ def _test_ket_unket():
     assert unket(ket('1010')) == '1010'
     assert unket(ket(10)) == '1010'
     assert unket(ket(10, 5)) == '01010'
+    assert np.allclose(ket(0,0), [1])
     # ket should be fast enough to return already-kets 1000 times in negligible time
     import time
     psi = random_ket(2)
@@ -264,6 +265,7 @@ def _test_op_dm():
     assert np.allclose(op(1,0), [[0,0], [1,0]])
     assert np.allclose(op(1),   [[0,0], [0,1]])
     assert np.allclose(dm(1),   [[0,0], [0,1]])
+    assert np.allclose(dm(0,0), [1])
     O = op(0,3,n=2)
     assert O.shape[0] == O.shape[1]
     # dm should be fast enough to return already-density-matrices 1000 times in negligible time

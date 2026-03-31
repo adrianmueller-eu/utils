@@ -207,7 +207,7 @@ def random_dm(n=1, rank='full', size=()):
     return tf(probs, kets, reverse=True)
 
 def ket_from_int(d, n=None):
-    if not n:
+    if n is None:
         n = ceil(log2(d+1)) or 1
     elif d >= 2**n:
         raise ValueError(f"A {n}-qubit state doesn't have basis state {d} (max is {2**n-1})")
