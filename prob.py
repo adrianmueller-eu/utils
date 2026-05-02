@@ -112,8 +112,8 @@ def z_transform(x):
 def correlation(x, y):
     cov = np.cov(x, y)
     return cov[1,0] / np.sqrt(cov[0,0] * cov[1,1])
-    return variance(x, y) / np.sqrt(variance(x) * variance(y))
-    return np.mean(z_transform(x) * z_transform(y))
+    # return variance(x, y) / np.sqrt(variance(x) * variance(y))
+    # return np.mean(z_transform(x) * z_transform(y))
 
 def ste(ar):
     return np.std(ar, ddof=1) / np.sqrt(len(ar))
@@ -138,7 +138,7 @@ def entropy(p, check=1): # e.g. entropy(1*[1/2] + 4*[1/8])
     p = check_probability_distribution(p, check=check).ravel()
     p = p[p > 1e-12]
     return -np.sum(p*np.log2(p))
-    return expectation(-np.log2(p), p)
+    # return expectation(-np.log2(p), p)
 
 def cross_entropy(p, q, check=1):
     """Cross entropy $H(p,q) = -\\sum_i p_i \\log_2(q_i)$"""
@@ -167,7 +167,6 @@ def mutual_information(pxy, check=1):
     pxy = check_probability_distribution(pxy, check=check)
     px = np.sum(pxy, axis=1)
     py = np.sum(pxy, axis=0)
-    # return sum((pxy*np.log2(pxy/(px[:,None]*py[None,:]))).ravel())
     return kl_divergence(pxy, px[:,None]*py[None,:], check=0)
     # return entropy(px) + entropy(py) - entropy(pxy)
 
