@@ -78,16 +78,12 @@ def resample(x, y, size=int(1e6)):
 def random_p(size, kind='uniform'):
     if not isinstance(size, tuple):
         size = (size,)
-    if kind == 'uniform':
-        p = np.random.random(size)
-        p /= np.sum(p, axis=-1, keepdims=True)
-    elif kind == 'dirichlet':
+    if kind in ['uniform', 'dirichlet']:
         # see also https://en.wikipedia.org/wiki/Dirichlet_distribution#When_each_alpha_is_1
         o = np.ones(size[-1])
         p = np.random.dirichlet(o, size=size[:-1])
     else:
         raise ValueError(f"Unknown kind: {kind}")
-
     return p
 
 ##################
