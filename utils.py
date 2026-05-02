@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from collections import Counter
 from copy import deepcopy
 from math import log2, prod, floor, log10, ceil
+from itertools import product
 
 def reversed_keys(d):
     return {k[::-1]:v for k,v in d.items()}
@@ -24,6 +25,9 @@ def zipl(*iterables, iterator=list):
 def rangel(*args, iterator=list, **kwargs):
     """range function that returns a collection (default: list)"""
     return iterator(range(*args), **kwargs)
+
+def coll(cb, *iters):
+    return [cb(*c) for c in product(*iters)]
 
 class Slicable(type):
     def __getitem__(cls, idx):

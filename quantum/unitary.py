@@ -6,7 +6,7 @@ from math import log2, sqrt
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .utils import count_qubits, reorder_qubits, reverse_qubit_order, partial_trace, verify_subsystem
 from .state import ket, op, plotQ
-from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0, tf
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0, tf, random_hermitian
 from ..utils import is_int
 
 def Fourier_matrix(n, swap=False):
@@ -142,6 +142,15 @@ try:
             return result, state
         else:
             return result
+
+    def run_reset(qc, showqubits=None, include_run_return=False, title="", plot=True):
+        """Run the circuit to here, print the state, return a new circuit to continue from here. Only works without measurement!"""
+        res, st = run(qc, shots=1, showqubits=showqubits, title=title, plot=plot)
+        qc2 = QuantumCircuit(*qc.qregs, *qc.cregs)
+        qc2.initialize(st, range(int(np.log2(len(st))))[::-1])
+        if include_run_return:
+            return qc2, res, st
+        return qc2
 
     class exp_i(QuantumCircuit):
         def __init__(self, H, k=1, use_pauli=False, trotter_steps=3):
@@ -378,3 +387,16 @@ def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
 
 def global_phase(U):
     return np.exp(1j*np.angle(np.linalg.det(U))/U.shape[0])
+
+def unitary_noise(n, angle=None):
+    H = random_hermitian(n)
+    if angle is None:
+        angle = (sqrt(2) + 1/2)/sqrt(n)  # ≈ 1.92/sqrt(n) gives Haar-random unitary (for n → ∞)
+    return matexp(1j*angle*H)
+
+def add_noise(target, angle):
+    if not angle:
+        return target
+    if isinstance(target, np.ndarray) and target.ndim in (1,2):
+        return unitary_noise(target.shape[0], angle) @ target
+    return [add_noise(U_i, angle) for U_i in target]

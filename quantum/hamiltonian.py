@@ -1,8 +1,10 @@
 import sys, psutil, warnings
 import numpy as np
-from math import prod, log2
+from math import prod, log2, comb
 import itertools
 from functools import reduce
+from collections import Counter
+import numbers
 try:
     import scipy.sparse as sp
 except ImportError:
@@ -10,6 +12,7 @@ except ImportError:
 
 from ..mathlib import normalize, sequence, softmax, is_hermitian, pauli_basis, allclose0, is_unitary, binstr_from_float, eigh, eigvalsh, tf
 from ..utils import duh
+from ..plot import scatter1d, imshow
 from .state import random_ket, unket
 
 def ground_state_exact(hamiltonian):
@@ -727,3 +730,286 @@ def print_energies_and_state(H, accuracy=5, r=None, energy_filter=None):
             s = binstr_from_float(e, r, complement=True)
             s = " " + s if s[0] != "-" else s
             print(f"{e:{accuracy+3}.{accuracy}f}  \t{s}  \t{unket(eigvecs[:,i])}")
+
+def energy_rep(energies, r=15, accuracy=None):
+    """Represent the energies as a list of tuples (energy, binary string).
+
+    Parameters:
+        energies (np.ndarray): array of energies
+        r (int): number of bits to use for the binary representation
+        accuracy (int): number of digits to use for the energy representation
+
+    Returns:
+        (list): list of tuples (energy, binary string)
+    """
+    if accuracy is None:
+        accuracy = int(np.ceil(r*np.log(2)/np.log(10) + 1))
+    return np.round(energies, accuracy), [binstr_from_float(e, r, complement=True) for e in energies]
+
+####################
+#### Visualizer ####
+####################
+
+def print_energies(H_or_energies, r=15, accuracy=5, expi=True):
+    """Print the energies of the Hamiltonian in binary representation (as fractions of 2π).
+
+    Parameters:
+        H or energies (np.ndarray or str): the Hamiltonian (2d) or its string representation (see parse_hamiltonian), or the array of energies (1d)
+        r (int): number of bits to use for the binary representation
+        accuracy (int): number of digits to use for the float energy representation
+        expi (bool): See `get_H_energies`
+
+    Returns:
+        None
+    """
+    if isinstance(H_or_energies[0], numbers.Number):
+        energies = H_or_energies
+    else:
+        energies = get_H_energies(H_or_energies, expi=expi)
+    errors = bin_conversion_error(energies, r)
+    for e, bin, error in zip(*energy_rep(energies, r, accuracy=accuracy), errors):
+        print(f"%{accuracy+3}.{accuracy}f\t%s\t(error: %f)" % (e, (" " if bin[0] != "-" else "") + bin, error))
+
+def show_hamiltonian(H, r=15, kind='hist', figsize_imshow=None, figsize_hist=(10,3)):
+    """Show the Hamiltonian and its eigenenergies."""
+    energies = get_H_energies(H, False) / (2*np.pi)
+    print("Eigenenergies (as a fraction of 2pi):")
+    print_energies(energies, r=r, accuracy=5)
+    if kind == 'hist':
+        hist(energies, bins=100, xlabel="eigenenergies", figsize=figsize_hist)
+    elif kind == 'scatter':
+        scatter1d(energies)
+    else:
+        raise ValueError(f"Unknown visualization {kind}")
+    if figsize_imshow is None:
+        dim = np.ceil(np.log(H.shape[0]))
+        figsize_imshow=(dim,dim)
+    elif isinstance(figsize_imshow, numbers.Number):
+        figsize_imshow=(figsize_imshow,figsize_imshow)
+    imshow(H, figsize=figsize_imshow)
+    # complex_colorbar()
+    return energies
+
+#################
+### Molecules ###
+#################
+
+def get_hamiltonian(molecule, symmetries=None, freeze=None, transformation='jw', verbose=False):
+    """
+    Convert a molecule into a qubit Hamiltonian.
+
+    Parameters:
+        molecule (MolecularData or QubitOperator): the molecule or its qubit Hamiltonian
+        symmetries (list): list of symmetries to taper off the qubits
+        freeze (int or tuple): orbitals to freeze
+        transformation (str or callable): transformation to use for the qubits (jw, bk, parity, tree)
+        verbose (bool): print progress
+
+    Returns:
+        H (QubitOperator): the qubit Hamiltonian (tapered if symmetries provided)
+    """
+    try:
+        from openfermion import MolecularData, QubitOperator
+        from openfermionpsi4 import run_psi4
+        from openfermion.transforms import get_fermion_operator, freeze_orbitals, taper_off_qubits
+        from openfermion.transforms import jordan_wigner, bravyi_kitaev, parity_code, binary_code_transform, bravyi_kitaev_tree
+        from openfermion.utils.operator_utils import count_qubits as openfermion_count_qubits
+
+    except ImportError:
+        raise ImportError("OpenFermion or OpenFermion-Psi4 not found. Install it with 'conda create -n psi4 -c psi4 -c conda-forge psi4 openfermion openfermionpsi4 && conda activate psi4'")
+
+    if isinstance(molecule, MolecularData):
+        if verbose:
+            print('Calculating the hamiltonian...', end=' ')
+        # Run electronic structure calculations using Psi4
+        molecule = run_psi4(molecule, run_scf=True, run_fci=True)
+        # Get the molecular Hamiltonian in the second quantized form
+        H = get_fermion_operator(molecule.get_molecular_hamiltonian())
+        if freeze is not None and len(freeze) > 0:
+            if isinstance(freeze[0], int):
+                H = freeze_orbitals(H, freeze)
+            else:
+                H = freeze_orbitals(H, freeze[0], freeze[1])
+        # Get the qubit Hamiltonian
+        if transformation is not None:
+            if transformation == 'jw':
+                H = jordan_wigner(H)
+            elif transformation == 'bk':
+                H = bravyi_kitaev(H)
+            elif transformation == 'parity':
+                code = parity_code(openfermion_count_qubits(H))
+                H = binary_code_transform(H, code)
+            elif transformation == 'tree':
+                H = bravyi_kitaev_tree(H)
+            elif not callable(transformation):
+                raise ValueError(f"Unknown transformation {transformation}")
+        if verbose:
+            print('done')
+    else:
+        H = molecule
+    # Optional: Taper off the qubits
+    if symmetries is not None:
+        stabilizers = [QubitOperator(*s) if isinstance(s, tuple) else QubitOperator(s) for s in symmetries]
+        H = taper_off_qubits(H, stabilizers)
+    return H
+
+def find_symmetries(H_or_molecule, eps=1e-6):
+    """
+    Brute-force search for symmetries of the given QubitOperator (or MolecularData).
+    """
+    H = get_hamiltonian(H_or_molecule)
+    from openfermion import QubitOperator, get_sparse_operator, get_ground_state
+    from openfermion.utils.operator_utils import count_qubits as openfermion_count_qubits
+
+    n = openfermion_count_qubits(H)
+    _, gs = get_ground_state(get_sparse_operator(H))
+
+    ops = []
+    ks = list(range(2,n//2+1))
+    t = tq(total=sum(comb(n,k) for k in ks))
+    for k in ks:
+        for i in combinations(range(n), k):
+            t.update()
+            op = ' '.join(f'Z{i}' for i in i)
+            # expectation value of the operator under the ground state
+            res = (gs.T.conj() @ get_sparse_operator(QubitOperator(op), n_qubits=n) @ gs).real
+            # if the expectation value is close to 1, the operator hasn't changed the state -> symmetry
+            if np.abs(res - 1) < eps:
+                print(f'{res:.5f} {op}')
+                ops.append((op, int(np.round(res))))
+    t.close()
+    return ops
+
+def get_ph_str(H):
+    from openfermion import QubitOperator
+    from openfermion.utils.operator_utils import count_qubits
+
+    assert isinstance(H, QubitOperator)
+    n = count_qubits(H)
+    H_str = ''
+    for basis in H.terms:
+        term = 'I'*n
+        for i, op in basis:
+            term = term[:i] + op + term[i+1:]
+        coeff = H.terms[basis]
+        if not np.isclose(coeff.imag, 0):
+            raise ValueError('Hamiltonian has non-real coefficients')
+        H_str += f'{coeff.real}*{term} + '
+    return H_str[:-3]
+
+def H2(R, use_symmetries=True):
+    """Hamiltonian of the H2 molecule with internuclear distance R. It's generated using OpenFermion with:
+    - the sto-3g basis set
+    - the Jordan-Wigner transformation
+    The original 4-qubit hamiltonian is can be reduced to 2 qubits using 2 symmetry constraints (default).
+    """
+    from openfermion import MolecularData, get_sparse_operator
+
+    assert isinstance(R, numbers.Number), "R must be a number"
+
+    H2 = MolecularData(
+        geometry=[('H', (0.0, 0.0, 0.0)), ('H', (0.0, 0.0, R))],
+        basis='sto-3g', multiplicity=1, charge=0
+    )
+    symmetries = ['Z0 Z1', 'Z2 Z3'] if use_symmetries else None
+    H = get_hamiltonian(H2, symmetries, transformation='jw')
+    H = get_sparse_operator(H).toarray()
+    return H
+
+def LiH(R, freeze=3, use_symmetries=True, sparse=False):
+    """Hamiltonian of the LiH molecule with internuclear distance R. It's generated using OpenFermion with:
+    - the sto-6g basis set
+    - the Jordan-Wigner transformation
+    The original 12-qubit hamiltonian can be reduced by freezing orbitals and using symmetries:
+    - freeze=0: 12 qubits with 4 symmetries -> 8 qubits
+    - freeze=1: 10 qubits with 4 symmetries -> 6 qubits
+    - freeze=2:  8 qubits with 3 symmetries -> 5 qubits
+    - freeze=3:  6 qubits with 2 symmetries -> 4 qubits
+    """
+    from openfermion import MolecularData, get_sparse_operator
+
+    assert isinstance(R, numbers.Number), "R must be a number"
+
+    LiH = MolecularData(
+        geometry=[('Li', (0.0, 0.0, 0.0)), ('H', (0.0, 0.0, R))],
+        basis='sto-3g', multiplicity=1, charge=0
+    )
+
+    if freeze == 0:
+        freeze = None
+        symmetries = [
+            'Z6 Z7',
+            'Z8 Z9',
+            'Z0 Z2 Z4 Z6 Z8 Z10',
+            'Z1 Z3 Z5 Z7 Z9 Z11'
+        ]
+    elif freeze == 1:
+        freeze = (0, 1)
+        symmetries = [
+            'Z4 Z5',
+            'Z6 Z7',
+            ('Z0 Z2 Z4 Z6 Z8', -1),
+            ('Z1 Z3 Z4 Z6 Z9', -1)
+        ]
+    elif freeze == 2:
+        freeze = [(0,1), (8,9)]
+        symmetries = [
+            'Z4 Z5',
+            ('Z0 Z2 Z4 Z6', -1),
+            ('Z1 Z3 Z4 Z7', -1)
+        ]
+    elif freeze == 3:
+        freeze = [(0,1), (6,7,8,9)]
+        symmetries = [
+            ('Z0 Z2 Z4', -1),
+            ('Z1 Z3 Z5', -1)
+        ]
+    else:
+        raise ValueError(f"LiH molecule with freezing {freeze} orbitals not implemented")
+    if not use_symmetries:
+        symmetries = None
+    H = get_hamiltonian(LiH, symmetries, freeze, transformation='jw')
+    H = get_sparse_operator(H)
+    if not sparse:
+        H = H.toarray()
+    return H
+
+def test_LiH():
+    """ Should be run in a conda environment with psi4, openfermionpsi4 and openfermion installed. """
+
+    R = 1.5
+    H_12 = LiH(R, 0, False, True)
+    assert H_12.shape[0] == 2**12, f"Hamiltonian must have size 2^12 = 4096, but has size {H_12.shape}"
+    E0_12 = get_E0(H_12)
+    H_8 = LiH(R, 0, True)
+    assert H_8.shape[0] == 2**8, f"Hamiltonian must have size 2^8 = 256, but has size {H_8.shape}"
+    E0_8 = get_E0(H_8)
+    assert np.isclose(E0_12, E0_8), f"{E0_12} != {E0_8}, are symmetries correct?"
+    print(f"LiH molecule at R = {R} with 12/8 qubits has energy {E0_12}")
+
+    H_10 = LiH(R, 1, False, True)
+    assert H_10.shape[0] == 2**10, f"Hamiltonian must have size 2^10 = 1024, but has size {H_10.shape}"
+    E0_10 = get_E0(H_10)
+    H_6 = LiH(R, 1, True)
+    assert H_6.shape[0] == 2**6, f"Hamiltonian must have size 2^6 = 64, but has size {H_6.shape}"
+    E0_6 = get_E0(H_6)
+    assert np.isclose(E0_10, E0_6), f"{E0_10} != {E0_6}, are symmetries correct?"
+    print(f"LiH molecule at R = {R} with 10/6 qubits has energy {E0_10}")
+
+    H_8 = LiH(R, 2, False)
+    assert H_8.shape[0] == 2**8, f"Hamiltonian must have size 2^8 = 256, but has size {H_8.shape}"
+    E0_8 = get_E0(H_8)
+    H_5 = LiH(R, 2, True)
+    assert H_5.shape[0] == 2**5, f"Hamiltonian must have size 2^5 = 32, but has size {H_5.shape}"
+    E0_5 = get_E0(H_5)
+    assert np.isclose(E0_8, E0_5), f"{E0_8} != {E0_5}, are symmetries correct?"
+    print(f"LiH molecule at R = {R} with 8/5 qubits has energy {E0_8}")
+
+    H_6 = LiH(R, 3, False)
+    assert H_6.shape[0] == 2**6, f"Hamiltonian must have size 2^6 = 64, but has size {H_6.shape}"
+    E0_6 = get_E0(H_6)
+    H_4 = LiH(R, 3, True)
+    assert H_4.shape[0] == 2**4, f"Hamiltonian must have size 2^4 = 16, but has size {H_4.shape}"
+    E0_4 = get_E0(H_4)
+    assert np.isclose(E0_6, E0_4), f"{E0_6} != {E0_4}, are symmetries correct?"
+    print(f"LiH molecule at R = {R} with 6/4 qubits has energy {E0_6}")

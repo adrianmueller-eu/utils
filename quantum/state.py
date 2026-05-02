@@ -686,5 +686,13 @@ def dm_from_Wigner(W):
         rho += W[i,j] * get_Wigner_A(i,j,n)
     return rho
 
+def print_ensemble(rho, tol=1e-10, accuracy=5):
+    p, eigvecs = eigh(rho)
+    print(f"Probability\tEigenstate")
+    for pi, ei in zip(p, eigvecs.T):
+        if pi < tol:
+            continue
+        print(f"{pi:.{accuracy+3}f}\t{unket(ei)}")
+
 ## TODO: def random_stabilizer_state(n): + convert n to full quantum state
 ## TODO: random_tensor_network_state + convert tensor network state -> full quantum state
