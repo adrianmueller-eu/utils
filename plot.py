@@ -92,8 +92,6 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         area_quantiles = (lower,upper)
     elif isinstance(area_quantiles, (float, int)):
         area_quantiles = None
-    if hasattr(area_quantiles, '__len__') and len(area_quantiles) == 2 and len(y) == 1:
-        area_quantiles = [area_quantiles]
 
     if "label" in pltargs:
         assert labels is None, "label argument is not supported when labels is given"
@@ -208,7 +206,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         for v in vlines:
             # if iterable, assume the first to be the number and the rest to be kwargs for axvline
             if hasattr(v, '__iter__') and type(v) != str:
-                v, kwargs = v[0], v[1:]
+                v, kwargs = v[0], v[1]
             else:
                 kwargs = {}
             if "color" not in kwargs:
@@ -228,7 +226,7 @@ def plot(x, y=None, fmt="-", figsize=(10,8), xlim=(None, None), ylim=(None, None
         for i, h in enumerate(hlines):
             # if iterable, assume the first to be the number and the rest to be kwargs for axhline
             if hasattr(h, '__iter__') and type(h) != str:
-                h, kwargs = h[0], h[1:]
+                h, kwargs = h[0], h[1]
             else:
                 kwargs = {}
             if "color" not in kwargs:
