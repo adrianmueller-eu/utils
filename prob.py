@@ -157,8 +157,21 @@ def kl_divergence(p, q, check=1):
     q = q[mask]
     return np.sum(p*np.log2(p/q))
 
-# TODO: Jensen-Shannon
-# TODO: Total-variation distance
+def js_divergence(p, q, check=1):
+    """Jensen-Shannon divergence $D_{JS}(p||q) = 1/2 (D_{KL}(p||m) + D_{KL}(q||m))"""
+    p = check_probability_distribution(p, check=check)
+    q = check_probability_distribution(q, check=check)
+    assert p.shape == q.shape, f"Shape mismatch: {p.shape} ≠ {q.shape}"
+    m = (p + q)/2
+    return (kl_divergence(p, m, 0) + kl_divergence(q, m, 0))/2
+
+def total_variation_distance(p, q, check=1):
+    """Total variation distance: sup_A |P(A) - Q(A)| (where is any *set* of events)"""
+    p = check_probability_distribution(p, check=check)
+    q = check_probability_distribution(q, check=check)
+    assert p.shape == q.shape, f"Shape mismatch: {p.shape} ≠ {q.shape}"
+    return np.sum(np.abs(p-q))/2
+    # return np.sum((p - q)[p > q])
 
 relative_entropy = kl_divergence
 
