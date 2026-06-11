@@ -668,6 +668,8 @@ if not sage_loaded:
         list[ np.ndarray | scipy.sparse.csr_array ]
             A list of `n(n-1)/2` matrices that form a basis of the Lie algebra.
         """
+        if sparse:
+            assert "scipy" in sys.modules, "Please `pip install scipy` to use sparse matrices"
         basis = []
         if as_eigen:
             if sparse:
@@ -734,6 +736,7 @@ if not sage_loaded:
             A list of `n^2-1` matrices that form a basis of the Lie algebra.
         """
         if sparse:
+            assert "scipy" in sys.modules, "Please `pip install scipy` to use sparse matrices"
             base = sp.lil_array((n,n), dtype=complex)
         else:
             if n > 100:
@@ -808,9 +811,10 @@ if not sage_loaded:
                 if self.is_generator:
                     self._D, self._U = eigh(self._G)
                 else:
-                    T, Q = schur(self._G)  # self._G is a unitary
-                    assert is_diag(T), f"Non-diagonalizable matrix: {T}"
-                    self._D, self._U = np.diag(T), Q
+                    # T, Q = schur(self._G)  # self._G is a unitary
+                    # assert is_diag(T), f"Non-diagonalizable matrix: {T}"
+                    # self._D, self._U = np.diag(T), Q
+                    self._D, self._U = eig(self._G)  # a unitary is normal
                     self._logD()
                     self.is_generator = True
                 self._G = None
@@ -921,6 +925,8 @@ if not sage_loaded:
 
     def SO_old(n, sparse=False):
         """ Special orthogonal group. Returns n(n-1)/2 functions that take an angle and return the corresponding real rotation matrix """
+        if sparse:
+            assert "scipy" in sys.modules, "Please `pip install scipy` to use sparse matrices"
         eye = sp.eye if sparse else np.eye
         def rotmat(i, j, phi):
             a = eye(n)
@@ -967,6 +973,8 @@ def pauli_basis(n, kind='np', normalize=False):
         warnings.warn(f"Generating {2**(2*n)} {2**n}x{2**n} Pauli basis matrices (n = {n}) may take a long time.", stacklevel=2)
     basis = su(2, include_identity=True, sparse=kind == 'sp')
     stubs = [m/sqrt(2**n) for m in basis] if normalize else basis
+    if kind == 'sp':
+        assert "scipy" in sys.modules, "Please `pip install scipy` to use sparse matrices"
     extend_fn = sp.kron if kind == 'sp' else np.kron
     return generate_recursive(stubs, n, basis, extend_fn=extend_fn)
 

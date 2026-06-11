@@ -585,9 +585,10 @@ def _test_so():
         assert np.allclose(O, U @ np.diag(D) @ U.conj().T), f"so({n})[{i}] is not correctly diagonalized!"
 
     # check sparse representation
-    son_sp = so(n, sparse=True)
-    for i, (A,B) in enumerate(zip(son, son_sp)):
-        assert np.allclose(A, B.todense()), f"Pair {i} is not the same (n={n})!"
+    if "scipy" in sys.modules:
+        son_sp = so(n, sparse=True)
+        for i, (A,B) in enumerate(zip(son, son_sp)):
+            assert np.allclose(A, B.todense()), f"Pair {i} is not the same (n={n})!"
 
 def _test_SO():
     n = 4
@@ -642,9 +643,10 @@ def _test_su():
         assert np.isclose(np.linalg.norm(A), 1), f"su({n})[{i}] does not have norm 1!"
 
     # sparse representation
-    sun_sp = su(n, sparse=True)
-    for i, (A,B) in enumerate(zip(sun, sun_sp)):
-        assert np.allclose(A, B.todense()), f"Pair {i} is not the same (n={n})!"
+    if "scipy" in sys.modules:
+        sun_sp = su(n, sparse=True)
+        for i, (A,B) in enumerate(zip(sun, sun_sp)):
+            assert np.allclose(A, B.todense()), f"Pair {i} is not the same (n={n})!"
 
 def _test_SU():
     n = 4

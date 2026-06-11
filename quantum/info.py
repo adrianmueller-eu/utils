@@ -323,18 +323,20 @@ def combine_channels(operators1, operators2, filter0=True, tol=1e-10, check=3):
     assert len(new_operators) > 0, f"Combined channel is empty. Filter tolerance too large ({tol:.6g})?"
     return new_operators
 
-def update_choi(operators, choi, sparse=True, check=3):
+def update_choi(operators, choi, sparse='auto', check=3):
     # if self._operators.ndim == 2:  # (out*in) x (out*in)
     #     choi = choi_from_channel(operators, check=0)
     #     return choi @ self._operators
     operators = assert_kraus(operators, allow_reshaped=False, check=check)
-    assert choi.ndim in (4,6)  # n x n_in x n x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
+    assert choi.ndim in (4,6), choi.ndim  # n x n_in x n x n_in  or  q x (n-q) x n_in x q x (n-q) x n_in
     d_out, d_in = operators[0].shape[0], choi.shape[-1]
     if choi.ndim == 4:
         shape = (d_out, d_in, d_out, d_in)
     else:
         d_nq = choi.shape[1]
         shape = (d_out, d_nq, d_in, d_out, d_nq, d_in)
+    if sparse == 'auto':
+        sparse = "scipy" in sys.modules
     if sparse:
         Ks = [sp.coo_array(o) for o in operators]
         new_choi = sp.coo_array(shape, dtype=choi.dtype)
@@ -493,7 +495,7 @@ def choi_from_channel(operators, sparse='auto', filter_eps=sys.float_info.epsilo
     choi_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
 
     if sparse == 'auto':
-        if choi_dim <= 64:  # n <= 3 qubits use dense
+        if choi_dim <= 64 or "scipy" not in sys.modules:  # n <= 3 qubits use dense
             sparse = False
         else:
             thresh = 0.25
@@ -510,7 +512,7 @@ def choi_from_channel(operators, sparse='auto', filter_eps=sys.float_info.epsilo
         #     K.eliminate_zeros()
     else:
         choi = np.zeros((choi_dim, choi_dim), dtype=complex)
-        if sp.issparse(operators[0]):
+        if hasattr(operators[0], 'toarray'):  # issparse
             operators = [K.toarray() for K in operators]
 
     for K in operators:

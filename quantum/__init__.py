@@ -57,8 +57,11 @@ def test_quantum_all():
 
     for test in tests:
         print("Running", test.__name__, "... ", end="", flush=True)
-        test()
-        print("Test succeeded!", flush=True)
+        res = test()
+        if res == False:
+            print("Test skipped", flush=True)
+        else:
+            print("Test succeeded!", flush=True)
 
 def _test_constants():
     global I, X, Y, Z, H_gate, S, T_gate, CNOT, SWAP
@@ -177,6 +180,8 @@ def _test_random_ham():
     assert is_hermitian(H)
 
 def _test_exp_i():
+    if "qiskit" not in sys.modules:
+        return False
     n = randint(1,6)
     n_terms = randint(1, 2**(n+1))
     H_str = random_ham(n, n_terms)
@@ -204,7 +209,7 @@ def _test_get_H_energies_eq_get_pe_energies():
     H = random_ham(n_qubits, n_terms, scaling=False)
     H = parse_hamiltonian(H)
 
-    A = np.sort(get_pe_energies(exp_i(H)))
+    A = np.sort(get_pe_energies(matexp(1j*H)))
     B = np.sort(get_H_energies(H, expi=True))
     assert np.allclose(A, B), f"{A} ≠ {B}"
 
@@ -695,7 +700,9 @@ def _test_ising():
 
     H_str = ising((3,3), J=1.5, h=1.1, g=0.5, offset=0.5, kind='2d', circular=True)
     expect = "1.5*(ZIIZIIIII + ZZIIIIIII + IZIIZIIII + IZZIIIIII + IIZIIZIII + ZIZIIIIII + IIIZIIZII + IIIZZIIII + IIIIZIIZI + IIIIZZIII + IIIIIZIIZ + IIIZIZIII + IIIIIIZZI + ZIIIIIZII + IIIIIIIZZ + IZIIIIIZI + IIZIIIIIZ + IIIIIIZIZ) + 1.1*(ZIIIIIIII + IZIIIIIII + IIZIIIIII + IIIZIIIII + IIIIZIIII + IIIIIZIII + IIIIIIZII + IIIIIIIZI + IIIIIIIIZ) + 0.5*(XIIIIIIII + IXIIIIIII + IIXIIIIII + IIIXIIIII + IIIIXIIII + IIIIIXIII + IIIIIIXII + IIIIIIIXI + IIIIIIIIX) + 0.5"
-    assert np.allclose(ph(H_str, sparse=True).data, ph(expect, sparse=True).data), f"\nH_str  = {H_str}\nexpect = {expect}"
+    assert H_str == expect, f"\nH_str  = {H_str}\nexpect = {expect}"
+    if "scipy" in sys.modules:
+        assert np.allclose(ph(H_str, sparse=True).data, ph(expect, sparse=True).data), f"\nH_str  = {H_str}\nexpect = {expect}"
 
     # 3d
     H_str = ising((2,2,3), kind='3d', J=1.2, h=0, g=0, offset=0, circular=True)
@@ -770,12 +777,13 @@ def _test_pauli_basis():
         assert np.allclose(A, parse_hamiltonian(B)), f"Generator {i} (n = {n}) is not the same! {B}\n{A}\n≠\n{parse_hamiltonian(B)}"
 
     # check sparse representation
-    pauli_n_sp = list(pauli_basis(n, kind='sp'))
-    assert len(pauli_n) == len(pauli_n_sp), "Number of generators is not the same!"
+    if "scipy" in sys.modules:
+        pauli_n_sp = list(pauli_basis(n, kind='sp'))
+        assert len(pauli_n) == len(pauli_n_sp), "Number of generators is not the same!"
 
-    # check if all generators are the same
-    for i, (A,B) in enumerate(zip(pauli_n, pauli_n_sp)):
-        assert np.allclose(A, B.todense()), f"Generator {i} (n = {n}) is not the same!"
+        # check if all generators are the same
+        for i, (A,B) in enumerate(zip(pauli_n, pauli_n_sp)):
+            assert np.allclose(A, B.todense()), f"Generator {i} (n = {n}) is not the same!"
 
 def _test_pauli_decompose():
     # H_gate = (X+Z)/sqrt(2)

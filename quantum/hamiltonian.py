@@ -93,11 +93,13 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
     >>> parse_hamiltonian('0.5*(II + ZI - ZX + IX)') # CNOT
 
     """
+    if sparse:
+        assert "scipy" in sys.modules, "sparse representation requires scipy. Install with `pip install scipy`."
     kron = sp.kron if sparse else np.kron
 
     # Initialize the matrix map
     global matmap_np, matmap_sp
-    if matmap_np is None or matmap_sp is None or matmap_np["I"].dtype != dtype:
+    if matmap_np is None or (matmap_sp is None and sparse) or matmap_np["I"].dtype != dtype:
         # numpy versions
         matmap_np = {
             "H": np.array([[1, 1], [1, -1]], dtype=dtype) / np.sqrt(2),
@@ -122,7 +124,8 @@ def parse_hamiltonian(hamiltonian, sparse=False, scaling=1, buffer=None, max_buf
             matmap_np["Y"] = np.array([[0, -1j], [1j, 0]], dtype=dtype)
 
         # sparse versions
-        matmap_sp = {k: sp.csr_array(v) for k, v in matmap_np.items()}
+        if sparse:
+            matmap_sp = {k: sp.csr_array(v) for k, v in matmap_np.items()}
 
     if not np.issubdtype(dtype, np.complexfloating) and "Y" in hamiltonian:
         raise ValueError(f"The Pauli matrix Y is not supported for dtype {dtype.__name__}.")

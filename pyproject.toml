@@ -12,6 +12,9 @@ dependencies = [
     "tqdm>=4",
 ]
 
+[project.optional-dependencies]
+scipy = ["scipy>=1.7"]
+
 [project.urls]
 Homepage = "https://github.com/noxafy/utils"
 
