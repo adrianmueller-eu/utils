@@ -2,10 +2,11 @@ import sys
 import numpy as np
 from math import ceil, log10
 import matplotlib.pyplot as plt
-from numpy.polynomial.polynomial import polyfit, polyval, polyroots, polyadd, polysub, polyder, polyint, polymul
+from numpy.polynomial.polynomial import polyfit, polyval, polyroots, polyder, polyint#, polyadd, polysub, polymul
 from abc import ABC, abstractmethod
 
-from .mathlib.basic import choice
+# from .mathlib.basic import choice  # mathlib imports this, so do not import mathlib
+import random
 
 # convenience functions
 def pm(x, y=None, deg=1, plot=True, xlog=False, ylog=False):
@@ -330,7 +331,7 @@ class Polynomial(Function):
             if self == 0:
                 raise ValueError("The zero polynomial has roots everywhere!")
 
-            # reduce the polynomial if by the minimum multiplicity of the roots
+            # reduce the polynomial by the minimum multiplicity of the roots
             p = self
             dp = p.derivative()
             m = 1
@@ -557,7 +558,7 @@ class Exponential(Function):
                 if np.random.random() < np.sqrt(10/(i+1)) or len(best_seeds) == 0:
                     x0 = np.random.normal(size=n_params)
                 else:
-                    x0 = choice(best_seeds)
+                    x0 = random.choice(best_seeds)
                 res = minimize(func, x0, method='Nelder-Mead', options={'maxiter': 1000})
                 funs.append(res.fun)
                 if best is None or res.fun < best.fun:
