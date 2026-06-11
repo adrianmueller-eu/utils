@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=45"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "utils"
+version = "1.0"
+dependencies = [
+    "numpy>=1.20",
+    "matplotlib>=3.5",
+    "psutil>=5.9",
+    "tqdm>=4",
+]
+
+[project.urls]
+Homepage = "https://github.com/noxafy/utils"
+
+[tool.setuptools.packages.find]
+include = ["utils*"]
