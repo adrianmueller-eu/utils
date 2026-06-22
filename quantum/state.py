@@ -219,7 +219,6 @@ def ket_from_int(d, n=None):
 def ket(specification, n=None, renormalize=True, check=1):
     """Convert a string or dictionary of strings and weights to a state vector. The string can be a binary number
     or a combination of binary numbers and weights. The weights will be normalized to 1."""
-    # if a string is given, convert it to a dictionary
     if isinstance(specification, (np.ndarray, list, tuple)):
         psi = np.asarray(specification)
         if psi.ndim == 1 and renormalize:
@@ -266,9 +265,9 @@ def ket(specification, n=None, renormalize=True, check=1):
 
         # remove whitespace
         specification = specification.replace(" ", "")
-        specification_dict = dict()
 
-        # Parse the specification into the dictionary, where the keys are the strings '00', '01', '10', '11', etc. and the values are the weights
+        # Parse the specification into a dictionary, where the keys are the strings '00', '01', '10', '11', etc. and the values are the weights
+        specification_dict = dict()
         # The following cases have to be considered:
         #  00 + 11
         #  00 - 11
