@@ -6,7 +6,7 @@ from math import log2, sqrt
 from .constants import I_, I, X, Y, Z, S, T_gate, H  # used in parse_unitary -> globals()
 from .utils import count_qubits, reorder_qubits, reverse_qubit_order, partial_trace, verify_subsystem
 from .state import ket, op, plotQ
-from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0, tf, random_hermitian
+from ..mathlib import is_unitary, is_hermitian, pauli_decompose, count_bitreversed, eig, eigh, is_eye, allclose0, tf, random_hermitian, unitary_noise
 from ..utils import is_int
 
 def Fourier_matrix(n, swap=False):
@@ -387,12 +387,6 @@ def is_separable_unitary(U, subsystem, n=None, tol=1e-10, check=2):
 
 def global_phase(U):
     return np.exp(1j*np.angle(np.linalg.det(U))/U.shape[0])
-
-def unitary_noise(n, angle=None):
-    H = random_hermitian(n)
-    if angle is None:
-        angle = (sqrt(2) + 1/2)/sqrt(n)  # ≈ 1.92/sqrt(n) gives Haar-random unitary (for n → ∞)
-    return matexp(1j*angle*H)
 
 def add_noise(target, angle):
     if not angle:

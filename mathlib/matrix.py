@@ -1144,6 +1144,8 @@ def random_isometry(n, m, size=()):
 
 def unitary_noise(d, s, size=()):
     H = random_hermitian(d, size=size)
+    if s is None:
+        s = (sqrt(2) + 1/2)/sqrt(n)  # ≈ 1.92/sqrt(n) gives Haar-random unitary (for n → ∞)
     return matexp(1j*s*H)
 
 def random_psd(n, params=(0,1), complex=True):
