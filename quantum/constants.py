@@ -63,26 +63,27 @@ for i in [2]:
         globals()["".join(s)] = reduce(np.kron, g)  # II, IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ
 del i, s, g
 
-def C_(A, reverse=False, negative=False):
+def C_(A, on=1, reverse=False):
     if not hasattr(A, 'shape'):
         A = np.asarray(A, dtype=complex)
+    if   on == 1: op0, op1 = [[1,0],[0,0]], [[0,0],[0,1]]
+    elif on == 0: op0, op1 = [[0,0],[0,1]], [[1,0],[0,0]]
+    else: raise ValueError(f"on must be 0 or 1, but was {on}")
     n = int(log2(A.shape[0]))
-    op0, op1 = [[1,0],[0,0]], [[0,0],[0,1]]
-    if negative:
-        op0, op1 = op1, op0
     if reverse:
         return np.kron(I_(n), op0) + np.kron(A, op1)
     return np.kron(op0, I_(n)) + np.kron(op1, A)
+
 CNOT = CX = C_(X) # 0.5*(II + ZI - ZX + IX)
 XC = C_(X, reverse=True)
 CZ = ZC = C_(Z)
 CY = C_(Y)
-NX = C_(X, negative=True)
-XN = C_(X, negative=True, reverse=True)
-NY = C_(Y, negative=True)
-YN = C_(Y, negative=True, reverse=True)
-NZ = C_(Z, negative=True)
-ZN = C_(Z, negative=True, reverse=True)
+NX = C_(X, on=0)
+XN = C_(X, on=0, reverse=True)
+NY = C_(Y, on=0)
+YN = C_(Y, on=0, reverse=True)
+NZ = C_(Z, on=0)
+ZN = C_(Z, on=0, reverse=True)
 Toffoli = C_(C_(X))
 SWAP = np.array([ # 0.5*(XX + YY + ZZ + II), CX @ XC @ CX
     [1, 0, 0, 0],
