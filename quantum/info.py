@@ -575,6 +575,46 @@ def channel_from_choi(choi, dims=(None, None), filter_eps=1e-12, k=None):
     # assert_kraus(operators, n_qubits=(n_out, n_in), check=3)
     return operators
 
+def Liouville_from_channel(operators, sparse='auto', filter_eps=sys.float_info.epsilon, check=3):
+    """
+    Create the Liouville superoperator matrix from a set of Kraus operators.
+    """
+    operators = assert_kraus(operators, allow_reshaped=False, check=check)
+    S_dim = prod(operators[0].shape)  # 2**(2*n) if input space == output space
+
+    if sparse == 'auto':
+        if S_dim <= 64 or "scipy" not in sys.modules:  # n <= 3 qubits use dense
+            sparse = False
+        else:
+            thresh = 0.25
+            # heuristic for percentage of non-zero elements in the choi matrix
+            fill = np.mean([(np.count_nonzero(K)/K.size)**2 for K in operators])
+            sparse = fill < thresh
+
+    if sparse:
+        kron = sp.kron
+        S = sp.csr_array((S_dim, S_dim), dtype=complex)
+        operators = [sp.csr_array(K) for K in operators]
+        # # filter small entries from operators  # TODO: check performance
+        # for K in operators:
+        #     K.data[np.abs(K.data) < filter_eps] = 0
+        #     K.eliminate_zeros()
+    else:
+        kron = np.kron
+        S = np.zeros((S_dim, S_dim), dtype=complex)
+        if hasattr(operators[0], 'toarray'):  # issparse
+            operators = [K.toarray() for K in operators]
+
+    for K in operators:
+        S += kron(K, K.conj())
+
+    # # filter small entries  # TODO: check performance
+    # if filter_eps > 0 and sparse:
+    #     choi.data[np.abs(choi.data) < filter_eps] = 0
+    #     choi.eliminate_zeros()
+
+    return S
+
 def compress_channel(operators, filter_eps=1e-12, check=3):
     """
     Find a minimal set of Kraus operators that represent the same quantum channel.
